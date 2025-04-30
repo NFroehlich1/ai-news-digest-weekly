@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -9,11 +9,19 @@ interface HeaderProps {
   onApiKeySet: (apiKey: string) => void;
   onRefresh: () => void;
   loading: boolean;
+  defaultApiKey?: string;
 }
 
-const Header = ({ onApiKeySet, onRefresh, loading }: HeaderProps) => {
+const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey }: HeaderProps) => {
   const [apiKey, setApiKey] = useState<string>("");
   const [isApiKeyVisible, setIsApiKeyVisible] = useState<boolean>(false);
+  
+  // Initialize with default API key if provided
+  useEffect(() => {
+    if (defaultApiKey) {
+      setApiKey(defaultApiKey);
+    }
+  }, [defaultApiKey]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +49,7 @@ const Header = ({ onApiKeySet, onRefresh, loading }: HeaderProps) => {
               variant="outline" 
               onClick={() => setIsApiKeyVisible(true)}
             >
-              API-Schlüssel setzen
+              API-Schlüssel anzeigen
             </Button>
           ) : (
             <form onSubmit={handleSubmit} className="flex gap-2">

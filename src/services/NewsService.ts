@@ -1,4 +1,6 @@
+
 import { toast } from "sonner";
+import DecoderService from "./DecoderService";
 
 // Types for our RSS and news data
 export interface RssItem {
@@ -89,17 +91,18 @@ class NewsService {
   private apiKey: string;
   private rssUrl: string = "https://the-decoder.de/feed/";
   private rssToJsonUrl: string = "https://api.rss2json.com/v1/api.json";
-  // Default API key for RSS2JSON service (free tier)
-  private defaultApiKey: string = "qbcrwnepkv8jmcr09zzxgtsmpnjmwroec9aymj1e";
+  private decoderService: DecoderService;
   
   constructor(apiKey?: string) {
-    // Store API key if provided, otherwise use the default one
-    this.apiKey = apiKey || this.defaultApiKey;
+    this.decoderService = new DecoderService(apiKey);
+    // Use the provided API key or get the RSS2JSON key from DecoderService
+    this.apiKey = apiKey || this.decoderService.getRss2JsonApiKey();
   }
   
   // Set the API key
   public setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
+    this.decoderService.setApiKey(apiKey);
   }
   
   // Fetch the RSS feed

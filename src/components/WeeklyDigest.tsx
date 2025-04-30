@@ -21,11 +21,6 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   const [activeTab, setActiveTab] = useState<string>("news");
   
   const handleGenerateSummary = async () => {
-    if (!apiKey) {
-      toast.error("Bitte zuerst einen API-Schlüssel setzen.");
-      return;
-    }
-    
     setIsGenerating(true);
     
     try {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import WeeklyDigest from "@/components/WeeklyDigest";
@@ -7,10 +8,14 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Rss } from "lucide-react";
+import DecoderService from "@/services/DecoderService";
 
 const Index = () => {
+  const decoderService = new DecoderService();
+  const defaultApiKey = decoderService.getRss2JsonApiKey();
+  
   const [apiKey, setApiKey] = useState<string>(() => {
-    return localStorage.getItem("decoder_api_key") || "";
+    return localStorage.getItem("decoder_api_key") || defaultApiKey;
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [news, setNews] = useState<RssItem[]>([]);
@@ -103,14 +108,13 @@ const Index = () => {
       <Header 
         onApiKeySet={handleApiKeySet} 
         onRefresh={fetchNews} 
-        loading={loading} 
+        loading={loading}
+        defaultApiKey={defaultApiKey}
       />
       
       <main className="container mx-auto px-4 py-8 flex-1">
         {loading ? (
           renderLoading()
-        ) : !apiKey && Object.keys(weeklyDigests).length === 0 ? (
-          renderApiKeyPrompt()
         ) : Object.keys(weeklyDigests).length === 0 ? (
           <div className="text-center py-12">
             <h2 className="text-xl font-bold mb-2">Keine Nachrichten gefunden</h2>
@@ -125,7 +129,7 @@ const Index = () => {
       
       <footer className="border-t bg-card py-4">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© 2025 KI News Digest - Powered by The Decoder</p>
+          <p>© 2025 KI News Digest - Powered by <a href="https://the-decoder.de/" className="font-medium underline underline-offset-4" target="_blank" rel="noopener noreferrer">The Decoder</a></p>
         </div>
       </footer>
     </div>

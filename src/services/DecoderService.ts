@@ -4,8 +4,10 @@ import { WeeklyDigest } from "./NewsService";
 
 class DecoderService {
   private apiKey: string;
+  // Default API key for Google API
+  private defaultApiKey: string = "AIzaSyCp8HTHYf3lN7jwzVYfoBOAkcEgqkJ7jxY";
   // Default API key for RSS2JSON service (free tier)
-  private defaultApiKey: string = "qbcrwnepkv8jmcr09zzxgtsmpnjmwroec9aymj1e";
+  private rss2jsonApiKey: string = "qbcrwnepkv8jmcr09zzxgtsmpnjmwroec9aymj1e";
   private googleApiUrl = "https://customsearch.googleapis.com/customsearch/v1";
   
   constructor(apiKey?: string) {
@@ -16,6 +18,10 @@ class DecoderService {
     this.apiKey = apiKey;
   }
   
+  getRss2JsonApiKey(): string {
+    return this.rss2jsonApiKey;
+  }
+  
   async searchDecoderContent(query: string): Promise<any> {
     try {
       if (!this.apiKey) {
@@ -24,7 +30,7 @@ class DecoderService {
       
       // The cx parameter is for Custom Search Engine ID - this should be specific to The Decoder
       // For demo purposes, we're using a placeholder
-      const cx = "decoder_custom_search_id";
+      const cx = "017576662512468239146:omuauf_lfve"; // This should be updated with actual Decoder search engine ID
       const url = `${this.googleApiUrl}?key=${this.apiKey}&cx=${cx}&q=${encodeURIComponent(query)}`;
       
       const response = await fetch(url);
