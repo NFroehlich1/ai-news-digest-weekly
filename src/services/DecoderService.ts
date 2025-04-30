@@ -4,10 +4,12 @@ import { WeeklyDigest } from "./NewsService";
 
 class DecoderService {
   private apiKey: string;
+  // Default API key for RSS2JSON service (free tier)
+  private defaultApiKey: string = "qbcrwnepkv8jmcr09zzxgtsmpnjmwroec9aymj1e";
   private googleApiUrl = "https://customsearch.googleapis.com/customsearch/v1";
   
   constructor(apiKey?: string) {
-    this.apiKey = apiKey || "";
+    this.apiKey = apiKey || this.defaultApiKey;
   }
   
   setApiKey(apiKey: string): void {
@@ -40,12 +42,8 @@ class DecoderService {
   
   async generateSummary(digest: WeeklyDigest): Promise<string> {
     try {
-      if (!this.apiKey) {
-        throw new Error("API-Schlüssel nicht gesetzt");
-      }
-      
-      // In a real-world scenario, we would call an API with the API key
       // For demo purposes, we'll return a formatted summary
+      // In a real-world scenario, we would call an API with the API key
       
       // Get titles and create a prompt
       const titles = digest.items.map(item => item.title).join(", ");

@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 
 // Types for our RSS and news data
@@ -90,10 +89,12 @@ class NewsService {
   private apiKey: string;
   private rssUrl: string = "https://the-decoder.de/feed/";
   private rssToJsonUrl: string = "https://api.rss2json.com/v1/api.json";
+  // Default API key for RSS2JSON service (free tier)
+  private defaultApiKey: string = "qbcrwnepkv8jmcr09zzxgtsmpnjmwroec9aymj1e";
   
   constructor(apiKey?: string) {
-    // Store API key if provided, otherwise use a placeholder
-    this.apiKey = apiKey || "YOUR_API_KEY";
+    // Store API key if provided, otherwise use the default one
+    this.apiKey = apiKey || this.defaultApiKey;
   }
   
   // Set the API key
@@ -104,7 +105,7 @@ class NewsService {
   // Fetch the RSS feed
   public async fetchNews(): Promise<RssItem[]> {
     try {
-      // Prepare the URL with the RSS feed URL and API key
+      // Prepare the URL with the RSS feed URL and API key for RSS2JSON service
       const url = `${this.rssToJsonUrl}?rss_url=${encodeURIComponent(this.rssUrl)}&api_key=${this.apiKey}`;
       
       const response = await fetch(url);
@@ -119,7 +120,19 @@ class NewsService {
         throw new Error(`RSS feed status not OK: ${data.status}`);
       }
       
-      return data.items;
+      // Process image URLs for each item if available
+      const processedItems = data.items.map(item => {
+        if (!item.imageUrl && item.content) {
+          // Try to extract image from content if no imageUrl is provided
+          const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/);
+          if (imgMatch && imgMatch[1]) {
+            item.imageUrl = imgMatch[1];
+          }
+        }
+        return item;
+      });
+      
+      return processedItems;
     } catch (error) {
       console.error('Error fetching news:', error);
       toast.error(`Fehler beim Laden der Nachrichten: ${(error as Error).message}`);

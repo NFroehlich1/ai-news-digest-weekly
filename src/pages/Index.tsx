@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import WeeklyDigest from "@/components/WeeklyDigest";
@@ -26,11 +25,7 @@ const Index = () => {
   
   // Load news on first render and when API key changes
   useEffect(() => {
-    if (apiKey) {
-      fetchNews();
-    } else {
-      setLoading(false);
-    }
+    fetchNews();
   }, [apiKey]);
   
   const fetchNews = async () => {
@@ -60,14 +55,6 @@ const Index = () => {
   const handleApiKeySet = (newApiKey: string) => {
     setApiKey(newApiKey);
   };
-  
-  // Pre-initialize with a default API key if available
-  useEffect(() => {
-    const defaultApiKey = "AIzaSyCp8HTHYf3lN7jwzVYfoBOAkcEgqkJ7jxY";
-    if (!apiKey && defaultApiKey) {
-      setApiKey(defaultApiKey);
-    }
-  }, []);
   
   // Render loading state
   const renderLoading = () => {
@@ -122,7 +109,7 @@ const Index = () => {
       <main className="container mx-auto px-4 py-8 flex-1">
         {loading ? (
           renderLoading()
-        ) : !apiKey ? (
+        ) : !apiKey && Object.keys(weeklyDigests).length === 0 ? (
           renderApiKeyPrompt()
         ) : Object.keys(weeklyDigests).length === 0 ? (
           <div className="text-center py-12">
