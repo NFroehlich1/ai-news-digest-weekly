@@ -12,7 +12,7 @@ import DecoderService from "@/services/DecoderService";
 
 const Index = () => {
   const decoderService = new DecoderService();
-  const defaultApiKey = decoderService.getRss2JsonApiKey();
+  const defaultApiKey = decoderService.getDefaultApiKey();
   
   const [apiKey, setApiKey] = useState<string>(() => {
     return localStorage.getItem("decoder_api_key") || defaultApiKey;
@@ -82,7 +82,7 @@ const Index = () => {
             <AlertTitle>API-Schlüssel erforderlich</AlertTitle>
             <AlertDescription>
               Bitte setzen Sie einen API-Schlüssel, um Nachrichten laden zu können.
-              Klicken Sie auf "API-Schlüssel setzen" oben rechts.
+              Klicken Sie auf "API-Schlüssel anzeigen" oben rechts.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -129,7 +129,17 @@ const Index = () => {
       
       <footer className="border-t bg-card py-4">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© 2025 KI News Digest - Powered by <a href="https://the-decoder.de/" className="font-medium underline underline-offset-4" target="_blank" rel="noopener noreferrer">The Decoder</a></p>
+          <p>
+            © 2025 KI News Digest - Powered by{" "}
+            <a 
+              href="https://the-decoder.de/" 
+              className="font-medium underline underline-offset-4" 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              The Decoder
+            </a>
+          </p>
         </div>
       </footer>
     </div>

@@ -22,6 +22,10 @@ class DecoderService {
     return this.rss2jsonApiKey;
   }
   
+  getDefaultApiKey(): string {
+    return this.defaultApiKey;
+  }
+  
   async searchDecoderContent(query: string): Promise<any> {
     try {
       if (!this.apiKey) {

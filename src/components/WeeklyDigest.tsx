@@ -9,6 +9,8 @@ import DecoderService from "@/services/DecoderService";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
+import NewsletterSubscribeModal from "./NewsletterSubscribeModal";
+import { Mail } from "lucide-react";
 
 interface WeeklyDigestProps {
   digest: WeeklyDigestType;
@@ -44,20 +46,23 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   
   return (
     <Card className="mb-8">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
         <div>
           <CardTitle className="text-xl md:text-2xl font-bold">
             KI-Update KW {digest.weekNumber}
           </CardTitle>
           <p className="text-muted-foreground">{digest.dateRange}</p>
         </div>
-        <Button 
-          onClick={handleGenerateSummary} 
-          disabled={isGenerating}
-          className="shrink-0"
-        >
-          {isGenerating ? "Wird generiert..." : generatedContent ? "Neu generieren" : "Zusammenfassen"}
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <NewsletterSubscribeModal newsletterContent={generatedContent || undefined} />
+          <Button 
+            onClick={handleGenerateSummary} 
+            disabled={isGenerating}
+            className="shrink-0"
+          >
+            {isGenerating ? "Wird generiert..." : generatedContent ? "Neu generieren" : "Zusammenfassen"}
+          </Button>
+        </div>
       </CardHeader>
       
       <CardContent>

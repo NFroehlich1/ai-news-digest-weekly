@@ -1,6 +1,6 @@
-
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
+import { parseString } from "xml2js";
 
 // Types for our RSS and news data
 export interface RssItem {
@@ -25,18 +25,6 @@ export interface WeeklyDigest {
   items: RssItem[];
   generatedContent?: string;
   createdAt: Date;
-}
-
-export interface ApiResponse {
-  status: string;
-  feed: {
-    url: string;
-    title: string;
-    link: string;
-    description: string;
-    image: string;
-  };
-  items: RssItem[];
 }
 
 // Format date for display
@@ -90,12 +78,11 @@ function getDateOfISOWeek(week: number, year: number): Date {
 class NewsService {
   private apiKey: string;
   private rssUrl: string = "https://the-decoder.de/feed/";
-  private rssToJsonUrl: string = "https://api.rss2json.com/v1/api.json";
+  private corsProxyUrl: string = "https://corsproxy.io/?";
   private decoderService: DecoderService;
   
   constructor(apiKey?: string) {
     this.decoderService = new DecoderService(apiKey);
-    // Use the provided API key or get the RSS2JSON key from DecoderService
     this.apiKey = apiKey || this.decoderService.getRss2JsonApiKey();
   }
   
@@ -105,42 +92,83 @@ class NewsService {
     this.decoderService.setApiKey(apiKey);
   }
   
-  // Fetch the RSS feed
+  // Fetch the RSS feed directly using a CORS proxy
   public async fetchNews(): Promise<RssItem[]> {
     try {
-      // Prepare the URL with the RSS feed URL and API key for RSS2JSON service
-      const url = `${this.rssToJsonUrl}?rss_url=${encodeURIComponent(this.rssUrl)}&api_key=${this.apiKey}`;
-      
-      const response = await fetch(url);
+      const response = await fetch(`${this.corsProxyUrl}${encodeURIComponent(this.rssUrl)}`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch RSS feed: ${response.status}`);
       }
       
-      const data: ApiResponse = await response.json();
+      const xmlText = await response.text();
+      const items = await this.parseRssFeed(xmlText);
       
-      if (data.status !== 'ok') {
-        throw new Error(`RSS feed status not OK: ${data.status}`);
-      }
-      
-      // Process image URLs for each item if available
-      const processedItems = data.items.map(item => {
-        if (!item.imageUrl && item.content) {
-          // Try to extract image from content if no imageUrl is provided
-          const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/);
-          if (imgMatch && imgMatch[1]) {
-            item.imageUrl = imgMatch[1];
-          }
-        }
-        return item;
-      });
-      
-      return processedItems;
+      return items;
     } catch (error) {
       console.error('Error fetching news:', error);
       toast.error(`Fehler beim Laden der Nachrichten: ${(error as Error).message}`);
       return [];
     }
+  }
+  
+  // Parse RSS XML content
+  private parseRssFeed(xmlText: string): Promise<RssItem[]> {
+    return new Promise((resolve, reject) => {
+      parseString(xmlText, (err, result) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        try {
+          const channel = result.rss.channel[0];
+          const items: RssItem[] = channel.item.map((item: any) => {
+            // Extract image if available
+            let imageUrl = null;
+            if (item['media:content'] && item['media:content'][0].$) {
+              imageUrl = item['media:content'][0].$.url;
+            } else if (item.enclosure && item.enclosure[0].$) {
+              imageUrl = item.enclosure[0].$.url;
+            }
+            
+            // Extract content and description
+            const content = item['content:encoded'] ? item['content:encoded'][0] : '';
+            const description = item.description ? item.description[0] : '';
+            
+            // If no direct image was found, try to extract from content
+            if (!imageUrl && content) {
+              const imgMatch = content.match(/<img[^>]+src="([^">]+)"/);
+              if (imgMatch && imgMatch[1]) {
+                imageUrl = imgMatch[1];
+              }
+            }
+            
+            // Extract categories
+            const categories = item.category ? 
+              item.category.map((cat: any) => typeof cat === 'string' ? cat : cat._) : 
+              [];
+            
+            return {
+              title: item.title[0],
+              link: item.link[0],
+              pubDate: item.pubDate[0],
+              description: description,
+              content: content,
+              categories: categories,
+              creator: item['dc:creator'] ? item['dc:creator'][0] : '',
+              guid: item.guid ? item.guid[0]._ : '',
+              imageUrl: imageUrl
+            };
+          });
+          
+          resolve(items);
+        } catch (error) {
+          console.error("Error parsing RSS:", error);
+          reject(new Error("Failed to parse RSS feed structure"));
+        }
+      });
+    });
   }
   
   // Group news items by week
