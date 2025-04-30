@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { rss } from 'lucide-react';
+import { Rss } from "lucide-react";
 
 interface HeaderProps {
   onApiKeySet: (apiKey: string) => void;
@@ -31,7 +31,7 @@ const Header = ({ onApiKeySet, onRefresh, loading }: HeaderProps) => {
     <header className="border-b bg-card shadow-sm">
       <div className="container mx-auto py-4 px-4 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <rss className="h-6 w-6 text-decoder-blue" />
+          <Rss className="h-6 w-6 text-decoder-blue" />
           <h1 className="text-2xl font-bold gradient-text">KI News Digest</h1>
         </div>
         

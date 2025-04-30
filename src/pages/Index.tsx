@@ -7,7 +7,7 @@ import NewsService, { WeeklyDigest as WeeklyDigestType, RssItem } from "@/servic
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { rss } from "lucide-react";
+import { Rss } from "lucide-react";
 
 const Index = () => {
   const [apiKey, setApiKey] = useState<string>(() => {
@@ -86,7 +86,7 @@ const Index = () => {
       <Card className="mx-auto max-w-lg">
         <CardContent className="pt-6">
           <Alert>
-            <rss className="h-4 w-4" />
+            <Rss className="h-4 w-4" />
             <AlertTitle>API-Schlüssel erforderlich</AlertTitle>
             <AlertDescription>
               Bitte setzen Sie einen API-Schlüssel, um Nachrichten laden zu können.
