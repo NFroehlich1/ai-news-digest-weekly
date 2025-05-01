@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import WeeklyDigest from "@/components/WeeklyDigest";
@@ -16,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { v4 as uuidv4 } from 'uuid';
+import { formatDate, getCurrentWeek, getWeekDateRange } from "@/utils/dateUtils";
 
 const Index = () => {
   const decoderService = new DecoderService();
@@ -93,48 +93,6 @@ const Index = () => {
     };
   };
   
-  // Get the current calendar week
-  const getCurrentWeek = (): number => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 1);
-    const diff = now.getTime() - start.getTime();
-    const oneDay = 1000 * 60 * 60 * 24;
-    const dayOfYear = Math.floor(diff / oneDay);
-    return Math.ceil((dayOfYear + start.getDay()) / 7);
-  };
-  
-  // Get the date range for a week
-  const getWeekDateRange = (weekNumber: number, year: number): string => {
-    const startDate = getDateOfISOWeek(weekNumber, year);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 6);
-    
-    return `${formatDate(startDate.toISOString())}–${formatDate(endDate.toISOString())}`;
-  };
-  
-  // Helper function to get the date of an ISO week
-  const getDateOfISOWeek = (week: number, year: number): Date => {
-    const simple = new Date(Date.UTC(year, 0, 1 + (week - 1) * 7));
-    const dayOfWeek = simple.getDay();
-    const date = simple;
-    if (dayOfWeek <= 4) {
-      date.setDate(simple.getDate() - simple.getDay() + 1);
-    } else {
-      date.setDate(simple.getDate() + 8 - simple.getDay());
-    }
-    return date;
-  };
-  
-  // Format date for display
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-  
   // Add a new manual article
   const handleAddArticle = async () => {
     if (!newArticleLink) {
@@ -147,7 +105,7 @@ const Index = () => {
       
       // Create new article with minimal info
       const now = new Date();
-      const id = uuidv4();
+      const guid = uuidv4();
       
       // Basic article with just the link
       const article: RssItem = {
@@ -156,10 +114,9 @@ const Index = () => {
         description: "Artikel-Informationen werden abgerufen...",
         pubDate: now.toISOString(),
         content: "",
-        guid: id,
+        guid: guid,
         categories: [],
-        sourceName: "Manueller Eintrag",
-        id
+        sourceName: "Manueller Eintrag"
       };
       
       // Get or create current week digest
