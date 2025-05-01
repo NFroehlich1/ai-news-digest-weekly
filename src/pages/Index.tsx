@@ -90,7 +90,7 @@ const Index = () => {
     }
   }, [currentWeekDigest, newsletterContent]);
   
-  // Initial API key setup
+  // Handle API key set
   const handleApiKeySet = (newApiKey: string) => {
     setApiKey(newApiKey);
   };
@@ -189,9 +189,12 @@ const Index = () => {
           
           // Only add the article when fully processed
           if (currentWeekDigest) {
-            setCurrentWeekDigest({
-              ...currentWeekDigest,
-              items: [completeArticle, ...currentWeekDigest.items]
+            setCurrentWeekDigest(prevDigest => {
+              if (!prevDigest) return null;
+              return {
+                ...prevDigest,
+                items: [completeArticle, ...prevDigest.items]
+              };
             });
             
             toast.success("Artikel erfolgreich hinzugefügt");
@@ -214,18 +217,22 @@ const Index = () => {
             sourceName: new URL(newArticleLink).hostname.replace('www.', '')
           };
           
-          setCurrentWeekDigest({
-            ...currentWeekDigest,
-            items: [fallbackArticle, ...currentWeekDigest.items]
+          setCurrentWeekDigest(prevDigest => {
+            if (!prevDigest) return null;
+            return {
+              ...prevDigest,
+              items: [fallbackArticle, ...prevDigest.items]
+            };
           });
         }
+      } finally {
+        // Remove this article from pending articles
+        setPendingArticles(prev => prev.filter(id => id !== articleGuid));
       }
     } catch (error) {
       console.error("Error adding article:", error);
       toast.error(`Fehler beim Hinzufügen des Artikels: ${(error as Error).message}`);
     } finally {
-      // Remove this article from pending articles
-      setPendingArticles(prev => prev.filter(id => id !== articleGuid));
       setIsAddingArticle(false);
     }
   };
