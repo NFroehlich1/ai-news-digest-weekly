@@ -4,11 +4,12 @@ import { WeeklyDigest } from "./NewsService";
 
 class DecoderService {
   private apiKey: string;
-  // Default API key for Google API
-  private defaultApiKey: string = "AIzaSyCp8HTHYf3lN7jwzVYfoBOAkcEgqkJ7jxY";
+  // Default API key for Gemini API
+  private defaultApiKey: string = "AIzaSyA_hFXBg2EOipSEgF7nJxxDET632Kw1YFc";
   // Default API key for RSS2JSON service (free tier)
   private rss2jsonApiKey: string = "qbcrwnepkv8jmcr09zzxgtsmpnjmwroec9aymj1e";
   private googleApiUrl = "https://customsearch.googleapis.com/customsearch/v1";
+  private geminiApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
   
   constructor(apiKey?: string) {
     this.apiKey = apiKey || this.defaultApiKey;
@@ -52,22 +53,77 @@ class DecoderService {
   
   async generateSummary(digest: WeeklyDigest): Promise<string> {
     try {
-      // For demo purposes, we'll return a formatted summary
-      // In a real-world scenario, we would call an API with the API key
+      // Get titles and descriptions to create a prompt
+      const items = digest.items.slice(0, 5); // Limit to top 5 news
+      const contentSummaries = items.map(item => 
+        `Titel: ${item.title}\nBeschreibung: ${item.description.substring(0, 150)}...\n`
+      ).join("\n");
       
-      // Get titles and create a prompt
-      const titles = digest.items.map(item => item.title).join(", ");
-      const prompt = `Zusammenfassung der wichtigsten KI-Nachrichten der Woche ${digest.weekNumber}: ${titles}`;
+      // Create a prompt for Gemini
+      const prompt = `Erstelle einen strukturierten Newsletter im LINKIT-Format für KW ${digest.weekNumber} (${digest.dateRange}) 
+      basierend auf diesen AI-News-Artikeln:
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      ${contentSummaries}
       
-      // Return mock generated content
-      return this.formatNewsletter(digest);
+      Das Format soll sein:
+      - Überschrift: "📬 LINKIT WEEKLY"
+      - Unterüberschrift: "Dein Update zu KI, Data Science und Industrie 4.0"
+      - Kalendarwoche und Datum
+      - Persönliche Anrede
+      - Kurze Einleitung
+      - Zusammenfassungen der wichtigsten Nachrichtenartikel mit Titeln und kurzen Beschreibungen
+      - Eine "Kurz & Knapp" Sektion mit Aufzählungspunkten
+      - Abschluss mit Hinweis auf LINKIT-Veranstaltungen
+      - Signatur des LINKIT-Teams
+      
+      Schreibe in einem freundlichen, informativen Stil mit Markdown-Formatierung.`;
+      
+      // Use Gemini API
+      const url = `${this.geminiApiUrl}?key=${this.apiKey}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 2048,
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Gemini API error:", errorData);
+        throw new Error(`Gemini API-Fehler: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Extract the generated text from the response
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      if (!generatedText) {
+        // Fallback to formatted newsletter if Gemini fails
+        return this.formatNewsletter(digest);
+      }
+      
+      return generatedText;
     } catch (error) {
       console.error("Generierungsfehler:", error);
       toast.error(`Fehler bei der Zusammenfassung: ${(error as Error).message}`);
-      return "";
+      // Fallback to formatted newsletter if there's an error
+      return this.formatNewsletter(digest);
     }
   }
   
