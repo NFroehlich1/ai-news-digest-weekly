@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import NewsCard from "@/components/NewsCard";
@@ -140,10 +139,11 @@ const Index = () => {
       toast.info("Artikel wird hinzugefügt...");
       
       const now = new Date();
-      const guid = uuidv4();
+      // Generate a unique ID for this article request
+      const articleGuid = uuidv4();
       
       // Add this article link to pending articles to show loading state
-      setPendingArticles(prev => [...prev, guid]);
+      setPendingArticles(prev => [...prev, articleGuid]);
       
       // If there's no current digest, create one
       if (!currentWeekDigest) {
@@ -164,7 +164,7 @@ const Index = () => {
         if (metadata) {
           // Create complete article with metadata and AI summary
           const completeArticle: RssItem = {
-            guid: guid,
+            guid: articleGuid,
             title: metadata.title || "Artikel ohne Titel",
             description: metadata.description || "Keine Beschreibung verfügbar",
             link: newArticleLink,
@@ -204,7 +204,7 @@ const Index = () => {
         // Add a basic article so the user doesn't lose their input
         if (currentWeekDigest) {
           const fallbackArticle: RssItem = {
-            guid: guid,
+            guid: articleGuid,
             title: new URL(newArticleLink).hostname,
             description: "Keine Beschreibung verfügbar",
             link: newArticleLink,
@@ -225,7 +225,7 @@ const Index = () => {
       toast.error(`Fehler beim Hinzufügen des Artikels: ${(error as Error).message}`);
     } finally {
       // Remove this article from pending articles
-      setPendingArticles(prev => prev.filter(id => id !== guid));
+      setPendingArticles(prev => prev.filter(id => id !== articleGuid));
       setIsAddingArticle(false);
     }
   };
@@ -390,6 +390,7 @@ const Index = () => {
                                 link: "",
                                 content: "",
                                 pubDate: new Date().toISOString(),
+                                isLoading: true
                               }} 
                               isLoading={true}
                             />
