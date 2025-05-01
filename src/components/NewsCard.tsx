@@ -96,7 +96,9 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
       
       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="flex-grow">
         <CardContent className="pb-0">
-          <p className="text-sm line-clamp-3 mb-2">{description}</p>
+          {!isOpen && (
+            <p className="text-sm line-clamp-3 mb-2">{description}</p>
+          )}
           
           <CollapsibleTrigger asChild className="w-full">
             <Button variant="ghost" size="sm" className="w-full flex items-center justify-center text-xs mt-2">
@@ -116,6 +118,8 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
           
           <CollapsibleContent>
             <div className="mt-4 border-t pt-4">
+              <p className="text-sm mb-4">{description}</p>
+              
               <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung</h4>
               {aiSummary ? (
                 <p className="text-sm">{aiSummary}</p>
@@ -126,7 +130,7 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
               {content && (
                 <div className="mt-4">
                   <h4 className="text-sm font-medium mb-2">Artikel-Inhalt</h4>
-                  <p className="text-sm line-clamp-6">{content}</p>
+                  <p className="text-sm">{content}</p>
                 </div>
               )}
             </div>
