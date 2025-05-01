@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
 
@@ -95,29 +94,42 @@ class NewsService {
   // Fetch the RSS feed directly using a CORS proxy
   public async fetchNews(): Promise<RssItem[]> {
     try {
-      const response = await fetch(`${this.corsProxyUrl}${encodeURIComponent(this.rssUrl)}`);
+      console.log("Fetching RSS feed from:", this.rssUrl);
+      const response = await fetch(`${this.corsProxyUrl}${encodeURIComponent(this.rssUrl)}`, {
+        headers: {
+          'Accept': 'application/xml, text/xml, */*'
+        }
+      });
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch RSS feed: ${response.status}`);
+        console.error("Response not OK:", response.status, response.statusText);
+        throw new Error(`Failed to fetch RSS feed: ${response.status} ${response.statusText}`);
       }
       
       const xmlText = await response.text();
+      console.log("RSS feed fetched, length:", xmlText.length);
       
-      // Instead of using xml2js.parseString, we'll manually parse the RSS feed
-      // using DOMParser which is available in the browser
+      if (!xmlText || xmlText.trim().length === 0) {
+        console.error("Empty RSS feed response");
+        throw new Error("Empty RSS feed response");
+      }
+      
+      // Parse the RSS feed using DOMParser
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(xmlText, "text/xml");
       
       // Check for parsing errors
       const parserError = xmlDoc.querySelector("parsererror");
       if (parserError) {
+        console.error("XML parsing error:", parserError.textContent);
         throw new Error("Failed to parse XML: " + parserError.textContent);
       }
       
       const items: RssItem[] = [];
       const itemElements = xmlDoc.querySelectorAll("item");
+      console.log("Number of items found in feed:", itemElements.length);
       
-      itemElements.forEach((item) => {
+      itemElements.forEach((item, index) => {
         // Helper function to safely get text content from an element
         const getElementText = (parent: Element, tagName: string): string => {
           const element = parent.querySelector(tagName);
@@ -174,6 +186,8 @@ class NewsService {
         const guid = getElementText(item, "guid");
         const imageUrl = getImageUrl(item, content);
         
+        console.log(`Item ${index + 1}:`, title, pubDate);
+        
         items.push({
           title,
           link,
@@ -189,13 +203,15 @@ class NewsService {
       
       if (items.length === 0) {
         console.warn("No items found in RSS feed");
+        throw new Error("Keine Artikel im RSS-Feed gefunden");
       }
       
+      console.log("Successfully parsed items:", items.length);
       return items;
     } catch (error) {
       console.error('Error fetching news:', error);
       toast.error(`Fehler beim Laden der Nachrichten: ${(error as Error).message}`);
-      return [];
+      throw error; // Re-throw to handle in the component
     }
   }
   
