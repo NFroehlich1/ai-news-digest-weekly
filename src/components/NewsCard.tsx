@@ -66,6 +66,19 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
     }
   };
 
+  // Create a shorter version of the AI summary for collapsed view
+  const getShortAiSummary = () => {
+    if (!aiSummary) return null;
+    
+    // Use the first sentence or truncate to ~100 chars if there's only one sentence
+    const firstSentence = aiSummary.split(/[.!?]/).filter(Boolean)[0];
+    if (firstSentence && firstSentence.length < 100) {
+      return `${firstSentence}.`;
+    }
+    
+    return `${aiSummary.substring(0, 100)}...`;
+  };
+
   return (
     <Card className="overflow-hidden h-full flex flex-col relative">
       {imageUrl && (
@@ -97,7 +110,17 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="flex-grow">
         <CardContent className="pb-0">
           {!isOpen && (
-            <p className="text-sm line-clamp-3 mb-2">{description}</p>
+            <>
+              <p className="text-sm line-clamp-3 mb-2">{description}</p>
+              
+              {aiSummary && (
+                <div className="mt-2 bg-muted/50 p-2 rounded-sm">
+                  <p className="text-xs text-muted-foreground italic">
+                    <span className="font-medium">KI-Kurzfassung:</span> {getShortAiSummary()}
+                  </p>
+                </div>
+              )}
+            </>
           )}
           
           <CollapsibleTrigger asChild className="w-full">
@@ -118,6 +141,7 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
           
           <CollapsibleContent>
             <div className="mt-4 border-t pt-4">
+              <h4 className="text-sm font-medium mb-2">Beschreibung</h4>
               <p className="text-sm mb-4">{description}</p>
               
               <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung</h4>
