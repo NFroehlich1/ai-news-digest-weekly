@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Rss, Plus, Grid3x3, Calendar, Mail } from "lucide-react";
+import { Rss, Plus, Calendar, Mail } from "lucide-react";
 import DecoderService from "@/services/DecoderService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NewsService from "@/services/NewsService";
@@ -171,7 +171,7 @@ const Index = () => {
       setNewArticleLink("");
       setDialogOpen(false);
       
-      // Try to fetch metadata about the article
+      // Try to fetch metadata about the article and generate AI summary
       try {
         console.log("Fetching metadata for:", newArticleLink);
         const metadata = await decoderService.extractArticleMetadata(newArticleLink);

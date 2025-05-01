@@ -34,22 +34,26 @@ class DecoderService {
         throw new Error("API-Schlüssel nicht gesetzt");
       }
       
+      console.log("Fetching metadata for:", url);
+      
       // Simple fallback for The Decoder articles since we can't access external content directly
       if (url.includes('the-decoder.de')) {
-        // Extract title from URL
         const urlPath = new URL(url).pathname;
         const slug = urlPath.split('/').pop() || '';
         const titleFromSlug = slug
           .replace(/-/g, ' ')
           .replace(/\b\w/g, l => l.toUpperCase());
           
-        return {
+        const metadata = {
           title: titleFromSlug || "AI-Artikel von The Decoder",
           description: "Ein interessanter Artikel über KI-Technologie und Entwicklungen von The Decoder.",
           categories: ["KI", "Technologie"],
           imageUrl: "https://the-decoder.de/wp-content/uploads/2022/01/logo.png",
           sourceName: "The Decoder"
         };
+        
+        console.log("Received metadata:", metadata);
+        return metadata;
       }
       
       // Use Google AI API to extract metadata
@@ -63,7 +67,6 @@ class DecoderService {
       2. description: A short summary or description 
       3. categories: Array of categories/tags relevant to the content (max 3)
       4. imageUrl: URL of the main image (if any)
-      5. aiSummary: A concise 1-2 sentence summary of the article content
       
       Return ONLY a valid JSON object without any explanations or markdown.
       `;
@@ -120,10 +123,21 @@ class DecoderService {
       try {
         console.log("Parsing JSON:", jsonText);
         const metadata = JSON.parse(jsonText);
+        
+        // Generate an AI summary after getting metadata
+        const aiSummary = await this.generateArticleSummary({
+          title: metadata.title,
+          description: metadata.description,
+          link: url,
+          pubDate: new Date().toISOString(),
+          content: ""
+        });
+        
         return {
           ...metadata,
           link: url,
-          sourceName: new URL(url).hostname.replace('www.', '')
+          sourceName: new URL(url).hostname.replace('www.', ''),
+          aiSummary
         };
       } catch (parseError) {
         console.error("JSON parsing error:", parseError);
@@ -159,7 +173,6 @@ class DecoderService {
         description: `Ein Artikel über KI und Technologie von ${domain}`,
         categories: ["KI", "Technologie"],
         sourceName: domain.replace('www.', ''),
-        aiSummary: `Ein Artikel über aktuelle KI-Entwicklungen von ${domain}.`
       };
     } catch (error) {
       // If URL parsing fails, return very basic info
@@ -168,13 +181,12 @@ class DecoderService {
         description: "Ein Artikel über KI und Technologie",
         categories: ["KI", "Technologie"],
         sourceName: "Externe Quelle",
-        aiSummary: "Ein Artikel über aktuelle KI-Entwicklungen und Technologie."
       };
     }
   }
   
   // Generate summary for a single article
-  async generateArticleSummary(article: RssItem): Promise<string> {
+  async generateArticleSummary(article: Partial<RssItem>): Promise<string> {
     try {
       if (!this.apiKey) {
         throw new Error("API-Schlüssel nicht gesetzt");
@@ -219,7 +231,7 @@ class DecoderService {
       
       if (!response.ok) {
         console.error("AI summary generation API error:", await response.text());
-        return article.description;
+        return article.description || "";
       }
       
       const data = await response.json();
@@ -228,14 +240,14 @@ class DecoderService {
       console.log("Generated AI summary:", summary);
       
       if (!summary) {
-        return article.description;
+        return article.description || "";
       }
       
       // Clean up the summary (remove quotes, trim, etc.)
       return summary.replace(/^["']|["']$/g, '').trim();
     } catch (error) {
       console.error("Summary generation error:", error);
-      return article.description;
+      return article.description || "";
     }
   }
   

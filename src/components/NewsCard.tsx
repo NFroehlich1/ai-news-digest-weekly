@@ -51,7 +51,7 @@ const NewsCard = ({ item }: NewsCardProps) => {
       </CardHeader>
       <CardContent className="flex-grow">
         <p className="text-sm line-clamp-3">{aiSummary || description}</p>
-        {aiSummary && description && description !== aiSummary && (
+        {aiSummary && (
           <div className="mt-2">
             <Badge variant="secondary">AI Zusammenfassung</Badge>
           </div>
