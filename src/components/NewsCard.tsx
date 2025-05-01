@@ -2,18 +2,22 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RssItem } from "@/types/newsTypes";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Trash, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/utils/dateUtils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useState } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface NewsCardProps {
   item: RssItem;
   isLoading?: boolean;
+  onDelete?: (item: RssItem) => void;
 }
 
-const NewsCard = ({ item, isLoading = false }: NewsCardProps) => {
-  const { title, link, pubDate, description, categories, sourceName, aiSummary } = item;
+const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
+  const { title, link, pubDate, description, categories, sourceName, aiSummary, content } = item;
+  const [isOpen, setIsOpen] = useState(false);
   
   // Only use imageUrl if it passes basic validation
   const validateImageUrl = (url?: string): boolean => {
@@ -56,8 +60,14 @@ const NewsCard = ({ item, isLoading = false }: NewsCardProps) => {
     );
   }
   
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(item);
+    }
+  };
+
   return (
-    <Card className="overflow-hidden h-full flex flex-col">
+    <Card className="overflow-hidden h-full flex flex-col relative">
       {imageUrl && (
         <div className="h-48 overflow-hidden">
           <img 
@@ -83,28 +93,75 @@ const NewsCard = ({ item, isLoading = false }: NewsCardProps) => {
           )}
         </div>
       </CardHeader>
-      <CardContent className="flex-grow">
-        <p className="text-sm line-clamp-3">{aiSummary || description}</p>
-        {aiSummary && (
-          <div className="mt-2">
-            <Badge variant="secondary">AI Zusammenfassung</Badge>
-          </div>
-        )}
-      </CardContent>
+      
+      <Collapsible open={isOpen} onOpenChange={setIsOpen} className="flex-grow">
+        <CardContent className="pb-0">
+          <p className="text-sm line-clamp-3 mb-2">{description}</p>
+          
+          <CollapsibleTrigger asChild className="w-full">
+            <Button variant="ghost" size="sm" className="w-full flex items-center justify-center text-xs mt-2">
+              {isOpen ? (
+                <>
+                  <ChevronUp className="h-4 w-4 mr-1" />
+                  Weniger anzeigen
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4 mr-1" />
+                  Mehr anzeigen
+                </>
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent>
+            <div className="mt-4 border-t pt-4">
+              <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung</h4>
+              {aiSummary ? (
+                <p className="text-sm">{aiSummary}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">Keine KI-Zusammenfassung verfügbar.</p>
+              )}
+              
+              {content && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2">Artikel-Inhalt</h4>
+                  <p className="text-sm line-clamp-6">{content}</p>
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </CardContent>
+      </Collapsible>
+      
       <CardFooter className="flex flex-col space-y-3 pt-2">
         <div className="flex flex-wrap gap-1">
           {categories?.slice(0, 3).map((category, index) => (
             <Badge key={index} variant="secondary">{category}</Badge>
           ))}
         </div>
-        <Button 
-          className="w-full flex items-center gap-2" 
-          variant="outline"
-          onClick={() => window.open(link, '_blank')}
-        >
-          <ExternalLink className="h-4 w-4" />
-          Artikel lesen
-        </Button>
+        <div className="w-full flex items-center gap-2">
+          <Button 
+            className="flex-1 flex items-center gap-2" 
+            variant="outline"
+            onClick={() => window.open(link, '_blank')}
+          >
+            <ExternalLink className="h-4 w-4" />
+            Artikel lesen
+          </Button>
+          
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="flex-shrink-0 text-destructive hover:bg-destructive/10"
+              onClick={handleDelete}
+            >
+              <Trash className="h-4 w-4" />
+              <span className="sr-only">Artikel löschen</span>
+            </Button>
+          )}
+        </div>
       </CardFooter>
     </Card>
   );

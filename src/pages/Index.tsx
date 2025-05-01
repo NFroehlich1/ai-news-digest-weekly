@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import NewsCard from "@/components/NewsCard";
@@ -237,6 +238,32 @@ const Index = () => {
     }
   };
   
+  // Handle delete article
+  const handleDeleteArticle = (articleToDelete: RssItem) => {
+    if (!currentWeekDigest) return;
+    
+    // Show confirmation toast
+    toast.info("Artikel wird entfernt...");
+    
+    // Filter out the article to delete
+    const updatedItems = currentWeekDigest.items.filter(item => {
+      // Check by guid first if available
+      if (item.guid && articleToDelete.guid) {
+        return item.guid !== articleToDelete.guid;
+      }
+      // Fallback to checking by link
+      return item.link !== articleToDelete.link;
+    });
+    
+    // Update the digest
+    setCurrentWeekDigest({
+      ...currentWeekDigest,
+      items: updatedItems
+    });
+    
+    toast.success("Artikel erfolgreich entfernt");
+  };
+  
   // Generate newsletter content
   const handleGenerateNewsletter = async () => {
     if (!currentWeekDigest || currentWeekDigest.items.length === 0) {
@@ -405,7 +432,11 @@ const Index = () => {
                           
                           {/* Display existing articles */}
                           {currentWeekDigest?.items.map((article, index) => (
-                            <NewsCard key={article.guid || index} item={article} />
+                            <NewsCard 
+                              key={article.guid || index} 
+                              item={article} 
+                              onDelete={handleDeleteArticle}
+                            />
                           ))}
                         </div>
                       )}

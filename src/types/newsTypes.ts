@@ -18,6 +18,7 @@ export type RssItem = {
   sourceName?: string; // Added to track source name
   aiSummary?: string; // Added for AI-generated summary
   isLoading?: boolean; // Added to track loading state
+  isOpen?: boolean; // Added to track expanded state
 };
 
 // RSS feed source configuration
