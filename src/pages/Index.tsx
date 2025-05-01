@@ -1,13 +1,13 @@
 
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
-import WeeklyDigest from "@/components/WeeklyDigest";
+import NewsCard from "@/components/NewsCard";
 import type { WeeklyDigest as WeeklyDigestType, RssItem, RssSource } from "@/types/newsTypes";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Rss, Plus } from "lucide-react";
+import { Rss, Plus, Grid3x3 } from "lucide-react";
 import DecoderService from "@/services/DecoderService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NewsService from "@/services/NewsService";
@@ -26,6 +26,7 @@ const Index = () => {
     return localStorage.getItem("decoder_api_key") || defaultApiKey;
   });
   
+  const [allArticles, setAllArticles] = useState<RssItem[]>([]);
   const [weeklyDigests, setWeeklyDigests] = useState<Record<string, WeeklyDigestType>>(() => {
     const savedDigests = localStorage.getItem("weekly_digests");
     return savedDigests ? JSON.parse(savedDigests) : {};
@@ -49,6 +50,16 @@ const Index = () => {
   // Save digests to local storage
   useEffect(() => {
     localStorage.setItem("weekly_digests", JSON.stringify(weeklyDigests));
+    
+    // Extract all articles from weekly digests
+    const articles: RssItem[] = [];
+    Object.values(weeklyDigests).forEach(digest => {
+      articles.push(...digest.items);
+    });
+    
+    // Sort by date (newest first)
+    articles.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
+    setAllArticles(articles);
   }, [weeklyDigests]);
   
   // Cleanup old articles once a day
@@ -116,9 +127,10 @@ const Index = () => {
       const currentWeekData = getCurrentWeekData();
       const weekKey = `${currentWeekData.year}-W${currentWeekData.weekNumber}`;
       
-      let currentDigest = weeklyDigests[weekKey];
-      if (!currentDigest) {
-        currentDigest = {
+      // Check if digest exists or create a new one
+      const updatedDigests = { ...weeklyDigests };
+      if (!updatedDigests[weekKey]) {
+        updatedDigests[weekKey] = {
           id: weekKey,
           weekNumber: currentWeekData.weekNumber,
           year: currentWeekData.year,
@@ -131,10 +143,10 @@ const Index = () => {
       }
       
       // Add article to digest
-      currentDigest.items = [article, ...currentDigest.items];
+      updatedDigests[weekKey].items = [article, ...updatedDigests[weekKey].items];
       
       // Update digests
-      setWeeklyDigests({...weeklyDigests, [weekKey]: currentDigest});
+      setWeeklyDigests(updatedDigests);
       
       // Reset form
       setNewArticleLink("");
@@ -148,8 +160,8 @@ const Index = () => {
         
         if (metadata) {
           // Find the article and update its metadata
-          const updatedDigests = {...weeklyDigests};
-          const articleToUpdate = updatedDigests[weekKey].items.find(item => item.guid === guid);
+          const newUpdatedDigests = { ...updatedDigests };
+          const articleToUpdate = newUpdatedDigests[weekKey].items.find(item => item.guid === guid);
           
           if (articleToUpdate) {
             Object.assign(articleToUpdate, {
@@ -159,7 +171,7 @@ const Index = () => {
               link: newArticleLink // Keep the original link
             });
             
-            setWeeklyDigests(updatedDigests);
+            setWeeklyDigests(newUpdatedDigests);
             toast.success("Artikelinformationen aktualisiert");
           }
         }
@@ -173,34 +185,6 @@ const Index = () => {
     } finally {
       setIsAddingArticle(false);
     }
-  };
-  
-  // Render weekly digests
-  const renderWeeklyDigests = () => {
-    const sortedKeys = Object.keys(weeklyDigests).sort().reverse();
-    
-    if (sortedKeys.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <h2 className="text-xl font-bold mb-2">Keine Artikel vorhanden</h2>
-          <p className="text-muted-foreground mb-4">
-            Fügen Sie Artikel hinzu, um mit der Erstellung von Zusammenfassungen zu beginnen.
-          </p>
-          <Button onClick={() => setDialogOpen(true)} className="inline-flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Ersten Artikel hinzufügen
-          </Button>
-        </div>
-      );
-    }
-    
-    return sortedKeys.map(key => (
-      <WeeklyDigest 
-        key={key} 
-        digest={weeklyDigests[key]} 
-        apiKey={apiKey} 
-      />
-    ));
   };
   
   // Handle manual refresh - clean up old articles
@@ -266,7 +250,33 @@ const Index = () => {
             </div>
             
             <TabsContent value="news">
-              {renderWeeklyDigests()}
+              {allArticles.length === 0 ? (
+                <div className="text-center py-12">
+                  <h2 className="text-xl font-bold mb-2">Keine Artikel vorhanden</h2>
+                  <p className="text-muted-foreground mb-4">
+                    Fügen Sie Artikel hinzu, um mit der Erstellung von Zusammenfassungen zu beginnen.
+                  </p>
+                  <Button onClick={() => setDialogOpen(true)} className="inline-flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Ersten Artikel hinzufügen
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <Grid3x3 className="h-5 w-5" />
+                      Artikelsammlung
+                    </h2>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {allArticles.map((article, index) => (
+                      <NewsCard key={`${article.guid || index}`} item={article} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </TabsContent>
             
             <TabsContent value="sources">

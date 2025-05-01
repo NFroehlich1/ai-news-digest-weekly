@@ -1,10 +1,10 @@
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/services/NewsService";
-import { RssItem } from "@/services/NewsService";
+import { RssItem } from "@/types/newsTypes";
 import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatDate } from "@/utils/dateUtils";
 
 interface NewsCardProps {
   item: RssItem;
@@ -23,7 +23,7 @@ const NewsCard = ({ item }: NewsCardProps) => {
   const imageUrl = validateImageUrl(item.imageUrl) ? item.imageUrl : null;
   
   return (
-    <Card className="overflow-hidden h-full news-card flex flex-col">
+    <Card className="overflow-hidden h-full flex flex-col">
       {imageUrl && (
         <div className="h-48 overflow-hidden">
           <img 
@@ -40,10 +40,14 @@ const NewsCard = ({ item }: NewsCardProps) => {
       )}
       <CardHeader>
         <CardTitle className="text-lg line-clamp-3">{title}</CardTitle>
-        <CardDescription className="flex items-center justify-between">
-          <span>{formatDate(pubDate)}</span>
-          {sourceName && <Badge variant="outline">{sourceName}</Badge>}
-        </CardDescription>
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-sm text-muted-foreground">{formatDate(pubDate)}</span>
+          {sourceName && (
+            <div>
+              <Badge variant="outline">{sourceName}</Badge>
+            </div>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="flex-grow">
         <p className="text-sm line-clamp-3">{description}</p>
