@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import WeeklyDigest from "@/components/WeeklyDigest";
@@ -6,9 +7,11 @@ import NewsService, { WeeklyDigest as WeeklyDigestType, RssItem } from "@/servic
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Rss, AlertCircle, RefreshCw } from "lucide-react";
+import { Rss, AlertCircle, RefreshCw, Bug } from "lucide-react";
 import DecoderService from "@/services/DecoderService";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const Index = () => {
   const decoderService = new DecoderService();
@@ -21,6 +24,9 @@ const Index = () => {
   const [news, setNews] = useState<RssItem[]>([]);
   const [weeklyDigests, setWeeklyDigests] = useState<Record<string, WeeklyDigestType>>({});
   const [error, setError] = useState<string | null>(null);
+  const [useMockData, setUseMockData] = useState<boolean>(() => {
+    return localStorage.getItem("use_mock_data") === "true";
+  });
   
   // Save API key to local storage
   useEffect(() => {
@@ -29,11 +35,16 @@ const Index = () => {
     }
   }, [apiKey]);
   
+  // Save mock data preference
+  useEffect(() => {
+    localStorage.setItem("use_mock_data", String(useMockData));
+  }, [useMockData]);
+  
   // Load news on first render and when API key changes
   useEffect(() => {
     console.log("Loading news with API key:", apiKey ? "API key set" : "No API key");
     fetchNews();
-  }, [apiKey]);
+  }, [apiKey, useMockData]);
   
   const fetchNews = async () => {
     setLoading(true);
@@ -42,6 +53,8 @@ const Index = () => {
     try {
       console.log("Fetching news...");
       const newsService = new NewsService(apiKey);
+      newsService.setUseMockData(useMockData);
+      
       const items = await newsService.fetchNews();
       
       if (items && items.length > 0) {
@@ -49,7 +62,12 @@ const Index = () => {
         setNews(items);
         const digests = newsService.groupNewsByWeek(items);
         setWeeklyDigests(digests);
-        toast.success(`${items.length} Nachrichten geladen`);
+        
+        if (useMockData) {
+          toast.success(`${items.length} Demo-Nachrichten geladen`);
+        } else {
+          toast.success(`${items.length} Nachrichten geladen`);
+        }
       } else {
         console.error("No news items returned");
         setError("Keine Nachrichten konnten geladen werden. Bitte versuchen Sie es später erneut.");
@@ -67,6 +85,11 @@ const Index = () => {
   // Initial API key setup
   const handleApiKeySet = (newApiKey: string) => {
     setApiKey(newApiKey);
+  };
+  
+  // Toggle mock data
+  const handleToggleMockData = () => {
+    setUseMockData(prev => !prev);
   };
   
   // Render loading state
@@ -92,7 +115,18 @@ const Index = () => {
               {error}
             </AlertDescription>
           </Alert>
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center space-y-4">
+            <div className="flex items-center justify-center gap-2">
+              <Switch 
+                id="mock-data" 
+                checked={useMockData}
+                onCheckedChange={handleToggleMockData}
+              />
+              <Label htmlFor="mock-data" className="flex items-center gap-1">
+                <Bug className="h-4 w-4" />
+                Demo-Daten verwenden
+              </Label>
+            </div>
             <Button onClick={fetchNews} variant="outline" className="inline-flex items-center gap-2">
               <RefreshCw className="h-4 w-4" />
               Erneut versuchen
@@ -144,6 +178,24 @@ const Index = () => {
       />
       
       <main className="container mx-auto px-4 py-8 flex-1">
+        {useMockData && (
+          <Alert className="mb-4">
+            <Bug className="h-4 w-4" />
+            <AlertTitle>Demo-Modus aktiv</AlertTitle>
+            <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <span>Es werden Demo-Daten anstelle von echten RSS-Feeds verwendet.</span>
+              <div className="flex items-center gap-2">
+                <Switch 
+                  id="toggle-mock" 
+                  checked={useMockData}
+                  onCheckedChange={handleToggleMockData}
+                />
+                <Label htmlFor="toggle-mock">Demo-Modus deaktivieren</Label>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {loading ? (
           renderLoading()
         ) : error ? (
@@ -154,13 +206,26 @@ const Index = () => {
             <p className="text-muted-foreground mb-4">
               Bitte überprüfen Sie Ihren API-Schlüssel oder versuchen Sie es später erneut.
             </p>
-            <Button 
-              onClick={fetchNews}
-              className="inline-flex items-center gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Erneut versuchen
-            </Button>
+            <div className="space-y-4">
+              <div className="flex items-center justify-center gap-2">
+                <Switch 
+                  id="mock-data-empty" 
+                  checked={useMockData}
+                  onCheckedChange={handleToggleMockData}
+                />
+                <Label htmlFor="mock-data-empty" className="flex items-center gap-1">
+                  <Bug className="h-4 w-4" />
+                  Demo-Daten verwenden
+                </Label>
+              </div>
+              <Button 
+                onClick={fetchNews}
+                className="inline-flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Erneut versuchen
+              </Button>
+            </div>
           </div>
         ) : (
           renderWeeklyDigests()
