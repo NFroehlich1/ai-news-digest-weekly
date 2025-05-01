@@ -127,7 +127,7 @@ const Index = () => {
     setCurrentWeekDigest(newDigest);
   };
   
-  // Add a new article
+  // Handle add article
   const handleAddArticle = async () => {
     if (!newArticleLink) {
       toast.error("Bitte gib einen Link zum Artikel ein");
