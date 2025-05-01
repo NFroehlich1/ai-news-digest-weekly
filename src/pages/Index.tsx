@@ -81,6 +81,7 @@ const Index = () => {
     
     return {
       weekNumber: currentWeek,
+      year: currentYear,
       dateRange: getWeekDateRange(currentWeek, currentYear)
     };
   };
@@ -120,7 +121,7 @@ const Index = () => {
         currentDigest = {
           id: weekKey,
           weekNumber: currentWeekData.weekNumber,
-          year: new Date().getFullYear(),
+          year: currentWeekData.year,
           dateRange: currentWeekData.dateRange,
           items: [],
           title: `KI-Update KW ${currentWeekData.weekNumber} · ${currentWeekData.dateRange}`,
@@ -164,6 +165,7 @@ const Index = () => {
         }
       } catch (error) {
         console.error("Error fetching article metadata:", error);
+        toast.error("Fehler beim Abrufen der Artikelinformationen");
       }
     } catch (error) {
       console.error("Error adding article:", error);
