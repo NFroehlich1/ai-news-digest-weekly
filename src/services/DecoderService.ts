@@ -53,7 +53,20 @@ class DecoderService {
         };
         
         console.log("Received metadata:", metadata);
-        return metadata;
+        
+        // Generate AI summary as well
+        const aiSummary = await this.generateArticleSummary({
+          title: metadata.title,
+          description: metadata.description,
+          link: url,
+          pubDate: new Date().toISOString(),
+          content: ""
+        });
+        
+        return {
+          ...metadata,
+          aiSummary
+        };
       }
       
       // Use Google AI API to extract metadata
@@ -168,9 +181,12 @@ class DecoderService {
         titleFromUrl = `Artikel von ${domain}`;
       }
       
+      // Always attempt to generate an AI summary, even for fallback metadata
+      const description = `Ein Artikel über KI und Technologie von ${domain}`;
+      
       return {
         title: titleFromUrl,
-        description: `Ein Artikel über KI und Technologie von ${domain}`,
+        description: description,
         categories: ["KI", "Technologie"],
         sourceName: domain.replace('www.', ''),
       };

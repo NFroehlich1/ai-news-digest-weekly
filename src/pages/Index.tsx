@@ -35,6 +35,7 @@ const Index = () => {
   const [newArticleLink, setNewArticleLink] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const [isAddingArticle, setIsAddingArticle] = useState<boolean>(false);
+  const [pendingArticles, setPendingArticles] = useState<string[]>([]);
   
   // Save API key to local storage
   useEffect(() => {
@@ -138,36 +139,18 @@ const Index = () => {
       setIsAddingArticle(true);
       toast.info("Artikel wird hinzugefügt...");
       
-      // Create new article with minimal info
       const now = new Date();
       const guid = uuidv4();
       
-      // Basic article with just the link
-      const article: RssItem = {
-        title: "Wird geladen...",
-        link: newArticleLink,
-        description: "Artikel-Informationen werden abgerufen...",
-        pubDate: now.toISOString(),
-        content: "",
-        guid: guid,
-        categories: [],
-        sourceName: "Manueller Eintrag"
-      };
+      // Add this article link to pending articles to show loading state
+      setPendingArticles(prev => [...prev, guid]);
       
       // If there's no current digest, create one
       if (!currentWeekDigest) {
         createNewWeeklyDigest();
       }
       
-      // Add article to digest
-      if (currentWeekDigest) {
-        setCurrentWeekDigest({
-          ...currentWeekDigest,
-          items: [article, ...currentWeekDigest.items]
-        });
-      }
-      
-      // Reset form
+      // Reset form and close dialog
       setNewArticleLink("");
       setDialogOpen(false);
       
@@ -179,68 +162,70 @@ const Index = () => {
         console.log("Received metadata:", metadata);
         
         if (metadata) {
-          // Update article with metadata
-          if (currentWeekDigest) {
-            // Find the article we just added
-            const updatedItems = currentWeekDigest.items.map(item => {
-              if (item.guid === guid) {
-                // Update with metadata
-                return {
-                  ...item,
-                  ...metadata,
-                  guid: guid, // Ensure we keep the original guid
-                  pubDate: now.toISOString(), // Keep original timestamp
-                  link: newArticleLink // Keep original link
-                };
-              }
-              return item;
-            });
+          // Create complete article with metadata and AI summary
+          const completeArticle: RssItem = {
+            guid: guid,
+            title: metadata.title || "Artikel ohne Titel",
+            description: metadata.description || "Keine Beschreibung verfügbar",
+            link: newArticleLink,
+            content: "",
+            pubDate: now.toISOString(),
+            categories: metadata.categories || ["KI"],
+            sourceName: metadata.sourceName || new URL(newArticleLink).hostname.replace('www.', ''),
+            imageUrl: metadata.imageUrl,
+            aiSummary: metadata.aiSummary || ""
+          };
+          
+          // Generate AI summary if not already provided
+          if (!completeArticle.aiSummary) {
+            console.log("Generating AI summary for article");
+            const aiSummary = await decoderService.generateArticleSummary(completeArticle);
             
-            // Update digest with updated items
+            if (aiSummary) {
+              console.log("AI summary generated:", aiSummary);
+              completeArticle.aiSummary = aiSummary;
+            }
+          }
+          
+          // Only add the article when fully processed
+          if (currentWeekDigest) {
             setCurrentWeekDigest({
               ...currentWeekDigest,
-              items: updatedItems
+              items: [completeArticle, ...currentWeekDigest.items]
             });
             
-            toast.success("Artikelinformationen aktualisiert");
-            
-            // If no AI summary was provided in metadata, generate one specifically
-            const updatedArticle = updatedItems.find(item => item.guid === guid);
-            if (updatedArticle && !updatedArticle.aiSummary) {
-              console.log("Generating AI summary for article");
-              const aiSummary = await decoderService.generateArticleSummary(updatedArticle);
-              
-              if (aiSummary) {
-                console.log("AI summary generated:", aiSummary);
-                // Update with AI summary
-                const itemsWithSummary = updatedItems.map(item => {
-                  if (item.guid === guid) {
-                    return {
-                      ...item,
-                      aiSummary: aiSummary
-                    };
-                  }
-                  return item;
-                });
-                
-                setCurrentWeekDigest({
-                  ...currentWeekDigest,
-                  items: itemsWithSummary
-                });
-                
-                toast.success("KI-Zusammenfassung erstellt");
-              }
-            }
+            toast.success("Artikel erfolgreich hinzugefügt");
           }
         }
       } catch (error) {
         console.error("Error fetching article metadata:", error);
         toast.error("Fehler beim Abrufen der Artikelinformationen");
+        
+        // Add a basic article so the user doesn't lose their input
+        if (currentWeekDigest) {
+          const fallbackArticle: RssItem = {
+            guid: guid,
+            title: new URL(newArticleLink).hostname,
+            description: "Keine Beschreibung verfügbar",
+            link: newArticleLink,
+            content: "",
+            pubDate: now.toISOString(),
+            categories: ["KI"],
+            sourceName: new URL(newArticleLink).hostname.replace('www.', '')
+          };
+          
+          setCurrentWeekDigest({
+            ...currentWeekDigest,
+            items: [fallbackArticle, ...currentWeekDigest.items]
+          });
+        }
       }
     } catch (error) {
       console.error("Error adding article:", error);
       toast.error(`Fehler beim Hinzufügen des Artikels: ${(error as Error).message}`);
     } finally {
+      // Remove this article from pending articles
+      setPendingArticles(prev => prev.filter(id => id !== guid));
       setIsAddingArticle(false);
     }
   };
@@ -381,7 +366,7 @@ const Index = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {(!currentWeekDigest || currentWeekDigest.items.length === 0) ? (
+                      {(!currentWeekDigest || currentWeekDigest.items.length === 0) && pendingArticles.length === 0 ? (
                         <div className="text-center py-12">
                           <h2 className="text-xl font-bold mb-2">Keine Artikel vorhanden</h2>
                           <p className="text-muted-foreground mb-4">
@@ -394,7 +379,24 @@ const Index = () => {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {currentWeekDigest.items.map((article, index) => (
+                          {/* Display pending articles with loading state */}
+                          {pendingArticles.map((guid) => (
+                            <NewsCard 
+                              key={guid} 
+                              item={{
+                                guid,
+                                title: "Artikel wird geladen...",
+                                description: "Informationen werden abgerufen...",
+                                link: "",
+                                content: "",
+                                pubDate: new Date().toISOString(),
+                              }} 
+                              isLoading={true}
+                            />
+                          ))}
+                          
+                          {/* Display existing articles */}
+                          {currentWeekDigest?.items.map((article, index) => (
                             <NewsCard key={article.guid || index} item={article} />
                           ))}
                         </div>
