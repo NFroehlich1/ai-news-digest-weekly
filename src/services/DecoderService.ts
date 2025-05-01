@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import type { WeeklyDigest, RssItem } from "../types/newsTypes";
 
@@ -36,40 +35,116 @@ class DecoderService {
       
       console.log("Fetching metadata for:", url);
       
-      // Simple fallback for The Decoder articles since we can't access external content directly
+      // For The Decoder articles, ensure we get a proper title instead of using a placeholder
       if (url.includes('the-decoder.de')) {
-        const urlPath = new URL(url).pathname;
-        const slug = urlPath.split('/').pop() || '';
-        const titleFromSlug = slug
-          .replace(/-/g, ' ')
-          .replace(/\b\w/g, l => l.toUpperCase());
-          
-        const metadata = {
-          title: titleFromSlug || "AI-Artikel von The Decoder",
-          description: "Ein interessanter Artikel über KI-Technologie und Entwicklungen von The Decoder.",
-          categories: ["KI", "Technologie"],
-          imageUrl: "https://the-decoder.de/wp-content/uploads/2022/01/logo.png",
-          sourceName: "The Decoder"
-        };
+        // Use Google AI API to extract a proper title and metadata
+        const apiUrl = `${this.aiApiUrl}?key=${this.apiKey}`;
         
-        console.log("Received metadata:", metadata);
+        const prompt = `
+        Extract detailed metadata from this URL: ${url}
         
-        // Generate AI summary as well
-        const aiSummary = await this.generateArticleSummary({
-          title: metadata.title,
-          description: metadata.description,
-          link: url,
-          pubDate: new Date().toISOString(),
-          content: ""
+        Please provide the following information as a JSON object:
+        1. title: The specific title of the article (NOT a generic placeholder like 'AI-Artikel von The Decoder')
+        2. description: A proper and descriptive summary 
+        3. categories: Array of categories/tags relevant to the content (max 3)
+        4. imageUrl: URL of the main image (if any)
+        
+        For The Decoder articles specifically, make sure to give an accurate, specific title that reflects the actual content.
+        Return ONLY a valid JSON object without any explanations or markdown.
+        `;
+        
+        console.log("Requesting detailed metadata for The Decoder article");
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.2,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 1024,
+            }
+          })
         });
         
-        return {
-          ...metadata,
-          aiSummary
-        };
+        if (!response.ok) {
+          // Fallback to URL-based extraction but with a better title generation
+          const urlPath = new URL(url).pathname;
+          const slug = urlPath.split('/').pop() || '';
+          const titleFromSlug = slug
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, l => l.toUpperCase());
+            
+          const metadata = {
+            title: titleFromSlug || "KI-Forschung und Innovation",
+            description: "Ein Artikel über aktuelle KI-Entwicklungen und deren Auswirkungen.",
+            categories: ["KI", "Technologie", "Innovation"],
+            imageUrl: "https://the-decoder.de/wp-content/uploads/2022/01/logo.png",
+            sourceName: "The Decoder"
+          };
+          
+          // Generate AI summary as well
+          const aiSummary = await this.generateArticleSummary({
+            title: metadata.title,
+            description: metadata.description,
+            link: url,
+            pubDate: new Date().toISOString(),
+            content: ""
+          });
+          
+          return {
+            ...metadata,
+            aiSummary
+          };
+        }
+        
+        const data = await response.json();
+        const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        
+        if (!generatedText) {
+          return this.generateFallbackMetadata(url, "the-decoder.de");
+        }
+        
+        // Extract JSON from text
+        let jsonText = generatedText;
+        const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonText = jsonMatch[0];
+        }
+        
+        try {
+          const metadata = JSON.parse(jsonText);
+          
+          // Generate an AI summary after getting metadata
+          const aiSummary = await this.generateArticleSummary({
+            title: metadata.title,
+            description: metadata.description,
+            link: url,
+            pubDate: new Date().toISOString(),
+            content: ""
+          });
+          
+          return {
+            ...metadata,
+            link: url,
+            sourceName: "The Decoder",
+            aiSummary
+          };
+        } catch (parseError) {
+          return this.generateFallbackMetadata(url, "the-decoder.de");
+        }
       }
       
-      // Use Google AI API to extract metadata
+      // For non-Decoder articles, use standard extraction
       const apiUrl = `${this.aiApiUrl}?key=${this.apiKey}`;
       
       const prompt = `
@@ -282,8 +357,8 @@ class DecoderService {
       const linkedInReference = linkedInPage ? 
         `\n\nFüge am Ende des Newsletters einen deutlichen Hinweis auf die LinkedIn-Seite ein: ${linkedInPage}` : '';
       
-      // Create a prompt for Google AI
-      const prompt = `Erstelle einen strukturierten Newsletter im LINKIT-Format für KW ${digest.weekNumber} (${digest.dateRange}) 
+      // Create a prompt for Google AI with more comprehensive instructions
+      const prompt = `Erstelle einen ausführlichen, detaillierten Newsletter im LINKIT-Format für KW ${digest.weekNumber} (${digest.dateRange}) 
       basierend auf diesen AI-News-Artikeln:
       
       ${contentSummaries}
@@ -293,16 +368,21 @@ class DecoderService {
       - Unterüberschrift: "Dein Update zu KI, Data Science und Industrie 4.0"
       - Kalendarwoche und Datum
       - Persönliche Anrede
-      - Kurze Einleitung
-      - Zusammenfassungen der wichtigsten Nachrichtenartikel mit Titeln und kurzen Beschreibungen
+      - Umfassende Einleitung mit Überblick über die wichtigsten Themen der Woche (2-3 Absätze)
+      - Detaillierte Zusammenfassungen der Nachrichtenartikel mit:
+          * prägnanten Überschriften
+          * umfangreichen Beschreibungen (mindestens 4-5 Sätze pro Artikel)
+          * Einordnung der Bedeutung für die KI-Branche
       - WICHTIG: Direkten Link zu JEDEM Artikel einfügen (mit Format [Details hier](URL))
-      - Eine "Kurz & Knapp" Sektion mit Aufzählungspunkten
+      - Eine "Kurz & Knapp" Sektion mit informativen Aufzählungspunkten
+      - Persönlichen Ausblick auf kommende KI-Entwicklungen
       - Abschluss mit Hinweis auf LINKIT-Veranstaltungen${linkedInReference}
       - Signatur des LINKIT-Teams
       
+      Der Newsletter soll einen Wochenrückblick-Charakter haben, alle Aspekte der Artikel integrieren und tiefgreifende Einblicke bieten.
       Schreibe in einem freundlichen, informativen Stil mit Markdown-Formatierung.`;
       
-      console.log("Generating newsletter for digest:", digest.id);
+      console.log("Generating comprehensive newsletter for digest:", digest.id);
       
       // Use Google AI API
       const url = `${this.aiApiUrl}?key=${this.apiKey}`;
@@ -323,7 +403,7 @@ class DecoderService {
             temperature: 0.7,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 3000, // Increased token limit for more comprehensive content
           }
         })
       });
@@ -332,7 +412,7 @@ class DecoderService {
         const errorData = await response.json();
         console.error("Google AI API error for newsletter generation:", errorData);
         // Fallback to formatted newsletter if API fails
-        return this.formatNewsletter(digest, items, linkedInPage);
+        return this.formatComprehensiveNewsletter(digest, items, linkedInPage);
       }
       
       const data = await response.json();
@@ -343,20 +423,20 @@ class DecoderService {
       if (!generatedText) {
         console.error("No newsletter text generated by API");
         // Fallback to formatted newsletter if Google AI API fails
-        return this.formatNewsletter(digest, items, linkedInPage);
+        return this.formatComprehensiveNewsletter(digest, items, linkedInPage);
       }
       
-      console.log("Successfully generated newsletter");
+      console.log("Successfully generated comprehensive newsletter");
       return generatedText;
     } catch (error) {
       console.error("Newsletter generation error:", error);
       toast.error(`Fehler bei der Zusammenfassung: ${(error as Error).message}`);
       // Fallback to formatted newsletter if there's an error
-      return this.formatNewsletter(digest, selectedArticles || digest.items.slice(0, 5), linkedInPage);
+      return this.formatComprehensiveNewsletter(digest, selectedArticles || digest.items.slice(0, 5), linkedInPage);
     }
   }
   
-  private formatNewsletter(digest: WeeklyDigest, items: RssItem[], linkedInPage?: string): string {
+  private formatComprehensiveNewsletter(digest: WeeklyDigest, items: RssItem[], linkedInPage?: string): string {
     const { weekNumber, dateRange } = digest;
     
     let newsletter = `
@@ -366,22 +446,31 @@ class DecoderService {
 
 Hey zusammen,
 
-hier ein schneller Überblick über das, was diese Woche Spannendes im KI-Bereich passiert ist – einfach und auf den Punkt gebracht. Vielleicht hilft's euch bei aktuellen Projekten oder inspiriert euch fürs nächste Semester:
+willkommen zu unserem ausführlichen Wochenrückblick! Die vergangene Woche brachte einige bedeutende Entwicklungen im KI-Bereich, die wir für euch zusammengefasst haben. Von revolutionären Fortschritten in der KI-Forschung bis hin zu praktischen Anwendungen in verschiedenen Industrien – diese Ausgabe bietet einen tiefgreifenden Einblick in die wichtigsten Themen der Woche.
+
+Diese Entwicklungen könnten nicht nur die Forschungslandschaft verändern, sondern auch direkte Auswirkungen auf kommende Projekte und Anforderungen in der Berufswelt haben. Hier sind die wichtigsten Neuigkeiten der Woche:
 
 ${items.map((item, idx) => `
 ### ${item.title}
-${item.aiSummary || item.description.substring(0, 150)}...
+
+${item.aiSummary || item.description}
+
+Diese Entwicklung ist besonders relevant, da sie ${item.categories?.includes('KI') ? 'neue Möglichkeiten für KI-Anwendungen eröffnet' : 'wichtige Auswirkungen auf die Technologiebranche hat'} und zeigt, wie schnell sich die Landschaft der digitalen Technologien weiterentwickelt.
 
 👉 [Details hier](${item.link})
-${idx < items.length - 1 ? '' : ''}
-`).join('')}
+${idx < items.length - 1 ? '---' : ''}
+`).join('\n')}
 
 ## 🎯 Kurz & Knapp für euch zusammengefasst:
-${items.map(item => `- ${item.title.split(':')[0]}`).join('\n')}
+${items.map(item => `- **${item.title.split(':')[0]}**: ${item.aiSummary ? item.aiSummary.split('.')[0] + '.' : 'Wichtige Entwicklung im KI-Bereich.'}`).join('\n')}
+
+## 📊 Ausblick: Was uns in naher Zukunft erwartet
+
+Die aktuellen Entwicklungen deuten darauf hin, dass wir in den kommenden Wochen weitere spannende Fortschritte in den Bereichen maschinelles Lernen, Datenanalyse und KI-Implementierung erwarten können. Besonders die Integration von KI in alltägliche Anwendungen dürfte weiter zunehmen.
 
 ## 🚀 Du hast Interesse, dich tiefergehend mit spannenden Themen rund um KI, Data Science und Industrie 4.0 zu beschäftigen?
 
-Komm gerne bei einem unserer Mitgliederabende und Veranstaltungen vorbei – wir freuen uns auf dich!
+Komm gerne bei einem unserer Mitgliederabende und Veranstaltungen vorbei – wir freuen uns auf dich und bieten regelmäßig Workshops, Vorträge und Networking-Möglichkeiten!
 
 👉 Infos & Termine unter linkit.kit.edu
 
@@ -390,12 +479,14 @@ Komm gerne bei einem unserer Mitgliederabende und Veranstaltungen vorbei – wir
     // Add LinkedIn reference if provided
     if (linkedInPage) {
       newsletter += `
-Besucht auch unsere [LinkedIn-Seite](${linkedInPage}) für aktuelle Beiträge und Neuigkeiten!
+Besucht auch unsere [LinkedIn-Seite](${linkedInPage}) für aktuelle Beiträge und Neuigkeiten, sowie Ankündigungen zu kommenden Events und Projekten!
 
 `;
     }
 
     newsletter += `
+Viele Grüße und bis nächste Woche,
+
 Euer LINKIT-Team
 Hochschulgruppe für Data Science & Industrie 4.0 am KIT
 `;
