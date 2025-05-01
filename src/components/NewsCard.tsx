@@ -66,12 +66,17 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
     }
   };
 
-  // Create a shorter preview text for collapsed view
+  // Create a preview text from the AI summary if available, otherwise use description
   const getPreviewText = () => {
-    if (description) {
-      // Show just a brief preview of the description
-      return description.length > 120 
-        ? `${description.substring(0, 120)}...` 
+    if (aiSummary) {
+      // Show just the beginning of the AI summary
+      return aiSummary.length > 100
+        ? `${aiSummary.substring(0, 100)}...`
+        : aiSummary;
+    } else if (description) {
+      // Fall back to description if no AI summary
+      return description.length > 100
+        ? `${description.substring(0, 100)}...`
         : description;
     }
     return null;
@@ -145,7 +150,7 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
                 </div>
               )}
               
-              {description && description.length > 120 && (
+              {description && (
                 <div className="mt-4">
                   <h4 className="text-sm font-medium mb-2">Vollständige Beschreibung</h4>
                   <p className="text-sm text-muted-foreground">{description}</p>
