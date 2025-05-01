@@ -1,15 +1,14 @@
-
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
 import RssSourceService from "./RssSourceService";
 import RssFeedService from "./RssFeedService";
 import DigestService from "./DigestService";
-import { RssItem, RssSource, WeeklyDigest } from "../types/newsTypes";
+import type { RssItem, RssSource, WeeklyDigest } from "../types/newsTypes";
 import { MOCK_NEWS_ITEMS } from "../data/mockNews";
 import { formatDate, getCurrentWeek, getCurrentYear, getWeekDateRange } from "../utils/dateUtils";
 
 // Re-export types
-export { RssItem, RssSource, WeeklyDigest };
+export type { RssItem, RssSource, WeeklyDigest };
 export { formatDate, getCurrentWeek, getCurrentYear, getWeekDateRange };
 
 // Main service class for fetching news from RSS feeds
@@ -109,6 +108,62 @@ class NewsService {
       console.log("Using fallback mock data due to error");
       return MOCK_NEWS_ITEMS;
     }
+  }
+  
+  // Fetch metadata for a URL
+  public async fetchArticleMetadata(url: string): Promise<Partial<RssItem>> {
+    try {
+      toast.info("Artikelmetadaten werden abgerufen...");
+      
+      // Use decoder service to extract metadata from URL
+      const metadata = await this.decoderService.extractArticleMetadata(url);
+      
+      if (!metadata || (!metadata.title && !metadata.description)) {
+        toast.warning("Konnte keine Metadaten abrufen, verwende Standardwerte");
+        return {
+          title: "Artikel ohne Titel",
+          description: "Keine Beschreibung verfügbar"
+        };
+      }
+      
+      return metadata;
+    } catch (error) {
+      console.error("Error fetching article metadata:", error);
+      toast.error("Fehler beim Abrufen der Metadaten");
+      
+      return {
+        title: "Artikel ohne Titel",
+        description: "Keine Beschreibung verfügbar"
+      };
+    }
+  }
+  
+  // Automatically clean up old articles (more than a week old)
+  public cleanupOldArticles(digests: Record<string, WeeklyDigest>): Record<string, WeeklyDigest> {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    const cleanedDigests = { ...digests };
+    
+    // For each digest, filter out old articles
+    Object.keys(cleanedDigests).forEach(key => {
+      const digest = cleanedDigests[key];
+      
+      // Filter items to keep only those newer than one week
+      digest.items = digest.items.filter(item => {
+        const pubDate = new Date(item.pubDate);
+        return pubDate >= oneWeekAgo;
+      });
+    });
+    
+    // Remove empty digests
+    Object.keys(cleanedDigests).forEach(key => {
+      if (cleanedDigests[key].items.length === 0) {
+        delete cleanedDigests[key];
+      }
+    });
+    
+    return cleanedDigests;
   }
   
   // Digest methods (delegated to DigestService)

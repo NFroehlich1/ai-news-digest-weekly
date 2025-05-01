@@ -1,5 +1,5 @@
 
-import { RssItem, WeeklyDigest } from '../types/newsTypes';
+import type { RssItem, WeeklyDigest } from '../types/newsTypes';
 import { getWeekNumber, getWeekDateRange } from '../utils/dateUtils';
 
 /**
@@ -20,6 +20,17 @@ class DigestService {
       const itemYear = pubDate.getFullYear();
       
       return itemWeek === currentWeek && itemYear === currentYear;
+    });
+  }
+  
+  // Filter news from a specific week
+  public filterWeekNews(items: RssItem[], weekNumber: number, year: number): RssItem[] {
+    return items.filter(item => {
+      const pubDate = new Date(item.pubDate);
+      const itemWeek = getWeekNumber(pubDate);
+      const itemYear = pubDate.getFullYear();
+      
+      return itemWeek === weekNumber && itemYear === year;
     });
   }
   
@@ -57,6 +68,17 @@ class DigestService {
     });
     
     return weeklyDigests;
+  }
+  
+  // Get articles that should be cleaned up (older than one week)
+  public getOldArticles(items: RssItem[]): RssItem[] {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    return items.filter(item => {
+      const pubDate = new Date(item.pubDate);
+      return pubDate < oneWeekAgo;
+    });
   }
 }
 

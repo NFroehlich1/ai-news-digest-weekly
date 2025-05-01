@@ -1,8 +1,8 @@
+
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import WeeklyDigest from "@/components/WeeklyDigest";
-import RssSourceManager from "@/components/RssSourceManager";
-import { WeeklyDigest as WeeklyDigestType, RssItem, RssSource } from "@/services/NewsService";
+import type { WeeklyDigest as WeeklyDigestType, RssItem, RssSource } from "@/types/newsTypes";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -41,6 +41,8 @@ const Index = () => {
   useEffect(() => {
     if (apiKey) {
       localStorage.setItem("decoder_api_key", apiKey);
+      // Update the API key in the news service
+      newsService.setApiKey(apiKey);
     }
   }, [apiKey]);
   
@@ -49,32 +51,22 @@ const Index = () => {
     localStorage.setItem("weekly_digests", JSON.stringify(weeklyDigests));
   }, [weeklyDigests]);
   
-  // Add RSS source
-  const handleAddRssSource = (url: string, name: string): boolean => {
-    const result = newsService.addRssSource(url, name);
-    if (result) {
-      setRssSources(newsService.getRssSources());
+  // Cleanup old articles once a day
+  useEffect(() => {
+    // Run cleanup once on initial load
+    const cleanedDigests = newsService.cleanupOldArticles(weeklyDigests);
+    if (Object.keys(cleanedDigests).length !== Object.keys(weeklyDigests).length) {
+      setWeeklyDigests(cleanedDigests);
     }
-    return result;
-  };
-  
-  // Remove RSS source
-  const handleRemoveRssSource = (url: string): boolean => {
-    const result = newsService.removeRssSource(url);
-    if (result) {
-      setRssSources(newsService.getRssSources());
-    }
-    return result;
-  };
-  
-  // Toggle RSS source enabled/disabled state
-  const handleToggleRssSource = (url: string, enabled: boolean): boolean => {
-    const result = newsService.toggleRssSource(url, enabled);
-    if (result) {
-      setRssSources(newsService.getRssSources());
-    }
-    return result;
-  };
+    
+    // Set up a daily interval to clean up old articles
+    const cleanupInterval = setInterval(() => {
+      const cleanedDigests = newsService.cleanupOldArticles(weeklyDigests);
+      setWeeklyDigests(cleanedDigests);
+    }, 24 * 60 * 60 * 1000); // 24 hours
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
   
   // Initial API key setup
   const handleApiKeySet = (newApiKey: string) => {
@@ -93,7 +85,7 @@ const Index = () => {
     };
   };
   
-  // Add a new manual article
+  // Add a new article
   const handleAddArticle = async () => {
     if (!newArticleLink) {
       toast.error("Bitte gib einen Link zum Artikel ein");
@@ -121,7 +113,7 @@ const Index = () => {
       
       // Get or create current week digest
       const currentWeekData = getCurrentWeekData();
-      const weekKey = `week-${currentWeekData.weekNumber}-${new Date().getFullYear()}`;
+      const weekKey = `${currentWeekData.year}-W${currentWeekData.weekNumber}`;
       
       let currentDigest = weeklyDigests[weekKey];
       if (!currentDigest) {
@@ -133,7 +125,6 @@ const Index = () => {
           items: [],
           title: `KI-Update KW ${currentWeekData.weekNumber} · ${currentWeekData.dateRange}`,
           summary: `Die wichtigsten KI-Nachrichten der Woche ${currentWeekData.weekNumber}`,
-          generatedContent: null,
           createdAt: now
         };
       }
@@ -150,11 +141,27 @@ const Index = () => {
       
       toast.success("Artikel erfolgreich hinzugefügt");
       
-      // Try to fetch more info about the article using the decoder service
+      // Try to fetch metadata about the article
       try {
-        // This would be where you'd call an AI service to get article metadata from the URL
-        // For now we'll just leave the placeholder data
-        toast.info("Artikel-Informationen werden abgerufen...");
+        const metadata = await newsService.fetchArticleMetadata(newArticleLink);
+        
+        if (metadata) {
+          // Find the article and update its metadata
+          const updatedDigests = {...weeklyDigests};
+          const articleToUpdate = updatedDigests[weekKey].items.find(item => item.guid === guid);
+          
+          if (articleToUpdate) {
+            Object.assign(articleToUpdate, {
+              ...metadata,
+              guid: guid, // Keep the original GUID
+              pubDate: now.toISOString(), // Keep the original publication date
+              link: newArticleLink // Keep the original link
+            });
+            
+            setWeeklyDigests(updatedDigests);
+            toast.success("Artikelinformationen aktualisiert");
+          }
+        }
       } catch (error) {
         console.error("Error fetching article metadata:", error);
       }
@@ -194,11 +201,18 @@ const Index = () => {
     ));
   };
   
+  // Handle manual refresh - clean up old articles
+  const handleRefresh = () => {
+    const cleanedDigests = newsService.cleanupOldArticles(weeklyDigests);
+    setWeeklyDigests(cleanedDigests);
+    toast.success("Artikel aktualisiert - alte Artikel entfernt");
+  };
+  
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header 
         onApiKeySet={handleApiKeySet} 
-        onRefresh={() => {}} 
+        onRefresh={handleRefresh} 
         loading={false}
         defaultApiKey={defaultApiKey}
       />

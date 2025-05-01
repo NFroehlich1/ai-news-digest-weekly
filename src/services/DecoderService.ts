@@ -1,6 +1,6 @@
 
 import { toast } from "sonner";
-import { WeeklyDigest, RssItem } from "./NewsService";
+import type { WeeklyDigest, RssItem } from "../types/newsTypes";
 
 class DecoderService {
   private apiKey: string;
@@ -25,6 +25,85 @@ class DecoderService {
   
   getDefaultApiKey(): string {
     return this.defaultApiKey;
+  }
+  
+  // Extract metadata from a URL using Gemini API
+  async extractArticleMetadata(url: string): Promise<Partial<RssItem>> {
+    try {
+      if (!this.apiKey) {
+        throw new Error("API-Schlüssel nicht gesetzt");
+      }
+      
+      // Use Gemini API to extract metadata
+      const apiUrl = `${this.geminiApiUrl}?key=${this.apiKey}`;
+      
+      const prompt = `
+      Extract metadata from this URL: ${url}
+      
+      Please provide the following information as a JSON object:
+      1. title: The title of the article
+      2. description: A short summary or description 
+      3. categories: Array of categories/tags relevant to the content (max 3)
+      4. imageUrl: URL of the main image (if any)
+      
+      Return ONLY a valid JSON object without any explanations or markdown.
+      `;
+      
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Gemini API-Fehler: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      if (!generatedText) {
+        return {};
+      }
+      
+      // Extract JSON from text (handle case where AI might add backticks or explanations)
+      let jsonText = generatedText;
+      const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[0];
+      }
+      
+      try {
+        const metadata = JSON.parse(jsonText);
+        return {
+          ...metadata,
+          link: url,
+          sourceName: "KI-Analyse"
+        };
+      } catch (parseError) {
+        console.error("JSON parsing error:", parseError);
+        return {};
+      }
+    } catch (error) {
+      console.error("Metadata extraction error:", error);
+      return {};
+    }
   }
   
   async searchDecoderContent(query: string): Promise<any> {

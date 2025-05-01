@@ -4,7 +4,7 @@
  */
 
 // Item in an RSS feed
-export interface RssItem {
+export type RssItem = {
   title: string;
   link: string;
   pubDate: string;
@@ -16,18 +16,18 @@ export interface RssItem {
   imageUrl?: string;
   sourceUrl?: string; // Added to track source
   sourceName?: string; // Added to track source name
-}
+};
 
 // RSS feed source configuration
-export interface RssSource {
+export type RssSource = {
   url: string;
   name: string;
   enabled: boolean;
   lastFetched?: Date;
-}
+};
 
 // Weekly news digest
-export interface WeeklyDigest {
+export type WeeklyDigest = {
   id: string;
   weekNumber: number;
   year: number;
@@ -37,4 +37,4 @@ export interface WeeklyDigest {
   items: RssItem[];
   generatedContent?: string;
   createdAt: Date;
-}
+};
