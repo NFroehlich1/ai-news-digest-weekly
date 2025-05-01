@@ -11,7 +11,7 @@ interface NewsCardProps {
 }
 
 const NewsCard = ({ item }: NewsCardProps) => {
-  const { title, link, pubDate, description, categories, sourceName } = item;
+  const { title, link, pubDate, description, categories, sourceName, aiSummary } = item;
   
   // Only use imageUrl if it passes basic validation
   const validateImageUrl = (url?: string): boolean => {
@@ -50,7 +50,12 @@ const NewsCard = ({ item }: NewsCardProps) => {
         </div>
       </CardHeader>
       <CardContent className="flex-grow">
-        <p className="text-sm line-clamp-3">{description}</p>
+        <p className="text-sm line-clamp-3">{aiSummary || description}</p>
+        {aiSummary && description && description !== aiSummary && (
+          <div className="mt-2">
+            <Badge variant="secondary">AI Zusammenfassung</Badge>
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex flex-col space-y-3 pt-2">
         <div className="flex flex-wrap gap-1">

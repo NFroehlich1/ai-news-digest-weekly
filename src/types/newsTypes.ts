@@ -16,6 +16,7 @@ export type RssItem = {
   imageUrl?: string;
   sourceUrl?: string; // Added to track source
   sourceName?: string; // Added to track source name
+  aiSummary?: string; // Added for AI-generated summary
 };
 
 // RSS feed source configuration

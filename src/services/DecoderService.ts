@@ -63,6 +63,7 @@ class DecoderService {
       2. description: A short summary or description 
       3. categories: Array of categories/tags relevant to the content (max 3)
       4. imageUrl: URL of the main image (if any)
+      5. aiSummary: A concise 1-2 sentence summary of the article content
       
       Return ONLY a valid JSON object without any explanations or markdown.
       `;
@@ -149,7 +150,8 @@ class DecoderService {
         title: titleFromUrl,
         description: `Ein Artikel über KI und Technologie von ${domain}`,
         categories: ["KI", "Technologie"],
-        sourceName: domain.replace('www.', '')
+        sourceName: domain.replace('www.', ''),
+        aiSummary: `Ein Artikel über aktuelle KI-Entwicklungen von ${domain}.`
       };
     } catch (error) {
       // If URL parsing fails, return very basic info
@@ -157,8 +159,71 @@ class DecoderService {
         title: "KI-Artikel",
         description: "Ein Artikel über KI und Technologie",
         categories: ["KI", "Technologie"],
-        sourceName: "Externe Quelle"
+        sourceName: "Externe Quelle",
+        aiSummary: "Ein Artikel über aktuelle KI-Entwicklungen und Technologie."
       };
+    }
+  }
+  
+  // Generate summary for a single article
+  async generateArticleSummary(article: RssItem): Promise<string> {
+    try {
+      if (!this.apiKey) {
+        throw new Error("API-Schlüssel nicht gesetzt");
+      }
+      
+      const apiUrl = `${this.aiApiUrl}?key=${this.apiKey}`;
+      
+      const prompt = `
+      Erstelle eine kurze Zusammenfassung (1-2 Sätze) für den folgenden Artikel:
+      
+      Titel: ${article.title}
+      Beschreibung: ${article.description}
+      URL: ${article.link}
+      
+      Die Zusammenfassung soll den Kern des Artikels erfassen und auf Deutsch sein.
+      Antworte nur mit der Zusammenfassung, ohne Einleitung oder Abschluss.
+      `;
+      
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 256,
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        console.error("AI API error:", await response.text());
+        return article.description;
+      }
+      
+      const data = await response.json();
+      const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      if (!summary) {
+        return article.description;
+      }
+      
+      // Clean up the summary (remove quotes, trim, etc.)
+      return summary.replace(/^["']|["']$/g, '').trim();
+    } catch (error) {
+      console.error("Summary generation error:", error);
+      return article.description;
     }
   }
   
@@ -195,7 +260,7 @@ class DecoderService {
       
       // Get titles and descriptions to create a prompt
       const contentSummaries = items.map(item => 
-        `Titel: ${item.title}\nBeschreibung: ${item.description.substring(0, 150)}...\nURL: ${item.link}\n`
+        `Titel: ${item.title}\n${item.aiSummary ? 'AI-Zusammenfassung: ' + item.aiSummary : 'Beschreibung: ' + item.description.substring(0, 150) + '...'}\nURL: ${item.link}\n`
       ).join("\n");
       
       // Create a prompt for Google AI

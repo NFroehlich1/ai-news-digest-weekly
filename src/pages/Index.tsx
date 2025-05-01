@@ -171,6 +171,14 @@ const Index = () => {
               link: newArticleLink // Keep the original link
             });
             
+            // If no AI summary was provided in metadata, generate one specifically
+            if (!articleToUpdate.aiSummary) {
+              const aiSummary = await decoderService.generateArticleSummary(articleToUpdate);
+              if (aiSummary) {
+                articleToUpdate.aiSummary = aiSummary;
+              }
+            }
+            
             setWeeklyDigests(newUpdatedDigests);
             toast.success("Artikelinformationen aktualisiert");
           }
@@ -223,7 +231,7 @@ const Index = () => {
                   <DialogHeader>
                     <DialogTitle>Neuen Artikel hinzufügen</DialogTitle>
                     <DialogDescription>
-                      Fügen Sie einen Link zum Artikel hinzu. Titel und weitere Informationen werden automatisch abgeleitet.
+                      Fügen Sie einen Link zum Artikel hinzu. Titel, KI-Zusammenfassung und weitere Informationen werden automatisch abgeleitet.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
@@ -293,6 +301,7 @@ const Index = () => {
                     <AlertDescription>
                       Die automatische Artikel-Sammlung über RSS-Feeds wurde deaktiviert. 
                       Sie können Artikel manuell über den "Artikel hinzufügen" Button einfügen.
+                      Jeder Artikel erhält automatisch eine KI-Zusammenfassung, die im Newsletter verwendet wird.
                     </AlertDescription>
                   </Alert>
                 </CardContent>
