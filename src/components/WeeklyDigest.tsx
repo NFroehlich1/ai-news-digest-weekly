@@ -30,7 +30,14 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     
     try {
       const decoderService = new DecoderService(apiKey);
-      const summary = await decoderService.generateSummary(digest, selectedArticles || undefined);
+      
+      // Add LinkedIn page to summary request
+      const linkedInPage = "https://www.linkedin.com/company/linkit-karlsruhe/posts/?feedView=all";
+      const summary = await decoderService.generateSummary(
+        digest, 
+        selectedArticles || undefined,
+        linkedInPage
+      );
       
       if (summary) {
         setGeneratedContent(summary);
@@ -135,6 +142,15 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
               {generatedContent ? (
                 <div className="newsletter-body bg-white rounded-md p-6 shadow-sm">
                   <ReactMarkdown>{generatedContent}</ReactMarkdown>
+                  
+                  {!generatedContent.includes("linkedin.com/company/linkit-karlsruhe") && (
+                    <div className="mt-6 pt-4 border-t">
+                      <p className="font-medium">Weitere Informationen und Updates:</p>
+                      <p className="mt-2">
+                        Besuchen Sie unsere <a href="https://www.linkedin.com/company/linkit-karlsruhe/posts/?feedView=all" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">LinkedIn-Seite</a> für aktuelle Beiträge und Neuigkeiten.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
