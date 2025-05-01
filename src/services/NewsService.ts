@@ -1,6 +1,6 @@
+
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
-import { parseString } from "xml2js";
 
 // Types for our RSS and news data
 export interface RssItem {
@@ -102,7 +102,94 @@ class NewsService {
       }
       
       const xmlText = await response.text();
-      const items = await this.parseRssFeed(xmlText);
+      
+      // Instead of using xml2js.parseString, we'll manually parse the RSS feed
+      // using DOMParser which is available in the browser
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+      
+      // Check for parsing errors
+      const parserError = xmlDoc.querySelector("parsererror");
+      if (parserError) {
+        throw new Error("Failed to parse XML: " + parserError.textContent);
+      }
+      
+      const items: RssItem[] = [];
+      const itemElements = xmlDoc.querySelectorAll("item");
+      
+      itemElements.forEach((item) => {
+        // Helper function to safely get text content from an element
+        const getElementText = (parent: Element, tagName: string): string => {
+          const element = parent.querySelector(tagName);
+          return element ? element.textContent || "" : "";
+        };
+        
+        // Extract CDATA content from content:encoded
+        const getContentEncoded = (parent: Element): string => {
+          const contentEncoded = parent.querySelector("content\\:encoded, encoded");
+          return contentEncoded ? contentEncoded.textContent || "" : "";
+        };
+        
+        // Extract categories
+        const getCategories = (parent: Element): string[] => {
+          const categoryElements = parent.querySelectorAll("category");
+          const categories: string[] = [];
+          categoryElements.forEach((cat) => {
+            if (cat.textContent) categories.push(cat.textContent);
+          });
+          return categories;
+        };
+        
+        // Extract image URL from content or media:content
+        const getImageUrl = (parent: Element, content: string): string | undefined => {
+          // Try media:content first
+          const mediaContent = parent.querySelector("media\\:content, content");
+          if (mediaContent && mediaContent.getAttribute("url")) {
+            return mediaContent.getAttribute("url") || undefined;
+          }
+          
+          // Try enclosure
+          const enclosure = parent.querySelector("enclosure");
+          if (enclosure && enclosure.getAttribute("url")) {
+            return enclosure.getAttribute("url") || undefined;
+          }
+          
+          // Extract from content if available
+          if (content) {
+            const imgRegex = /<img[^>]+src="([^">]+)"/;
+            const match = content.match(imgRegex);
+            return match ? match[1] : undefined;
+          }
+          
+          return undefined;
+        };
+        
+        const title = getElementText(item, "title");
+        const link = getElementText(item, "link");
+        const pubDate = getElementText(item, "pubDate");
+        const description = getElementText(item, "description");
+        const content = getContentEncoded(item);
+        const categories = getCategories(item);
+        const creator = getElementText(item, "dc\\:creator, creator");
+        const guid = getElementText(item, "guid");
+        const imageUrl = getImageUrl(item, content);
+        
+        items.push({
+          title,
+          link,
+          pubDate,
+          description,
+          content,
+          categories,
+          creator,
+          guid,
+          imageUrl,
+        });
+      });
+      
+      if (items.length === 0) {
+        console.warn("No items found in RSS feed");
+      }
       
       return items;
     } catch (error) {
@@ -110,65 +197,6 @@ class NewsService {
       toast.error(`Fehler beim Laden der Nachrichten: ${(error as Error).message}`);
       return [];
     }
-  }
-  
-  // Parse RSS XML content
-  private parseRssFeed(xmlText: string): Promise<RssItem[]> {
-    return new Promise((resolve, reject) => {
-      parseString(xmlText, (err, result) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        
-        try {
-          const channel = result.rss.channel[0];
-          const items: RssItem[] = channel.item.map((item: any) => {
-            // Extract image if available
-            let imageUrl = null;
-            if (item['media:content'] && item['media:content'][0].$) {
-              imageUrl = item['media:content'][0].$.url;
-            } else if (item.enclosure && item.enclosure[0].$) {
-              imageUrl = item.enclosure[0].$.url;
-            }
-            
-            // Extract content and description
-            const content = item['content:encoded'] ? item['content:encoded'][0] : '';
-            const description = item.description ? item.description[0] : '';
-            
-            // If no direct image was found, try to extract from content
-            if (!imageUrl && content) {
-              const imgMatch = content.match(/<img[^>]+src="([^">]+)"/);
-              if (imgMatch && imgMatch[1]) {
-                imageUrl = imgMatch[1];
-              }
-            }
-            
-            // Extract categories
-            const categories = item.category ? 
-              item.category.map((cat: any) => typeof cat === 'string' ? cat : cat._) : 
-              [];
-            
-            return {
-              title: item.title[0],
-              link: item.link[0],
-              pubDate: item.pubDate[0],
-              description: description,
-              content: content,
-              categories: categories,
-              creator: item['dc:creator'] ? item['dc:creator'][0] : '',
-              guid: item.guid ? item.guid[0]._ : '',
-              imageUrl: imageUrl
-            };
-          });
-          
-          resolve(items);
-        } catch (error) {
-          console.error("Error parsing RSS:", error);
-          reject(new Error("Failed to parse RSS feed structure"));
-        }
-      });
-    });
   }
   
   // Group news items by week
@@ -219,50 +247,12 @@ class NewsService {
   // Generate a newsletter summary from a weekly digest
   public async generateNewsletterSummary(digest: WeeklyDigest): Promise<string> {
     try {
-      // For now, we'll return a mocked response while we implement the real API
-      // In a real scenario, we would call an API like OpenAI to generate the content
-      const mockNewsletter = this.generateMockNewsletter(digest);
-      return mockNewsletter;
+      return await this.decoderService.generateSummary(digest);
     } catch (error) {
       console.error('Error generating newsletter:', error);
       toast.error(`Fehler bei der Generierung des Newsletters: ${(error as Error).message}`);
       return "";
     }
-  }
-  
-  // Generate a mock newsletter (will be replaced with actual API call)
-  private generateMockNewsletter(digest: WeeklyDigest): string {
-    const { weekNumber, year, dateRange } = digest;
-    const items = digest.items.slice(0, 5); // Limit to 5 items for the mock
-    
-    return `
-# 📬 LINKIT WEEKLY
-## Dein Update zu KI, Data Science und Industrie 4.0
-### KW ${weekNumber} · ${dateRange}
-
-Hey zusammen,
-
-hier ein schneller Überblick über das, was diese Woche Spannendes im KI-Bereich passiert ist – einfach und auf den Punkt gebracht:
-
-${items.map((item, index) => `
-### ${item.title}
-${item.description.slice(0, 150)}...
-
-👉 [Mehr erfahren](${item.link})
-`).join('\n')}
-
-## 🎯 Kurz & Knapp für euch zusammengefasst:
-${items.map(item => `- ${item.title.slice(0, 60)}...`).join('\n')}
-
-## 🚀 Du hast Interesse, dich tiefergehend mit spannenden Themen rund um KI, Data Science und Industrie 4.0 zu beschäftigen?
-
-Komm gerne bei einem unserer Mitgliederabende und Veranstaltungen vorbei – wir freuen uns auf dich!
-
-👉 Infos & Termine unter linkit.kit.edu
-
-Euer LINKIT-Team
-Hochschulgruppe für Data Science & Industrie 4.0 am KIT
-`;
   }
 }
 

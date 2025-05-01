@@ -7,7 +7,7 @@ import NewsService, { WeeklyDigest as WeeklyDigestType, RssItem } from "@/servic
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Rss } from "lucide-react";
+import { Rss, AlertCircle } from "lucide-react";
 import DecoderService from "@/services/DecoderService";
 
 const Index = () => {
@@ -20,6 +20,7 @@ const Index = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [news, setNews] = useState<RssItem[]>([]);
   const [weeklyDigests, setWeeklyDigests] = useState<Record<string, WeeklyDigestType>>({});
+  const [error, setError] = useState<string | null>(null);
   
   // Save API key to local storage
   useEffect(() => {
@@ -35,6 +36,7 @@ const Index = () => {
   
   const fetchNews = async () => {
     setLoading(true);
+    setError(null);
     
     try {
       const newsService = new NewsService(apiKey);
@@ -46,10 +48,12 @@ const Index = () => {
         setWeeklyDigests(digests);
         toast.success(`${items.length} Nachrichten geladen`);
       } else {
+        setError("Keine Nachrichten konnten geladen werden. Bitte versuchen Sie es später erneut.");
         toast.error("Keine Nachrichten gefunden");
       }
     } catch (error) {
       console.error("Error fetching news:", error);
+      setError(`Fehler beim Laden der Nachrichten: ${(error as Error).message}`);
       toast.error(`Fehler: ${(error as Error).message}`);
     } finally {
       setLoading(false);
@@ -69,6 +73,23 @@ const Index = () => {
           <NewsCardSkeleton key={index} />
         ))}
       </div>
+    );
+  };
+  
+  // Render error message
+  const renderError = () => {
+    return (
+      <Card className="mx-auto max-w-lg">
+        <CardContent className="pt-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Fehler beim Laden</AlertTitle>
+            <AlertDescription>
+              {error}
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
     );
   };
   
@@ -115,12 +136,20 @@ const Index = () => {
       <main className="container mx-auto px-4 py-8 flex-1">
         {loading ? (
           renderLoading()
+        ) : error ? (
+          renderError()
         ) : Object.keys(weeklyDigests).length === 0 ? (
           <div className="text-center py-12">
             <h2 className="text-xl font-bold mb-2">Keine Nachrichten gefunden</h2>
             <p className="text-muted-foreground">
               Bitte überprüfen Sie Ihren API-Schlüssel oder versuchen Sie es später erneut.
             </p>
+            <button 
+              onClick={fetchNews}
+              className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+            >
+              Erneut versuchen
+            </button>
           </div>
         ) : (
           renderWeeklyDigests()
