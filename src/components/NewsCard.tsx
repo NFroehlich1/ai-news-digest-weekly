@@ -68,12 +68,12 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
   // Get preview text - prioritize AI summary, fallback to description
   const getPreviewText = () => {
     if (aiSummary) {
-      return aiSummary.length > 150
-        ? `${aiSummary.substring(0, 150)}...`
+      return aiSummary.length > 200
+        ? `${aiSummary.substring(0, 200)}...`
         : aiSummary;
     } else if (description) {
-      return description.length > 100
-        ? `${description.substring(0, 100)}...`
+      return description.length > 150
+        ? `${description.substring(0, 150)}...`
         : description;
     }
     return null;
@@ -109,8 +109,11 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
       
       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="flex-grow">
         <CardContent className="pb-0">
-          {!isOpen && getPreviewText() && (
-            <p className="text-sm line-clamp-3 mb-2">{getPreviewText()}</p>
+          {!isOpen && aiSummary && (
+            <div>
+              <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung</h4>
+              <p className="text-sm line-clamp-3">{getPreviewText()}</p>
+            </div>
           )}
           
           <CollapsibleTrigger asChild className="w-full">
@@ -130,30 +133,14 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
           </CollapsibleTrigger>
           
           <CollapsibleContent>
-            <div className="mt-4 border-t pt-4">
-              {aiSummary && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung</h4>
-                  <div className="bg-muted/30 p-3 rounded">
-                    <p className="text-sm">{aiSummary}</p>
-                  </div>
+            {aiSummary && (
+              <div className="mt-4 border-t pt-4">
+                <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung</h4>
+                <div className="bg-muted/30 p-3 rounded">
+                  <p className="text-sm">{aiSummary}</p>
                 </div>
-              )}
-              
-              {content && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium mb-2">Wichtigste Inhalte</h4>
-                  <p className="text-sm">{content}</p>
-                </div>
-              )}
-              
-              {description && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium mb-2">Vollständige Beschreibung</h4>
-                  <p className="text-sm text-muted-foreground">{description}</p>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </CollapsibleContent>
         </CardContent>
       </Collapsible>
