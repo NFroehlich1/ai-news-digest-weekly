@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RssItem } from "@/types/newsTypes";
-import { ExternalLink, Trash, ChevronDown, ChevronUp } from "lucide-react";
+import { ExternalLink, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/utils/dateUtils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -141,20 +141,26 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
           
           <CollapsibleContent>
             <div className="mt-4 border-t pt-4">
-              <h4 className="text-sm font-medium mb-2">Beschreibung</h4>
-              <p className="text-sm mb-4">{description}</p>
-              
-              <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung</h4>
               {aiSummary ? (
-                <p className="text-sm">{aiSummary}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">Keine KI-Zusammenfassung verfügbar.</p>
-              )}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung</h4>
+                  <div className="bg-muted/30 p-3 rounded">
+                    <p className="text-sm">{aiSummary}</p>
+                  </div>
+                </div>
+              ) : null}
               
               {content && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium mb-2">Artikel-Inhalt</h4>
+                  <h4 className="text-sm font-medium mb-2">Wichtigste Inhalte</h4>
                   <p className="text-sm">{content}</p>
+                </div>
+              )}
+              
+              {description && description !== content && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2">Artikelbeschreibung</h4>
+                  <p className="text-sm text-muted-foreground">{description}</p>
                 </div>
               )}
             </div>
@@ -185,7 +191,7 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
               className="flex-shrink-0 text-destructive hover:bg-destructive/10"
               onClick={handleDelete}
             >
-              <Trash className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
               <span className="sr-only">Artikel löschen</span>
             </Button>
           )}
