@@ -13,18 +13,6 @@ interface NewsCardProps {
 const NewsCard = ({ item }: NewsCardProps) => {
   const { title, link, pubDate, description, categories, sourceName } = item;
   
-  // Extract image from content if available and validate it's a proper image URL
-  const extractImage = (content: string): string | null => {
-    const imgRegex = /<img[^>]+src="([^">]+)"/;
-    const match = content.match(imgRegex);
-    if (!match) return null;
-    
-    // Basic validation to ensure it's likely an image URL
-    const url = match[1];
-    const isLikelyImage = /\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(url);
-    return isLikelyImage ? url : null;
-  };
-  
   // Only use imageUrl if it passes basic validation
   const validateImageUrl = (url?: string): boolean => {
     if (!url) return false;
@@ -32,9 +20,7 @@ const NewsCard = ({ item }: NewsCardProps) => {
     return /\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(url);
   };
   
-  const imageUrl = validateImageUrl(item.imageUrl) ? 
-    item.imageUrl : 
-    (item.content ? extractImage(item.content) : null);
+  const imageUrl = validateImageUrl(item.imageUrl) ? item.imageUrl : null;
   
   return (
     <Card className="overflow-hidden h-full news-card flex flex-col">
