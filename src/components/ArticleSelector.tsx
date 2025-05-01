@@ -13,7 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate } from "@/services/NewsService";
-import { Check, FileText } from "lucide-react";
+import { Check, FileText, ExternalLink } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface ArticleSelectorProps {
   articles: RssItem[];
@@ -38,6 +39,11 @@ const ArticleSelector = ({ articles, onSubmit, onCancel }: ArticleSelectorProps)
   
   const handleSubmit = () => {
     onSubmit(selectedArticles);
+  };
+  
+  const openArticleLink = (e: React.MouseEvent, link: string) => {
+    e.stopPropagation(); // Prevent row click event
+    window.open(link, '_blank');
   };
   
   return (
@@ -80,6 +86,7 @@ const ArticleSelector = ({ articles, onSubmit, onCancel }: ArticleSelectorProps)
                   <TableHead>Artikel</TableHead>
                   <TableHead className="w-48">Datum</TableHead>
                   <TableHead className="w-48">Quelle</TableHead>
+                  <TableHead className="w-20"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -101,6 +108,13 @@ const ArticleSelector = ({ articles, onSubmit, onCancel }: ArticleSelectorProps)
                         <p className="text-sm text-muted-foreground line-clamp-1">
                           {article.description}
                         </p>
+                        {article.categories && article.categories.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {article.categories.slice(0, 2).map((category, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">{category}</Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="cursor-pointer">
@@ -108,6 +122,17 @@ const ArticleSelector = ({ articles, onSubmit, onCancel }: ArticleSelectorProps)
                     </TableCell>
                     <TableCell className="cursor-pointer">
                       {article.sourceName || "Unbekannt"}
+                    </TableCell>
+                    <TableCell>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => openArticleLink(e, article.link)}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        <span className="sr-only">Artikel öffnen</span>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

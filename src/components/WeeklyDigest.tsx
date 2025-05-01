@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
 import NewsletterSubscribeModal from "./NewsletterSubscribeModal";
 import ArticleSelector from "./ArticleSelector";
-import { CalendarWeek, FileEdit, Mail } from "lucide-react";
+import { Calendar, FileEdit, Mail } from "lucide-react";
 
 interface WeeklyDigestProps {
   digest: WeeklyDigestType;
@@ -69,7 +69,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-2">
           <CardTitle className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <CalendarWeek className="h-6 w-6" />
+            <Calendar className="h-6 w-6" />
             KI-Update KW {digest.weekNumber}
           </CardTitle>
           <p className="text-muted-foreground">{digest.dateRange}</p>
