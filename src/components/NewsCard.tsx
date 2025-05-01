@@ -69,10 +69,10 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
   // Create a shorter preview text for collapsed view
   const getPreviewText = () => {
     if (description) {
-      if (description.length < 100) {
-        return description;
-      }
-      return `${description.substring(0, 100)}...`;
+      // Show just a brief preview of the description
+      return description.length > 120 
+        ? `${description.substring(0, 120)}...` 
+        : description;
     }
     return null;
   };
@@ -129,14 +129,14 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
           
           <CollapsibleContent>
             <div className="mt-4 border-t pt-4">
-              {aiSummary ? (
+              {aiSummary && (
                 <div className="mb-4">
                   <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung</h4>
                   <div className="bg-muted/30 p-3 rounded">
                     <p className="text-sm">{aiSummary}</p>
                   </div>
                 </div>
-              ) : null}
+              )}
               
               {content && (
                 <div className="mt-4">
@@ -145,9 +145,9 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
                 </div>
               )}
               
-              {description && getPreviewText() !== description && (
+              {description && description.length > 120 && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium mb-2">Artikelbeschreibung</h4>
+                  <h4 className="text-sm font-medium mb-2">Vollständige Beschreibung</h4>
                   <p className="text-sm text-muted-foreground">{description}</p>
                 </div>
               )}
