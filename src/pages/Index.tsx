@@ -33,11 +33,9 @@ const Index = () => {
   
   const [rssSources, setRssSources] = useState<RssSource[]>(newsService.getRssSources());
   const [activeTab, setActiveTab] = useState<string>("news");
-  const [newArticleTitle, setNewArticleTitle] = useState<string>("");
   const [newArticleLink, setNewArticleLink] = useState<string>("");
-  const [newArticleDesc, setNewArticleDesc] = useState<string>("");
-  const [newArticleSource, setNewArticleSource] = useState<string>("");
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
+  const [isAddingArticle, setIsAddingArticle] = useState<boolean>(false);
   
   // Save API key to local storage
   useEffect(() => {
@@ -83,57 +81,132 @@ const Index = () => {
     setApiKey(newApiKey);
   };
   
+  // Get current week data for organizing articles
+  const getCurrentWeekData = () => {
+    const now = new Date();
+    const currentWeek = getCurrentWeek();
+    const currentYear = now.getFullYear();
+    
+    return {
+      weekNumber: currentWeek,
+      dateRange: getWeekDateRange(currentWeek, currentYear)
+    };
+  };
+  
+  // Get the current calendar week
+  const getCurrentWeek = (): number => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1);
+    const diff = now.getTime() - start.getTime();
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor(diff / oneDay);
+    return Math.ceil((dayOfYear + start.getDay()) / 7);
+  };
+  
+  // Get the date range for a week
+  const getWeekDateRange = (weekNumber: number, year: number): string => {
+    const startDate = getDateOfISOWeek(weekNumber, year);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 6);
+    
+    return `${formatDate(startDate.toISOString())}–${formatDate(endDate.toISOString())}`;
+  };
+  
+  // Helper function to get the date of an ISO week
+  const getDateOfISOWeek = (week: number, year: number): Date => {
+    const simple = new Date(Date.UTC(year, 0, 1 + (week - 1) * 7));
+    const dayOfWeek = simple.getDay();
+    const date = simple;
+    if (dayOfWeek <= 4) {
+      date.setDate(simple.getDate() - simple.getDay() + 1);
+    } else {
+      date.setDate(simple.getDate() + 8 - simple.getDay());
+    }
+    return date;
+  };
+  
+  // Format date for display
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+  
   // Add a new manual article
-  const handleAddArticle = () => {
-    if (!newArticleTitle || !newArticleLink) {
-      toast.error("Titel und Link sind erforderlich");
+  const handleAddArticle = async () => {
+    if (!newArticleLink) {
+      toast.error("Bitte gib einen Link zum Artikel ein");
       return;
     }
     
-    // Create new article
-    const now = new Date();
-    const article: RssItem = {
-      title: newArticleTitle,
-      link: newArticleLink,
-      description: newArticleDesc || newArticleTitle,
-      pubDate: now.toISOString(),
-      content: "",
-      contentSnippet: newArticleDesc || newArticleTitle,
-      guid: uuidv4(),
-      categories: [],
-      sourceName: newArticleSource || "Manueller Eintrag",
-      id: uuidv4()
-    };
-    
-    // Get or create current week digest
-    const currentWeekData = newsService.getCurrentWeekData();
-    const weekKey = `week-${currentWeekData.weekNumber}-${new Date().getFullYear()}`;
-    
-    let currentDigest = weeklyDigests[weekKey];
-    if (!currentDigest) {
-      currentDigest = {
-        weekNumber: currentWeekData.weekNumber,
-        year: new Date().getFullYear(),
-        dateRange: currentWeekData.dateRange,
-        items: [],
-        generatedContent: null
+    try {
+      setIsAddingArticle(true);
+      
+      // Create new article with minimal info
+      const now = new Date();
+      const id = uuidv4();
+      
+      // Basic article with just the link
+      const article: RssItem = {
+        title: "Wird geladen...",
+        link: newArticleLink,
+        description: "Artikel-Informationen werden abgerufen...",
+        pubDate: now.toISOString(),
+        content: "",
+        guid: id,
+        categories: [],
+        sourceName: "Manueller Eintrag",
+        id
       };
+      
+      // Get or create current week digest
+      const currentWeekData = getCurrentWeekData();
+      const weekKey = `week-${currentWeekData.weekNumber}-${new Date().getFullYear()}`;
+      
+      let currentDigest = weeklyDigests[weekKey];
+      if (!currentDigest) {
+        currentDigest = {
+          id: weekKey,
+          weekNumber: currentWeekData.weekNumber,
+          year: new Date().getFullYear(),
+          dateRange: currentWeekData.dateRange,
+          items: [],
+          title: `KI-Update KW ${currentWeekData.weekNumber} · ${currentWeekData.dateRange}`,
+          summary: `Die wichtigsten KI-Nachrichten der Woche ${currentWeekData.weekNumber}`,
+          generatedContent: null,
+          createdAt: now
+        };
+      }
+      
+      // Add article to digest
+      currentDigest.items = [article, ...currentDigest.items];
+      
+      // Update digests
+      setWeeklyDigests({...weeklyDigests, [weekKey]: currentDigest});
+      
+      // Reset form
+      setNewArticleLink("");
+      setDialogOpen(false);
+      
+      toast.success("Artikel erfolgreich hinzugefügt");
+      
+      // Try to fetch more info about the article using the decoder service
+      try {
+        // This would be where you'd call an AI service to get article metadata from the URL
+        // For now we'll just leave the placeholder data
+        toast.info("Artikel-Informationen werden abgerufen...");
+      } catch (error) {
+        console.error("Error fetching article metadata:", error);
+      }
+    } catch (error) {
+      console.error("Error adding article:", error);
+      toast.error(`Fehler beim Hinzufügen des Artikels: ${(error as Error).message}`);
+    } finally {
+      setIsAddingArticle(false);
     }
-    
-    // Add article to digest
-    currentDigest.items = [article, ...currentDigest.items];
-    
-    // Update digests
-    setWeeklyDigests({...weeklyDigests, [weekKey]: currentDigest});
-    
-    // Reset form
-    setNewArticleTitle("");
-    setNewArticleLink("");
-    setNewArticleDesc("");
-    setNewArticleSource("");
-    setDialogOpen(false);
-    
-    toast.success("Artikel erfolgreich hinzugefügt");
   };
   
   // Render weekly digests
@@ -193,21 +266,12 @@ const Index = () => {
                   <DialogHeader>
                     <DialogTitle>Neuen Artikel hinzufügen</DialogTitle>
                     <DialogDescription>
-                      Fügen Sie einen neuen Artikel manuell hinzu.
+                      Fügen Sie einen Link zum Artikel hinzu. Titel und weitere Informationen werden automatisch abgeleitet.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label htmlFor="title">Titel*</Label>
-                      <Input
-                        id="title"
-                        placeholder="Artikel-Titel"
-                        value={newArticleTitle}
-                        onChange={(e) => setNewArticleTitle(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="link">Link*</Label>
+                      <Label htmlFor="link">Artikel-Link*</Label>
                       <Input
                         id="link"
                         placeholder="https://beispiel.de/artikel"
@@ -215,27 +279,14 @@ const Index = () => {
                         onChange={(e) => setNewArticleLink(e.target.value)}
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Beschreibung</Label>
-                      <Input
-                        id="description"
-                        placeholder="Kurze Beschreibung des Artikels"
-                        value={newArticleDesc}
-                        onChange={(e) => setNewArticleDesc(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="source">Quelle</Label>
-                      <Input
-                        id="source"
-                        placeholder="Quellen-Name"
-                        value={newArticleSource}
-                        onChange={(e) => setNewArticleSource(e.target.value)}
-                      />
-                    </div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={handleAddArticle}>Hinzufügen</Button>
+                    <Button 
+                      onClick={handleAddArticle} 
+                      disabled={isAddingArticle || !newArticleLink}
+                    >
+                      {isAddingArticle ? "Wird hinzugefügt..." : "Hinzufügen"}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
