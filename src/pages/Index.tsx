@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import WeeklyDigest from "@/components/WeeklyDigest";
+import RssSourceManager from "@/components/RssSourceManager";
 import NewsCardSkeleton from "@/components/NewsCardSkeleton";
-import NewsService, { WeeklyDigest as WeeklyDigestType, RssItem } from "@/services/NewsService";
+import NewsService, { WeeklyDigest as WeeklyDigestType, RssItem, RssSource } from "@/services/NewsService";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,21 +13,26 @@ import DecoderService from "@/services/DecoderService";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const decoderService = new DecoderService();
   const defaultApiKey = decoderService.getDefaultApiKey();
+  const newsService = new NewsService();
   
   const [apiKey, setApiKey] = useState<string>(() => {
     return localStorage.getItem("decoder_api_key") || defaultApiKey;
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [news, setNews] = useState<RssItem[]>([]);
+  const [currentWeekNews, setCurrentWeekNews] = useState<RssItem[]>([]);
   const [weeklyDigests, setWeeklyDigests] = useState<Record<string, WeeklyDigestType>>({});
   const [error, setError] = useState<string | null>(null);
   const [useMockData, setUseMockData] = useState<boolean>(() => {
     return localStorage.getItem("use_mock_data") === "true";
   });
+  const [rssSources, setRssSources] = useState<RssSource[]>(newsService.getRssSources());
+  const [activeTab, setActiveTab] = useState<string>("news");
   
   // Save API key to local storage
   useEffect(() => {
@@ -46,13 +52,40 @@ const Index = () => {
     fetchNews();
   }, [apiKey, useMockData]);
   
+  // Add RSS source
+  const handleAddRssSource = (url: string, name: string): boolean => {
+    const result = newsService.addRssSource(url, name);
+    if (result) {
+      setRssSources(newsService.getRssSources());
+    }
+    return result;
+  };
+  
+  // Remove RSS source
+  const handleRemoveRssSource = (url: string): boolean => {
+    const result = newsService.removeRssSource(url);
+    if (result) {
+      setRssSources(newsService.getRssSources());
+    }
+    return result;
+  };
+  
+  // Toggle RSS source enabled/disabled state
+  const handleToggleRssSource = (url: string, enabled: boolean): boolean => {
+    const result = newsService.toggleRssSource(url, enabled);
+    if (result) {
+      setRssSources(newsService.getRssSources());
+    }
+    return result;
+  };
+  
   const fetchNews = async () => {
     setLoading(true);
     setError(null);
     
     try {
       console.log("Fetching news...");
-      const newsService = new NewsService(apiKey);
+      newsService.setApiKey(apiKey);
       newsService.setUseMockData(useMockData);
       
       const items = await newsService.fetchNews();
@@ -60,6 +93,13 @@ const Index = () => {
       if (items && items.length > 0) {
         console.log(`Loaded ${items.length} news items`);
         setNews(items);
+        
+        // Filter for current week news
+        const currentWeekItems = newsService.filterCurrentWeekNews(items);
+        setCurrentWeekNews(currentWeekItems);
+        console.log(`Filtered ${currentWeekItems.length} items for current week`);
+        
+        // Group by week
         const digests = newsService.groupNewsByWeek(items);
         setWeeklyDigests(digests);
         
@@ -68,6 +108,8 @@ const Index = () => {
         } else {
           toast.success(`${items.length} Nachrichten geladen`);
         }
+        
+        setActiveTab("news");
       } else {
         console.error("No news items returned");
         setError("Keine Nachrichten konnten geladen werden. Bitte versuchen Sie es später erneut.");
@@ -204,7 +246,7 @@ const Index = () => {
           <div className="text-center py-12">
             <h2 className="text-xl font-bold mb-2">Keine Nachrichten gefunden</h2>
             <p className="text-muted-foreground mb-4">
-              Bitte überprüfen Sie Ihren API-Schlüssel oder versuchen Sie es später erneut.
+              Bitte überprüfen Sie Ihre RSS-Quellen oder versuchen Sie es später erneut.
             </p>
             <div className="space-y-4">
               <div className="flex items-center justify-center gap-2">
@@ -228,7 +270,28 @@ const Index = () => {
             </div>
           </div>
         ) : (
-          renderWeeklyDigests()
+          <div className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList>
+                <TabsTrigger value="news">Nachrichten</TabsTrigger>
+                <TabsTrigger value="sources">RSS-Quellen</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="news">
+                {renderWeeklyDigests()}
+              </TabsContent>
+              
+              <TabsContent value="sources">
+                <RssSourceManager
+                  sources={rssSources}
+                  onAddSource={handleAddRssSource}
+                  onRemoveSource={handleRemoveRssSource}
+                  onToggleSource={handleToggleRssSource}
+                  onRefresh={fetchNews}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
         )}
       </main>
       

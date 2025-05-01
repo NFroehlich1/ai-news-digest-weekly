@@ -1,6 +1,6 @@
 
 import { toast } from "sonner";
-import { WeeklyDigest } from "./NewsService";
+import { WeeklyDigest, RssItem } from "./NewsService";
 
 class DecoderService {
   private apiKey: string;
@@ -51,12 +51,14 @@ class DecoderService {
     }
   }
   
-  async generateSummary(digest: WeeklyDigest): Promise<string> {
+  async generateSummary(digest: WeeklyDigest, selectedArticles?: RssItem[]): Promise<string> {
     try {
+      // Use selected articles if provided, otherwise use top 5 from digest
+      const items = selectedArticles || digest.items.slice(0, 5);
+      
       // Get titles and descriptions to create a prompt
-      const items = digest.items.slice(0, 5); // Limit to top 5 news
       const contentSummaries = items.map(item => 
-        `Titel: ${item.title}\nBeschreibung: ${item.description.substring(0, 150)}...\n`
+        `Titel: ${item.title}\nBeschreibung: ${item.description.substring(0, 150)}...\nURL: ${item.link}\n`
       ).join("\n");
       
       // Create a prompt for Gemini
@@ -72,6 +74,7 @@ class DecoderService {
       - Persönliche Anrede
       - Kurze Einleitung
       - Zusammenfassungen der wichtigsten Nachrichtenartikel mit Titeln und kurzen Beschreibungen
+      - WICHTIG: Direkten Link zu JEDEM Artikel einfügen (mit Format [Details hier](URL))
       - Eine "Kurz & Knapp" Sektion mit Aufzählungspunkten
       - Abschluss mit Hinweis auf LINKIT-Veranstaltungen
       - Signatur des LINKIT-Teams
@@ -115,7 +118,7 @@ class DecoderService {
       
       if (!generatedText) {
         // Fallback to formatted newsletter if Gemini fails
-        return this.formatNewsletter(digest);
+        return this.formatNewsletter(digest, items);
       }
       
       return generatedText;
@@ -123,13 +126,12 @@ class DecoderService {
       console.error("Generierungsfehler:", error);
       toast.error(`Fehler bei der Zusammenfassung: ${(error as Error).message}`);
       // Fallback to formatted newsletter if there's an error
-      return this.formatNewsletter(digest);
+      return this.formatNewsletter(digest, selectedArticles || digest.items.slice(0, 5));
     }
   }
   
-  private formatNewsletter(digest: WeeklyDigest): string {
-    const { weekNumber, dateRange, items } = digest;
-    const topItems = items.slice(0, 5); // Take top 5 news items
+  private formatNewsletter(digest: WeeklyDigest, items: RssItem[]): string {
+    const { weekNumber, dateRange } = digest;
     
     return `
 # 📬 LINKIT WEEKLY
@@ -140,16 +142,16 @@ Hey zusammen,
 
 hier ein schneller Überblick über das, was diese Woche Spannendes im KI-Bereich passiert ist – einfach und auf den Punkt gebracht. Vielleicht hilft's euch bei aktuellen Projekten oder inspiriert euch fürs nächste Semester:
 
-${topItems.map((item, idx) => `
+${items.map((item, idx) => `
 ### ${item.title}
 ${item.description.substring(0, 150)}...
 
 👉 [Details hier](${item.link})
-${idx < topItems.length - 1 ? '' : ''}
+${idx < items.length - 1 ? '' : ''}
 `).join('')}
 
 ## 🎯 Kurz & Knapp für euch zusammengefasst:
-${topItems.map(item => `- ${item.title.split(':')[0]}`).join('\n')}
+${items.map(item => `- ${item.title.split(':')[0]}`).join('\n')}
 
 ## 🚀 Du hast Interesse, dich tiefergehend mit spannenden Themen rund um KI, Data Science und Industrie 4.0 zu beschäftigen?
 

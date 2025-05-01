@@ -13,6 +13,15 @@ export interface RssItem {
   creator?: string;
   guid?: string;
   imageUrl?: string;
+  sourceUrl?: string; // Added to track source
+  sourceName?: string; // Added to track source name
+}
+
+export interface RssSource {
+  url: string;
+  name: string;
+  enabled: boolean;
+  lastFetched?: Date;
 }
 
 export interface WeeklyDigest {
@@ -118,17 +127,107 @@ const MOCK_NEWS_ITEMS: RssItem[] = [
   }
 ];
 
+// Default RSS sources
+const DEFAULT_RSS_SOURCES: RssSource[] = [
+  {
+    url: "https://the-decoder.de/feed/",
+    name: "The Decoder",
+    enabled: true
+  }
+];
+
 // Service class for fetching news from RSS feeds
 class NewsService {
   private apiKey: string;
-  private rssUrl: string = "https://the-decoder.de/feed/";
   private corsProxyUrl: string = "https://api.allorigins.win/raw?url=";
   private decoderService: DecoderService;
   private useMockData: boolean = false;
+  private rssSources: RssSource[] = [];
   
   constructor(apiKey?: string) {
     this.decoderService = new DecoderService(apiKey);
     this.apiKey = apiKey || this.decoderService.getRss2JsonApiKey();
+    
+    // Load saved RSS sources from localStorage or use defaults
+    this.loadRssSources();
+  }
+  
+  // Load RSS sources from localStorage
+  private loadRssSources(): void {
+    try {
+      const savedSources = localStorage.getItem('rss_sources');
+      this.rssSources = savedSources ? JSON.parse(savedSources) : [...DEFAULT_RSS_SOURCES];
+    } catch (error) {
+      console.error("Error loading RSS sources:", error);
+      this.rssSources = [...DEFAULT_RSS_SOURCES];
+    }
+  }
+  
+  // Save RSS sources to localStorage
+  private saveRssSources(): void {
+    try {
+      localStorage.setItem('rss_sources', JSON.stringify(this.rssSources));
+    } catch (error) {
+      console.error("Error saving RSS sources:", error);
+      toast.error("Fehler beim Speichern der RSS-Quellen");
+    }
+  }
+  
+  // Get all RSS sources
+  public getRssSources(): RssSource[] {
+    return [...this.rssSources];
+  }
+  
+  // Add a new RSS source
+  public addRssSource(url: string, name: string): boolean {
+    // Basic URL validation
+    try {
+      new URL(url);
+    } catch (error) {
+      toast.error("Ungültige URL");
+      return false;
+    }
+    
+    // Check if source already exists
+    if (this.rssSources.some(source => source.url === url)) {
+      toast.error("Diese RSS-Quelle existiert bereits");
+      return false;
+    }
+    
+    this.rssSources.push({
+      url,
+      name: name || new URL(url).hostname,
+      enabled: true
+    });
+    
+    this.saveRssSources();
+    toast.success(`Neue RSS-Quelle "${name || new URL(url).hostname}" hinzugefügt`);
+    return true;
+  }
+  
+  // Remove an RSS source
+  public removeRssSource(url: string): boolean {
+    const initialLength = this.rssSources.length;
+    this.rssSources = this.rssSources.filter(source => source.url !== url);
+    
+    if (this.rssSources.length < initialLength) {
+      this.saveRssSources();
+      toast.success("RSS-Quelle entfernt");
+      return true;
+    }
+    
+    return false;
+  }
+  
+  // Toggle RSS source enabled/disabled state
+  public toggleRssSource(url: string, enabled: boolean): boolean {
+    const source = this.rssSources.find(source => source.url === url);
+    if (source) {
+      source.enabled = enabled;
+      this.saveRssSources();
+      return true;
+    }
+    return false;
   }
   
   // Set the API key
@@ -142,7 +241,7 @@ class NewsService {
     this.useMockData = useMock;
   }
   
-  // Fetch the RSS feed using a more reliable CORS proxy
+  // Fetch news from all enabled RSS sources
   public async fetchNews(): Promise<RssItem[]> {
     // If mock data is enabled, return mock items
     if (this.useMockData) {
@@ -150,12 +249,61 @@ class NewsService {
       return Promise.resolve(MOCK_NEWS_ITEMS);
     }
     
+    // If no sources are enabled, show a message and return mock data
+    const enabledSources = this.rssSources.filter(source => source.enabled);
+    if (enabledSources.length === 0) {
+      console.log("No enabled RSS sources found, using mock data");
+      toast.warning("Keine RSS-Quellen aktiviert");
+      return Promise.resolve(MOCK_NEWS_ITEMS);
+    }
+    
     try {
-      const encodedRssUrl = encodeURIComponent(this.rssUrl);
+      // Fetch from all enabled sources
+      const allPromises = enabledSources.map(source => this.fetchRssSource(source));
+      const results = await Promise.allSettled(allPromises);
+      
+      // Collect successful results
+      const allItems: RssItem[] = [];
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value.length > 0) {
+          // Update last fetched timestamp
+          enabledSources[index].lastFetched = new Date();
+          allItems.push(...result.value);
+        } else if (result.status === 'rejected') {
+          console.error(`Error fetching ${enabledSources[index].name}:`, result.reason);
+        }
+      });
+      
+      this.saveRssSources(); // Save updated timestamps
+      
+      if (allItems.length === 0) {
+        console.warn("No items found in any RSS feed, using fallback data");
+        toast.warning("Keine Artikel in den RSS-Feeds gefunden");
+        return MOCK_NEWS_ITEMS;
+      }
+      
+      // Sort all items by date (newest first)
+      allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
+      console.log(`Loaded ${allItems.length} news items from ${enabledSources.length} sources`);
+      
+      return allItems;
+    } catch (error) {
+      console.error('Error fetching news:', error);
+      toast.error(`Fehler beim Laden der Nachrichten: ${(error as Error).message}`);
+      
+      // Use mock data as fallback when there's an error
+      console.log("Using fallback mock data due to error");
+      return MOCK_NEWS_ITEMS;
+    }
+  }
+  
+  // Fetch from a specific RSS source
+  private async fetchRssSource(source: RssSource): Promise<RssItem[]> {
+    try {
+      const encodedRssUrl = encodeURIComponent(source.url);
       const proxyUrl = `${this.corsProxyUrl}${encodedRssUrl}`;
       
-      console.log("Fetching RSS feed from:", this.rssUrl);
-      console.log("Using proxy URL:", proxyUrl);
+      console.log(`Fetching RSS feed from: ${source.name} (${source.url})`);
       
       const response = await fetch(proxyUrl, {
         headers: {
@@ -165,22 +313,18 @@ class NewsService {
       });
       
       if (!response.ok) {
-        console.error("Response not OK:", response.status, response.statusText);
         throw new Error(`Failed to fetch RSS feed: ${response.status} ${response.statusText}`);
       }
       
       const xmlText = await response.text();
-      console.log("RSS feed fetched, length:", xmlText.length);
       
       if (!xmlText || xmlText.trim().length === 0) {
-        console.error("Empty RSS feed response");
         throw new Error("Empty RSS feed response");
       }
       
-      // Check if we got HTML instead of XML (happens with some proxies)
+      // Check if we got HTML instead of XML
       if (xmlText.toLowerCase().includes('<!doctype html>')) {
-        console.error("Received HTML instead of XML");
-        throw new Error("Received HTML instead of XML feed. Using fallback data instead.");
+        throw new Error("Received HTML instead of XML feed");
       }
       
       // Parse the RSS feed using DOMParser
@@ -190,17 +334,15 @@ class NewsService {
       // Check for parsing errors
       const parserError = xmlDoc.querySelector("parsererror");
       if (parserError) {
-        console.error("XML parsing error:", parserError.textContent);
         throw new Error("Failed to parse XML: " + parserError.textContent);
       }
       
       const items: RssItem[] = [];
       const itemElements = xmlDoc.querySelectorAll("item");
-      console.log("Number of items found in feed:", itemElements.length);
+      console.log(`Found ${itemElements.length} items in feed ${source.name}`);
       
       if (itemElements.length === 0) {
-        console.warn("No items found in RSS feed, using fallback data");
-        return MOCK_NEWS_ITEMS;
+        return [];
       }
       
       itemElements.forEach((item, index) => {
@@ -260,8 +402,6 @@ class NewsService {
         const guid = getElementText(item, "guid");
         const imageUrl = getImageUrl(item, content);
         
-        console.log(`Item ${index + 1}:`, title, pubDate);
-        
         items.push({
           title,
           link,
@@ -272,24 +412,31 @@ class NewsService {
           creator,
           guid,
           imageUrl,
+          sourceUrl: source.url,
+          sourceName: source.name
         });
       });
       
-      if (items.length === 0) {
-        console.warn("No items found in RSS feed after parsing, using fallback data");
-        return MOCK_NEWS_ITEMS;
-      }
-      
-      console.log("Successfully parsed items:", items.length);
       return items;
     } catch (error) {
-      console.error('Error fetching news:', error);
-      toast.error(`Fehler beim Laden der Nachrichten: ${(error as Error).message}`);
-      
-      // Use mock data as fallback when there's an error
-      console.log("Using fallback mock data due to error");
-      return MOCK_NEWS_ITEMS;
+      console.error(`Error fetching RSS source ${source.name}:`, error);
+      return [];
     }
+  }
+  
+  // Filter news to only current week
+  public filterCurrentWeekNews(items: RssItem[]): RssItem[] {
+    const now = new Date();
+    const currentWeek = this.getWeekNumber(now);
+    const currentYear = now.getFullYear();
+    
+    return items.filter(item => {
+      const pubDate = new Date(item.pubDate);
+      const itemWeek = this.getWeekNumber(pubDate);
+      const itemYear = pubDate.getFullYear();
+      
+      return itemWeek === currentWeek && itemYear === currentYear;
+    });
   }
   
   // Group news items by week
@@ -338,9 +485,9 @@ class NewsService {
   }
   
   // Generate a newsletter summary from a weekly digest
-  public async generateNewsletterSummary(digest: WeeklyDigest): Promise<string> {
+  public async generateNewsletterSummary(digest: WeeklyDigest, selectedArticles?: RssItem[]): Promise<string> {
     try {
-      return await this.decoderService.generateSummary(digest);
+      return await this.decoderService.generateSummary(digest, selectedArticles);
     } catch (error) {
       console.error('Error generating newsletter:', error);
       toast.error(`Fehler bei der Generierung des Newsletters: ${(error as Error).message}`);
