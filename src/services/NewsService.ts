@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
 import RssSourceService from "./RssSourceService";
@@ -90,8 +89,10 @@ class NewsService {
           // Update last fetched timestamp
           enabledSources[index].lastFetched = new Date();
           allItems.push(...result.value);
+          console.log(`Successfully loaded ${result.value.length} items from ${enabledSources[index].name}`);
         } else if (result.status === 'rejected') {
           console.error(`Error fetching ${enabledSources[index].name}:`, result.reason);
+          toast.error(`Fehler beim Laden von ${enabledSources[index].name}`);
         }
       });
       
@@ -114,6 +115,59 @@ class NewsService {
       console.log("Using fallback mock data due to error");
       return MOCK_NEWS_ITEMS;
     }
+  }
+  
+  // Get top 10 most important articles for the newsletter
+  public prioritizeNewsForNewsletter(items: RssItem[], limit: number = 10): RssItem[] {
+    // First, filter out items without titles or descriptions as they're not useful
+    const validItems = items.filter(item => item.title && (item.description || item.content));
+    
+    // Get the current date to calculate recency score
+    const now = new Date();
+    
+    // Score each article based on multiple factors
+    const scoredItems = validItems.map(item => {
+      let score = 0;
+      
+      // Score based on recency (newer articles get higher score)
+      const pubDate = new Date(item.pubDate);
+      const daysDiff = (now.getTime() - pubDate.getTime()) / (1000 * 60 * 60 * 24);
+      score += Math.max(0, 10 - daysDiff); // More recent = higher score
+      
+      // Score based on content length (more detailed articles get higher score)
+      const contentLength = (item.content?.length || 0) + (item.description?.length || 0);
+      score += Math.min(5, contentLength / 1000); // Up to 5 points for content
+      
+      // Score based on having an image (articles with images get a bonus)
+      if (item.imageUrl) {
+        score += 2;
+      }
+      
+      // Score based on keywords related to AI importance
+      const aiKeywords = [
+        'künstliche intelligenz', 'ki ', 'ai ', 'machine learning', 'deep learning', 
+        'neural network', 'gpt', 'llm', 'openai', 'microsoft', 'google', 'anthropic', 
+        'claude', 'gemini', 'mistral', 'meta'
+      ];
+      
+      const combinedText = `${item.title} ${item.description} ${item.content || ''}`.toLowerCase();
+      
+      aiKeywords.forEach(keyword => {
+        if (combinedText.includes(keyword)) {
+          score += 1;
+        }
+      });
+      
+      return { item, score };
+    });
+    
+    // Sort by score (highest first) and take top 'limit' items
+    scoredItems.sort((a, b) => b.score - a.score);
+    
+    const topItems = scoredItems.slice(0, limit).map(scored => scored.item);
+    console.log(`Prioritized ${topItems.length} items out of ${items.length} total items`);
+    
+    return topItems;
   }
   
   // Fetch metadata for a URL
@@ -184,7 +238,10 @@ class NewsService {
   // Generate a newsletter summary from a weekly digest
   public async generateNewsletterSummary(digest: WeeklyDigest, selectedArticles?: RssItem[]): Promise<string> {
     try {
-      return await this.decoderService.generateSummary(digest, selectedArticles);
+      // If specific articles are selected, use those
+      // Otherwise, prioritize the most important articles
+      const articlesToUse = selectedArticles || this.prioritizeNewsForNewsletter(digest.items, 10);
+      return await this.decoderService.generateSummary(digest, articlesToUse);
     } catch (error) {
       console.error('Error generating newsletter:', error);
       toast.error(`Fehler bei der Generierung des Newsletters: ${(error as Error).message}`);
