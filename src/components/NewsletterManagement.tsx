@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,8 +29,8 @@ const NewsletterManagement = () => {
     setIsLoadingSubscribers(true);
     try {
       const { count, error } = await supabase
-        .from("newsletter_subscribers")
-        .select("*", { count: 'exact', head: true })
+        .from('newsletter_subscribers' as any)
+        .select('*', { count: 'exact', head: true })
         .eq("confirmed", true);
       
       if (error) throw error;

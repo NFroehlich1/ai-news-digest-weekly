@@ -55,7 +55,7 @@ const NewsletterSubscribeModal = ({ newsletterContent }: NewsletterSubscribeModa
     try {
       // Check if email already exists in subscribers table
       const { data: existingSubscriber, error: checkError } = await supabase
-        .from('newsletter_subscribers')
+        .from('newsletter_subscribers' as any)
         .select('email')
         .eq('email', values.email)
         .single();
@@ -73,8 +73,8 @@ const NewsletterSubscribeModal = ({ newsletterContent }: NewsletterSubscribeModa
       } else {
         // Insert new subscriber
         const { error: insertError } = await supabase
-          .from('newsletter_subscribers')
-          .insert([{ email: values.email }]);
+          .from('newsletter_subscribers' as any)
+          .insert([{ email: values.email }] as any);
 
         if (insertError) {
           console.error("Error adding subscriber:", insertError);
