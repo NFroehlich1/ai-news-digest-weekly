@@ -113,21 +113,29 @@ serve(async (req) => {
         console.log(`Subject: ${subject}`);
         console.log(`From: ${senderName} <${senderEmail}>`);
         
-        // In a real implementation, you would use an email service API here
-        // Example with a hypothetical email service:
-        /*
-        const emailResult = await emailService.send({
-          to: subscriber.email,
-          from: `${senderName} <${senderEmail}>`,
-          subject: subject,
-          html: personalizedContent
+        // Call the newsletter-send-email function to send email
+        const emailResponse = await supabase.functions.invoke('newsletter-send-email', {
+          body: {
+            to: subscriber.email,
+            subject: subject,
+            html: personalizedContent,
+            senderName: senderName,
+            senderEmail: senderEmail
+          }
         });
-        */
         
-        // Since we don't have an actual email service integration yet,
-        // we'll just simulate a successful send
-        successfulSends.push(subscriber.email);
+        if (emailResponse.error) {
+          throw new Error(emailResponse.error);
+        }
         
+        const emailData = emailResponse.data;
+        
+        if (emailData.success) {
+          successfulSends.push(subscriber.email);
+          console.log(`Email sent successfully to ${subscriber.email}`);
+        } else {
+          throw new Error(emailData.message || "Unknown error");
+        }
       } catch (error) {
         console.error(`Error sending to ${subscriber.email}:`, error);
         failedSends.push({ email: subscriber.email, error: error.message });
@@ -157,8 +165,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Newsletter processed for ${successfulSends.length} subscribers`,
-        note: "Currently, emails are logged but not actually sent. To send real emails, you need to integrate with an email service API like SendGrid, Mailgun, or Amazon SES.",
+        message: `Newsletter sent to ${successfulSends.length} subscribers`,
         emailsSent: successfulSends.length,
         totalSubscribers: subscribers.length,
         successfulSends,

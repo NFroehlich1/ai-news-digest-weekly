@@ -1,11 +1,14 @@
 
-// Edge function for sending emails via an email service provider
+// Edge function for sending emails via Brevo API
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Brevo API endpoint
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -31,44 +34,53 @@ serve(async (req) => {
     console.log(`Subject: ${subject}`);
     console.log(`From: ${senderName} <${senderEmail}>`);
     
-    // To implement real email sending, you can use services like:
-    // 1. SendGrid: https://docs.sendgrid.com/for-developers/sending-email
-    // 2. Mailgun: https://www.mailgun.com/
-    // 3. Amazon SES: https://aws.amazon.com/ses/
-    // 4. Resend: https://resend.com/
+    // Get the Brevo API key from environment variables
+    const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY");
     
-    // Example implementation with Resend (you would need to add the RESEND_API_KEY secret)
-    /*
-    import { Resend } from "npm:resend";
-    
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-    
-    const { data, error } = await resend.emails.send({
-      from: `${senderName} <${senderEmail}>`,
-      to: [to],
-      subject: subject,
-      html: html,
-    });
-    
-    if (error) {
-      throw new Error(`Email sending failed: ${error.message}`);
+    if (!BREVO_API_KEY) {
+      throw new Error("BREVO_API_KEY environment variable not set");
     }
     
-    return new Response(
-      JSON.stringify({ success: true, messageId: data.id }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-    */
+    // Prepare email payload for Brevo API
+    const brevoPayload = {
+      sender: {
+        name: senderName,
+        email: senderEmail
+      },
+      to: [
+        {
+          email: to
+        }
+      ],
+      subject: subject,
+      htmlContent: html
+    };
+
+    // Send email using Brevo API
+    const response = await fetch(BREVO_API_URL, {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "api-key": BREVO_API_KEY
+      },
+      body: JSON.stringify(brevoPayload)
+    });
     
-    // For now, return a mock success response
+    // Parse the response
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(`Email sending failed: ${JSON.stringify(responseData)}`);
+    }
+    
+    console.log("Email sent successfully:", responseData);
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "Email would be sent here (mock response)",
-        note: "To send real emails, integrate with an email service provider like SendGrid, Mailgun, or Resend"
+        messageId: responseData.messageId || "unknown",
+        message: "Email sent successfully via Brevo"
       }),
       {
         status: 200,
