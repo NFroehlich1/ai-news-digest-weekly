@@ -94,19 +94,25 @@ serve(async (req) => {
     const brevoUrl = "https://api.brevo.com/v3/smtp/email";
     const payload = {
       sender: {
-        name: "AI Newsletter",
-        email: "newsletter@example.com" // Use your verified sender email here
+        name: "KI-Newsletter",
+        email: "newsletter@decoderproject.com" // Replace with your verified sender
       },
       to: recipients,
       subject: `KI-Newsletter vom ${currentDate}`,
       htmlContent: `
-        <h1>Wöchentlicher KI-Newsletter</h1>
-        <p>Hier sind die neuesten Entwicklungen im Bereich der künstlichen Intelligenz:</p>
-        <div>${newsletterContent}</div>
-        <p>--<br>Sie erhalten diesen Newsletter, weil Sie sich dafür angemeldet haben. 
-           <a href="${supabaseUrl}/functions/v1/newsletter-unsubscribe?email={{params.EMAIL}}">Abmelden</a></p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Wöchentlicher KI-Newsletter</h1>
+          <p>Hier sind die neuesten Entwicklungen im Bereich der künstlichen Intelligenz:</p>
+          <div style="margin: 20px 0;">${newsletterContent}</div>
+          <p style="margin-top: 30px; font-size: 12px; color: #777; border-top: 1px solid #eee; padding-top: 15px;">
+            Sie erhalten diesen Newsletter, weil Sie sich dafür angemeldet haben. 
+            <a href="${supabaseUrl}/functions/v1/newsletter-unsubscribe?email={{params.EMAIL}}" style="color: #777;">Abmelden</a>
+          </p>
+        </div>
       `
     };
+
+    console.log(`Attempting to send newsletter to ${subscribers.length} subscribers`);
 
     try {
       const response = await fetch(brevoUrl, {
@@ -135,10 +141,14 @@ serve(async (req) => {
       console.log(`Newsletter sent successfully to ${subscribers.length} subscribers:`, result);
 
       // Update the job status to complete
-      await supabase
+      const { error: updateError } = await supabase
         .from("gemini_jobs")
         .update({ status: "completed" })
         .eq("status", "pending_newsletter");
+
+      if (updateError) {
+        console.error("Error updating job status:", updateError);
+      }
 
       return new Response(
         JSON.stringify({ 

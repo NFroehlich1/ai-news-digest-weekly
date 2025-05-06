@@ -8,10 +8,9 @@ const corsHeaders = {
 };
 
 // Create a Supabase client with the Admin key
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL") ?? "",
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-);
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -65,7 +64,55 @@ serve(async (req) => {
 
     console.log(`Successfully confirmed subscription for email: ${data[0].email}`);
 
-    // Redirect to success page
+    // Send welcome email using Brevo API
+    if (Deno.env.get("BREVO_API_KEY")) {
+      try {
+        const brevoApiKey = Deno.env.get("BREVO_API_KEY");
+        const brevoUrl = "https://api.brevo.com/v3/smtp/email";
+        
+        const welcomePayload = {
+          sender: {
+            name: "KI-Newsletter",
+            email: "newsletter@decoderproject.com" // Replace with your verified sender
+          },
+          to: [
+            {
+              email: data[0].email,
+            }
+          ],
+          subject: "Willkommen bei unserem KI-Newsletter",
+          htmlContent: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Willkommen bei unserem KI-Newsletter!</h1>
+              <p>Herzlich Willkommen! Sie sind nun erfolgreich für unseren wöchentlichen KI-Newsletter angemeldet.</p>
+              <p>Ab sofort erhalten Sie jeden Dienstagmorgen die wichtigsten Nachrichten und Entwicklungen aus der Welt der künstlichen Intelligenz.</p>
+              <p>Wir freuen uns, Sie als Abonnent begrüßen zu dürfen!</p>
+              <p>Mit freundlichen Grüßen,<br>Das Newsletter-Team</p>
+              <p style="margin-top: 30px; font-size: 12px; color: #777; border-top: 1px solid #eee; padding-top: 15px;">
+                Sie können sich jederzeit <a href="${supabaseUrl}/functions/v1/newsletter-unsubscribe?email=${encodeURIComponent(data[0].email)}" style="color: #777;">hier abmelden</a>.
+              </p>
+            </div>
+          `
+        };
+
+        const response = await fetch(brevoUrl, {
+          method: "POST",
+          headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "api-key": brevoApiKey
+          },
+          body: JSON.stringify(welcomePayload)
+        });
+
+        console.log("Welcome email API response status:", response.status);
+      } catch (welcomeEmailError) {
+        // Just log the error but continue with the confirmation
+        console.error("Error sending welcome email:", welcomeEmailError);
+      }
+    }
+
+    // Return a success HTML page
     return new Response(
       `<!DOCTYPE html>
       <html lang="de">
@@ -103,6 +150,16 @@ serve(async (req) => {
             font-size: 16px;
             color: #555;
           }
+          .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            margin-top: 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+          }
         </style>
       </head>
       <body>
@@ -110,6 +167,7 @@ serve(async (req) => {
           <div class="success-icon">✓</div>
           <h1>Newsletter-Anmeldung bestätigt!</h1>
           <p>Vielen Dank für die Bestätigung Ihrer E-Mail-Adresse. Sie erhalten ab sofort unseren wöchentlichen KI-Newsletter jeden Dienstagmorgen.</p>
+          <a href="/" class="button">Zur Startseite</a>
         </div>
       </body>
       </html>`,
@@ -128,6 +186,7 @@ serve(async (req) => {
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+        
       }
     );
   }

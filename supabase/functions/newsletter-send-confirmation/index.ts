@@ -43,33 +43,70 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get subscriber data with confirmation token
-    const { data: subscribers, error: fetchError } = await supabase
+    // Check if email already exists and is confirmed
+    const { data: existingUser, error: existingError } = await supabase
       .from("newsletter_subscribers")
-      .select("confirmation_token")
+      .select("*")
       .eq("email", email)
-      .limit(1);
+      .maybeSingle();
 
-    if (fetchError || !subscribers || subscribers.length === 0) {
-      console.error("Error fetching subscriber:", fetchError);
+    if (existingError) {
+      console.error("Error checking existing subscriber:", existingError);
       return new Response(
-        JSON.stringify({ error: "Subscriber not found" }),
+        JSON.stringify({ error: "Error checking subscription status" }),
         {
-          status: 404,
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
-    const confirmationToken = subscribers[0].confirmation_token;
+    if (existingUser?.confirmed) {
+      return new Response(
+        JSON.stringify({ message: "Email already confirmed" }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Get subscriber data with confirmation token or create new subscriber
+    let confirmationToken;
+    
+    if (existingUser) {
+      confirmationToken = existingUser.confirmation_token;
+    } else {
+      // Insert new subscriber
+      const { data: newUser, error: insertError } = await supabase
+        .from("newsletter_subscribers")
+        .insert([{ email }])
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error("Error inserting subscriber:", insertError);
+        return new Response(
+          JSON.stringify({ error: "Failed to create subscription" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      confirmationToken = newUser.confirmation_token;
+    }
+
     const confirmUrl = `${supabaseUrl}/functions/v1/newsletter-confirm?token=${confirmationToken}`;
+    const unsubscribeUrl = `${supabaseUrl}/functions/v1/newsletter-unsubscribe?email=${encodeURIComponent(email)}`;
 
     // Send confirmation email using Brevo API
     const brevoUrl = "https://api.brevo.com/v3/smtp/email";
     const payload = {
       sender: {
-        name: "AI Newsletter",
-        email: "newsletter@example.com" // Use your verified sender email here
+        name: "KI-Newsletter",
+        email: "newsletter@decoderproject.com" // Replace with your verified sender
       },
       to: [
         {
@@ -78,10 +115,17 @@ serve(async (req) => {
       ],
       subject: "Bestätigen Sie Ihr KI-Newsletter-Abonnement",
       htmlContent: `
-        <h1>Bestätigen Sie Ihr Newsletter-Abonnement</h1>
-        <p>Vielen Dank für Ihr Interesse an unserem KI-Newsletter. Bitte klicken Sie auf den folgenden Link, um Ihre E-Mail-Adresse zu bestätigen:</p>
-        <p><a href="${confirmUrl}">Newsletter-Abonnement bestätigen</a></p>
-        <p>Wenn Sie diese E-Mail nicht angefordert haben, können Sie sie einfach ignorieren.</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Bestätigen Sie Ihr Newsletter-Abonnement</h1>
+          <p>Vielen Dank für Ihr Interesse an unserem KI-Newsletter.</p>
+          <p>Bitte klicken Sie auf den folgenden Button, um Ihre E-Mail-Adresse zu bestätigen:</p>
+          <p style="text-align: center; margin: 30px 0;">
+            <a href="${confirmUrl}" style="background-color: #4CAF50; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">Newsletter-Abonnement bestätigen</a>
+          </p>
+          <p>Oder kopieren Sie diesen Link in Ihren Browser:</p>
+          <p style="word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 4px;">${confirmUrl}</p>
+          <p style="margin-top: 30px; font-size: 12px; color: #777;">Wenn Sie diese E-Mail nicht angefordert haben, können Sie sie einfach ignorieren oder <a href="${unsubscribeUrl}" style="color: #777;">hier klicken</a>, um sich abzumelden.</p>
+        </div>
       `
     };
 

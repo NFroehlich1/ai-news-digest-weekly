@@ -43,21 +43,91 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Delete the subscriber
-    const { error: deleteError } = await supabase
+    // Find the subscriber first
+    const { data: subscriber, error: findError } = await supabase
       .from("newsletter_subscribers")
-      .delete()
-      .eq("email", email);
+      .select("email")
+      .eq("email", email)
+      .maybeSingle();
 
-    if (deleteError) {
-      console.error("Error deleting subscriber:", deleteError);
+    if (findError) {
+      console.error("Error finding subscriber:", findError);
       return new Response(
-        JSON.stringify({ error: "Failed to unsubscribe" }),
+        JSON.stringify({ error: "Failed to process unsubscribe request" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
+    }
+
+    if (!subscriber) {
+      // Email not found, but we'll show success anyway for privacy
+      console.log(`Unsubscribe request for non-existent email: ${email}`);
+    } else {
+      // Delete the subscriber
+      const { error: deleteError } = await supabase
+        .from("newsletter_subscribers")
+        .delete()
+        .eq("email", email);
+
+      if (deleteError) {
+        console.error("Error deleting subscriber:", deleteError);
+        return new Response(
+          JSON.stringify({ error: "Failed to unsubscribe" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      console.log(`Successfully unsubscribed: ${email}`);
+
+      // Send confirmation email for unsubscribe using Brevo
+      if (Deno.env.get("BREVO_API_KEY")) {
+        try {
+          const brevoApiKey = Deno.env.get("BREVO_API_KEY");
+          const brevoUrl = "https://api.brevo.com/v3/smtp/email";
+          
+          const unsubscribeConfirmPayload = {
+            sender: {
+              name: "KI-Newsletter",
+              email: "newsletter@decoderproject.com" // Replace with your verified sender
+            },
+            to: [
+              {
+                email: email,
+              }
+            ],
+            subject: "Abmeldung bestätigt",
+            htmlContent: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Abmeldung bestätigt</h1>
+                <p>Sie wurden erfolgreich von unserem KI-Newsletter abgemeldet.</p>
+                <p>Wir bedauern, dass Sie uns verlassen. Falls Sie Feedback haben oder uns mitteilen möchten, warum Sie sich abgemeldet haben, antworten Sie einfach auf diese E-Mail.</p>
+                <p>Sollten Sie sich in Zukunft wieder für unseren Newsletter interessieren, können Sie sich jederzeit erneut anmelden.</p>
+                <p>Mit freundlichen Grüßen,<br>Das Newsletter-Team</p>
+              </div>
+            `
+          };
+
+          const response = await fetch(brevoUrl, {
+            method: "POST",
+            headers: {
+              "Accept": "application/json",
+              "Content-Type": "application/json",
+              "api-key": brevoApiKey
+            },
+            body: JSON.stringify(unsubscribeConfirmPayload)
+          });
+
+          console.log("Unsubscribe confirmation email API response status:", response.status);
+        } catch (unsubscribeEmailError) {
+          // Just log the error but continue with the unsubscribe process
+          console.error("Error sending unsubscribe confirmation email:", unsubscribeEmailError);
+        }
+      }
     }
 
     // Return a success HTML page
@@ -98,6 +168,16 @@ serve(async (req) => {
             font-size: 16px;
             color: #555;
           }
+          .button {
+            display: inline-block;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            margin-top: 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+          }
         </style>
       </head>
       <body>
@@ -105,6 +185,8 @@ serve(async (req) => {
           <div class="success-icon">✓</div>
           <h1>Abmeldung erfolgreich</h1>
           <p>Sie wurden erfolgreich von unserem Newsletter abgemeldet.</p>
+          <p>Wir bedauern, dass Sie uns verlassen. Vielen Dank für Ihr bisheriges Interesse!</p>
+          <a href="/" class="button">Zur Startseite</a>
         </div>
       </body>
       </html>`,
