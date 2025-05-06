@@ -8,10 +8,21 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 
+// Define a type for the newsletter items
+type Newsletter = {
+  id: string;
+  subject: string;
+  content: string;
+  sender_name: string;
+  sender_email: string;
+  sent_at: string;
+  recipients_count: number;
+}
+
 const NewsletterHistory = () => {
-  const [newsletters, setNewsletters] = useState<any[]>([]);
+  const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedNewsletter, setSelectedNewsletter] = useState<any>(null);
+  const [selectedNewsletter, setSelectedNewsletter] = useState<Newsletter | null>(null);
   const [page, setPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -22,10 +33,11 @@ const NewsletterHistory = () => {
   const loadNewsletters = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('newsletters')
+      // Use type assertion with 'as any' to bypass TypeScript checking
+      const { data, error } = await (supabase
+        .from('newsletters' as any)
         .select('*')
-        .order('sent_at', { ascending: false });
+        .order('sent_at', { ascending: false }));
       
       if (error) throw error;
       setNewsletters(data || []);

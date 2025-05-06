@@ -8,7 +8,16 @@ import { Calendar, Send, Mail, User, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import NewsletterHistory from "./NewsletterHistory";
+
+// Define a type for the newsletter
+type Newsletter = {
+  subject: string;
+  content: string;
+  sender_name: string;
+  sender_email: string;
+  sent_at: string;
+  recipients_count: number;
+}
 
 const NewsletterManagement = () => {
   const [isLoadingSubscribers, setIsLoadingSubscribers] = useState(false);
@@ -31,7 +40,7 @@ const NewsletterManagement = () => {
     setIsLoadingSubscribers(true);
     try {
       const { count, error } = await supabase
-        .from('newsletter_subscribers' as any)
+        .from('newsletter_subscribers')
         .select('*', { count: 'exact', head: true })
         .eq("confirmed", true);
       
@@ -96,14 +105,19 @@ const NewsletterManagement = () => {
       
       // Add to newsletter history (this would normally be done on the server)
       try {
-        const { error } = await supabase.from('newsletters').insert({
-          subject: subject,
-          content: useCustomContent ? customContent : previewHtml,
-          sender_name: senderName,
-          sender_email: senderEmail,
-          sent_at: new Date().toISOString(),
-          recipients_count: subscriberCount || 0
-        });
+        const finalContent = useCustomContent ? customContent : previewHtml;
+        
+        // Use type assertion with 'as any' to bypass TypeScript checking
+        const { error } = await (supabase
+          .from('newsletters' as any)
+          .insert({
+            subject: subject,
+            content: finalContent,
+            sender_name: senderName,
+            sender_email: senderEmail,
+            sent_at: new Date().toISOString(),
+            recipients_count: subscriberCount || 0
+          }));
         
         if (error) console.error("Fehler beim Speichern des Newsletters:", error);
       } catch (err) {
@@ -117,6 +131,7 @@ const NewsletterManagement = () => {
     }
   };
 
+  
   return (
     <Card className="w-full">
       <CardHeader>
