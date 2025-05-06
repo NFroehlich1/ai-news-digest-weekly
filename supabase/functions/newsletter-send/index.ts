@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -7,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Use the provided Brevo API key
+const BREVO_API_KEY = "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";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -14,12 +16,15 @@ serve(async (req) => {
   }
 
   try {
+    // Parse request body for custom email settings
+    const requestBody = await req.json().catch(() => ({}));
+    const { subject, customContent, senderName, senderEmail } = requestBody;
+
     // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const brevoApiKey = Deno.env.get("BREVO_API_KEY");
     
-    if (!supabaseUrl || !supabaseServiceKey || !brevoApiKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         {
@@ -59,26 +64,35 @@ serve(async (req) => {
       );
     }
 
-    // Get the latest gemini_job with the newsletter content
-    const { data: jobsData, error: jobsError } = await supabase
-      .from("gemini_jobs")
-      .select("result")
-      .eq("status", "pending_newsletter")
-      .order("created_at", { ascending: false })
-      .limit(1);
+    // Content for the newsletter
+    let newsletterContent = "";
+    
+    // If custom content was provided, use that
+    if (customContent) {
+      newsletterContent = customContent;
+    } else {
+      // Otherwise get the latest gemini_job with the newsletter content
+      const { data: jobsData, error: jobsError } = await supabase
+        .from("gemini_jobs")
+        .select("result")
+        .eq("status", "pending_newsletter")
+        .order("created_at", { ascending: false })
+        .limit(1);
 
-    if (jobsError || !jobsData || jobsData.length === 0) {
-      console.error("Error fetching newsletter content:", jobsError);
-      return new Response(
-        JSON.stringify({ error: "Newsletter content not found" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      if (jobsError || !jobsData || jobsData.length === 0) {
+        console.error("Error fetching newsletter content:", jobsError);
+        return new Response(
+          JSON.stringify({ error: "Newsletter content not found" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      newsletterContent = jobsData[0].result?.content || "No content available for this week's newsletter.";
     }
 
-    const newsletterContent = jobsData[0].result?.content || "No content available for this week's newsletter.";
     const currentDate = new Date().toLocaleDateString('de-DE', { 
       day: '2-digit', 
       month: '2-digit',
@@ -94,11 +108,11 @@ serve(async (req) => {
     const brevoUrl = "https://api.brevo.com/v3/smtp/email";
     const payload = {
       sender: {
-        name: "KI-Newsletter",
-        email: "newsletter@decoderproject.com" // Replace with your verified sender
+        name: senderName || "KI-Newsletter",
+        email: senderEmail || "newsletter@decoderproject.com" // Replace with your verified sender
       },
       to: recipients,
-      subject: `KI-Newsletter vom ${currentDate}`,
+      subject: subject || `KI-Newsletter vom ${currentDate}`,
       htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Wöchentlicher KI-Newsletter</h1>
@@ -120,7 +134,7 @@ serve(async (req) => {
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json",
-          "api-key": brevoApiKey
+          "api-key": BREVO_API_KEY
         },
         body: JSON.stringify(payload)
       });

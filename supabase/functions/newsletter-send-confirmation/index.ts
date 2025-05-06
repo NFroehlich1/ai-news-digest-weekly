@@ -7,6 +7,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Use the provided Brevo API key
+const BREVO_API_KEY = "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";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -29,9 +32,8 @@ serve(async (req) => {
     // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const brevoApiKey = Deno.env.get("BREVO_API_KEY");
     
-    if (!supabaseUrl || !supabaseServiceKey || !brevoApiKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         {
@@ -137,7 +139,7 @@ serve(async (req) => {
         headers: {
           "Accept": "application/json",
           "Content-Type": "application/json",
-          "api-key": brevoApiKey
+          "api-key": BREVO_API_KEY
         },
         body: JSON.stringify(payload)
       });
