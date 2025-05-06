@@ -7,6 +7,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Use the provided Brevo API key
+const BREVO_API_KEY = "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";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -28,10 +31,10 @@ serve(async (req) => {
 
   try {
     // Create Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://aggkhetcdjmggqjzelgd.supabase.co";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    if (!supabaseUrl || !supabaseServiceKey) {
+    if (!supabaseServiceKey) {
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         {
@@ -85,48 +88,45 @@ serve(async (req) => {
       console.log(`Successfully unsubscribed: ${email}`);
 
       // Send confirmation email for unsubscribe using Brevo
-      if (Deno.env.get("BREVO_API_KEY")) {
-        try {
-          const brevoApiKey = Deno.env.get("BREVO_API_KEY");
-          const brevoUrl = "https://api.brevo.com/v3/smtp/email";
-          
-          const unsubscribeConfirmPayload = {
-            sender: {
-              name: "KI-Newsletter",
-              email: "newsletter@decoderproject.com" // Replace with your verified sender
-            },
-            to: [
-              {
-                email: email,
-              }
-            ],
-            subject: "Abmeldung bestätigt",
-            htmlContent: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Abmeldung bestätigt</h1>
-                <p>Sie wurden erfolgreich von unserem KI-Newsletter abgemeldet.</p>
-                <p>Wir bedauern, dass Sie uns verlassen. Falls Sie Feedback haben oder uns mitteilen möchten, warum Sie sich abgemeldet haben, antworten Sie einfach auf diese E-Mail.</p>
-                <p>Sollten Sie sich in Zukunft wieder für unseren Newsletter interessieren, können Sie sich jederzeit erneut anmelden.</p>
-                <p>Mit freundlichen Grüßen,<br>Das Newsletter-Team</p>
-              </div>
-            `
-          };
+      try {
+        const brevoUrl = "https://api.brevo.com/v3/smtp/email";
+        
+        const unsubscribeConfirmPayload = {
+          sender: {
+            name: "KI-Newsletter",
+            email: "newsletter@decoderproject.com" // Replace with your verified sender
+          },
+          to: [
+            {
+              email: email,
+            }
+          ],
+          subject: "Abmeldung bestätigt",
+          htmlContent: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Abmeldung bestätigt</h1>
+              <p>Sie wurden erfolgreich von unserem KI-Newsletter abgemeldet.</p>
+              <p>Wir bedauern, dass Sie uns verlassen. Falls Sie Feedback haben oder uns mitteilen möchten, warum Sie sich abgemeldet haben, antworten Sie einfach auf diese E-Mail.</p>
+              <p>Sollten Sie sich in Zukunft wieder für unseren Newsletter interessieren, können Sie sich jederzeit erneut anmelden.</p>
+              <p>Mit freundlichen Grüßen,<br>Das Newsletter-Team</p>
+            </div>
+          `
+        };
 
-          const response = await fetch(brevoUrl, {
-            method: "POST",
-            headers: {
-              "Accept": "application/json",
-              "Content-Type": "application/json",
-              "api-key": brevoApiKey
-            },
-            body: JSON.stringify(unsubscribeConfirmPayload)
-          });
+        const response = await fetch(brevoUrl, {
+          method: "POST",
+          headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "api-key": BREVO_API_KEY
+          },
+          body: JSON.stringify(unsubscribeConfirmPayload)
+        });
 
-          console.log("Unsubscribe confirmation email API response status:", response.status);
-        } catch (unsubscribeEmailError) {
-          // Just log the error but continue with the unsubscribe process
-          console.error("Error sending unsubscribe confirmation email:", unsubscribeEmailError);
-        }
+        console.log("Unsubscribe confirmation email API response status:", response.status);
+      } catch (unsubscribeEmailError) {
+        // Just log the error but continue with the unsubscribe process
+        console.error("Error sending unsubscribe confirmation email:", unsubscribeEmailError);
       }
     }
 
