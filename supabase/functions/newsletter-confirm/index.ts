@@ -74,7 +74,7 @@ serve(async (req) => {
       const welcomePayload = {
         sender: {
           name: "KI-Newsletter",
-          email: "newsletter@decoderproject.com" // Replace with your verified sender
+          email: "froehlich.nico@outlook.de" // Updated sender email
         },
         to: [
           {

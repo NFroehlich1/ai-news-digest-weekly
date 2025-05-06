@@ -120,7 +120,7 @@ serve(async (req) => {
       const confirmPayload = {
         sender: {
           name: "KI-Newsletter",
-          email: "newsletter@decoderproject.com" // Make sure this is verified in Brevo
+          email: "froehlich.nico@outlook.de" // Updated sender email
         },
         to: [
           {

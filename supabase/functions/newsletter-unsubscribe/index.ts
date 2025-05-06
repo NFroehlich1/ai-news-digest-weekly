@@ -94,7 +94,7 @@ serve(async (req) => {
         const unsubscribeConfirmPayload = {
           sender: {
             name: "KI-Newsletter",
-            email: "newsletter@decoderproject.com" // Replace with your verified sender
+            email: "froehlich.nico@outlook.de" // Updated sender email
           },
           to: [
             {

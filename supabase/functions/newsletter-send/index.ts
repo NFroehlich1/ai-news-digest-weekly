@@ -27,7 +27,7 @@ serve(async (req) => {
       subject = `KI-Newsletter vom ${new Date().toLocaleDateString('de-DE')}`,
       customContent = null,
       senderName = "KI-Newsletter",
-      senderEmail = "newsletter@decoderproject.com"
+      senderEmail = "froehlich.nico@outlook.de" // Updated sender email
     } = newsletterConfig;
 
     // Create Supabase client
