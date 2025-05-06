@@ -33,18 +33,22 @@ const NewsletterHistory = () => {
   const loadNewsletters = async () => {
     setIsLoading(true);
     try {
-      // Use type assertion with 'as any' to bypass TypeScript checking
+      // Use type assertion with 'as any' to bypass TypeScript checking for both
+      // the table name and the returned data
       const { data, error } = await (supabase
         .from('newsletters' as any)
         .select('*')
         .order('sent_at', { ascending: false }));
       
       if (error) throw error;
-      setNewsletters(data || []);
+      
+      // Explicitly cast the data to the Newsletter array type
+      const typedData = data as unknown as Newsletter[];
+      setNewsletters(typedData || []);
       
       // Select the first newsletter by default if available
-      if (data && data.length > 0) {
-        setSelectedNewsletter(data[0]);
+      if (typedData && typedData.length > 0) {
+        setSelectedNewsletter(typedData[0]);
       }
     } catch (error) {
       console.error("Fehler beim Laden der Newsletter:", error);
