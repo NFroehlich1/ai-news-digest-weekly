@@ -70,6 +70,11 @@ class RssSourceService {
     return [...this.rssSources];
   }
   
+  // Get only enabled RSS sources
+  public getEnabledRssSources(): RssSource[] {
+    return this.rssSources.filter(source => source.enabled);
+  }
+  
   // Add a new RSS source
   public addRssSource(url: string, name: string): boolean {
     // Basic URL validation

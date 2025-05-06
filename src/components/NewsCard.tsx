@@ -1,22 +1,28 @@
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RssItem } from "@/types/newsTypes";
-import { ExternalLink, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { ExternalLink, Trash2, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/utils/dateUtils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
+import NewsService from "@/services/NewsService";
 
 interface NewsCardProps {
   item: RssItem;
   isLoading?: boolean;
   onDelete?: (item: RssItem) => void;
+  apiKey?: string;
 }
 
-const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
+const NewsCard = ({ item, isLoading = false, onDelete, apiKey }: NewsCardProps) => {
   const { title, link, pubDate, description, categories, sourceName, aiSummary, content } = item;
   const [isOpen, setIsOpen] = useState(false);
+  const [localAiSummary, setLocalAiSummary] = useState<string | null>(aiSummary || null);
+  const [isGeneratingAiSummary, setIsGeneratingAiSummary] = useState(false);
   
   // Only use imageUrl if it passes basic validation
   const validateImageUrl = (url?: string): boolean => {
@@ -67,16 +73,46 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
 
   // Get preview text - prioritize AI summary, fallback to description
   const getPreviewText = () => {
-    if (aiSummary) {
-      return aiSummary.length > 200
-        ? `${aiSummary.substring(0, 200)}...`
-        : aiSummary;
+    if (localAiSummary) {
+      return localAiSummary.length > 200
+        ? `${localAiSummary.substring(0, 200)}...`
+        : localAiSummary;
     } else if (description) {
       return description.length > 150
         ? `${description.substring(0, 150)}...`
         : description;
     }
     return null;
+  };
+  
+  // Generate AI summary on-demand
+  const generateAiSummary = async () => {
+    if (isGeneratingAiSummary || !apiKey) return;
+    
+    setIsGeneratingAiSummary(true);
+    try {
+      const newsService = new NewsService(apiKey);
+      const summary = await newsService.generateArticleSummary(item);
+      if (summary) {
+        setLocalAiSummary(summary);
+        toast.success("KI-Zusammenfassung generiert");
+      } else {
+        toast.error("Fehler bei der Generierung der Zusammenfassung");
+      }
+    } catch (error) {
+      console.error("Error generating AI summary:", error);
+      toast.error("Fehler bei der Generierung der Zusammenfassung");
+    } finally {
+      setIsGeneratingAiSummary(false);
+    }
+  };
+
+  // When expanding the article and no AI summary exists, generate one
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && !localAiSummary && apiKey) {
+      generateAiSummary();
+    }
   };
 
   return (
@@ -107,9 +143,9 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
         </div>
       </CardHeader>
       
-      <Collapsible open={isOpen} onOpenChange={setIsOpen} className="flex-grow">
+      <Collapsible open={isOpen} onOpenChange={handleOpenChange} className="flex-grow">
         <CardContent className="pb-0">
-          {!isOpen && aiSummary && (
+          {!isOpen && localAiSummary && (
             <div>
               <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung</h4>
               <p className="text-sm line-clamp-3">{getPreviewText()}</p>
@@ -133,12 +169,57 @@ const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
           </CollapsibleTrigger>
           
           <CollapsibleContent>
-            {aiSummary && (
+            {isGeneratingAiSummary ? (
+              <div className="mt-4 border-t pt-4">
+                <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung wird generiert...</h4>
+                <div className="bg-muted/30 p-3 rounded flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <p className="text-sm">Bitte warten...</p>
+                </div>
+              </div>
+            ) : localAiSummary ? (
+              <div className="mt-4 border-t pt-4">
+                <h4 className="text-sm font-medium mb-2 flex justify-between">
+                  <span>KI-Zusammenfassung</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-xs" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      generateAiSummary();
+                    }}
+                    disabled={isGeneratingAiSummary}
+                  >
+                    <RefreshCw className={`h-3 w-3 mr-1 ${isGeneratingAiSummary ? 'animate-spin' : ''}`} />
+                    Neu generieren
+                  </Button>
+                </h4>
+                <div className="bg-muted/30 p-3 rounded">
+                  <p className="text-sm">{localAiSummary}</p>
+                </div>
+              </div>
+            ) : (
               <div className="mt-4 border-t pt-4">
                 <h4 className="text-sm font-medium mb-2">KI-Zusammenfassung</h4>
-                <div className="bg-muted/30 p-3 rounded">
-                  <p className="text-sm">{aiSummary}</p>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={generateAiSummary}
+                  disabled={isGeneratingAiSummary || !apiKey}
+                >
+                  {isGeneratingAiSummary ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Wird generiert...
+                    </>
+                  ) : (
+                    <>
+                      KI-Zusammenfassung generieren
+                    </>
+                  )}
+                </Button>
               </div>
             )}
           </CollapsibleContent>

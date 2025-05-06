@@ -50,6 +50,10 @@ class NewsService {
     return this.rssSourceService.getRssSources();
   }
   
+  public getEnabledRssSources(): RssSource[] {
+    return this.rssSourceService.getEnabledRssSources();
+  }
+  
   public addRssSource(url: string, name: string): boolean {
     return this.rssSourceService.addRssSource(url, name);
   }
@@ -70,8 +74,10 @@ class NewsService {
       return Promise.resolve(MOCK_NEWS_ITEMS);
     }
     
+    // Get only enabled sources
+    const enabledSources = this.getEnabledRssSources();
+    
     // If no sources are enabled, show a message and return mock data
-    const enabledSources = this.getRssSources().filter(source => source.enabled);
     if (enabledSources.length === 0) {
       console.log("No enabled RSS sources found, using mock data");
       toast.warning("Keine RSS-Quellen aktiviert");
@@ -125,6 +131,17 @@ class NewsService {
       // Use mock data as fallback when there's an error
       console.log("Using fallback mock data due to error");
       return MOCK_NEWS_ITEMS;
+    }
+  }
+  
+  // Generate AI summary for a specific article
+  public async generateArticleSummary(article: RssItem): Promise<string | null> {
+    try {
+      return await this.decoderService.generateArticleSummary(article);
+    } catch (error) {
+      console.error('Error generating article summary:', error);
+      toast.error(`Fehler bei der Zusammenfassung des Artikels: ${(error as Error).message}`);
+      return null;
     }
   }
   

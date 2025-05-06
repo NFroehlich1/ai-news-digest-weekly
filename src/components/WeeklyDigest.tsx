@@ -94,6 +94,9 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     if (isPrioritized && prioritizedArticles.length > 0) {
       return prioritizedArticles;
     }
+    if (selectedArticles && selectedArticles.length > 0) {
+      return selectedArticles;
+    }
     return digest.items;
   };
   
@@ -167,7 +170,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
               <TabsTrigger value="news">
-                Nachrichten {isPrioritized ? `(Top ${prioritizedArticles.length})` : `(${digest.items.length})`}
+                Nachrichten {isPrioritized ? `(Top ${prioritizedArticles.length})` : selectedArticles ? `(${selectedArticles.length} ausgewählt)` : `(${digest.items.length})`}
               </TabsTrigger>
               <TabsTrigger value="summary" disabled={!generatedContent}>Zusammenfassung</TabsTrigger>
             </TabsList>
@@ -178,7 +181,11 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                   <p className="col-span-full text-center py-8">Artikel werden geladen...</p>
                 ) : getDisplayArticles().length > 0 ? (
                   getDisplayArticles().map((item, index) => (
-                    <NewsCard key={`${item.guid || item.link}-${index}`} item={item} />
+                    <NewsCard 
+                      key={`${item.guid || item.link}-${index}`} 
+                      item={item} 
+                      apiKey={apiKey}
+                    />
                   ))
                 ) : (
                   <p className="col-span-full text-center py-8">Keine Artikel gefunden</p>

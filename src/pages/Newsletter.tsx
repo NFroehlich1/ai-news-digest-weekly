@@ -74,8 +74,14 @@ const Newsletter = () => {
     setIsLoading(true);
     
     try {
-      // Fetch all news
+      // Fetch only from enabled sources
       const news = await newsService.fetchNews();
+      
+      if (news.length === 0) {
+        toast.warning("Keine Artikel gefunden. Bitte aktivieren Sie mindestens eine RSS-Quelle.");
+        setIsLoading(false);
+        return;
+      }
       
       // Group by week
       const weeklyDigests = newsService.groupNewsByWeek(news);
@@ -152,8 +158,18 @@ const Newsletter = () => {
                       sources={newsService.getRssSources()}
                       onAddSource={(url, name) => newsService.addRssSource(url, name)}
                       onRemoveSource={(url) => newsService.removeRssSource(url)}
-                      onToggleSource={(url, enabled) => newsService.toggleRssSource(url, enabled)}
-                      onRefresh={handleRssSourceChange}
+                      onToggleSource={(url, enabled) => {
+                        const result = newsService.toggleRssSource(url, enabled);
+                        if (result) {
+                          // If sources changed, clear current digest to force reload
+                          setCurrentWeekDigest(null);
+                        }
+                        return result;
+                      }}
+                      onRefresh={() => {
+                        setCurrentWeekDigest(null);
+                        handleRssSourceChange();
+                      }}
                     />
                   )}
                 </div>
@@ -193,6 +209,9 @@ const Newsletter = () => {
                           <p className="text-center text-muted-foreground">
                             Keine aktuellen Nachrichten verfügbar. Klicken Sie auf "Nachrichten laden", 
                             um die neuesten Artikel zu laden.
+                          </p>
+                          <p className="text-center text-muted-foreground mt-2">
+                            Stellen Sie sicher, dass mindestens eine RSS-Quelle aktiviert ist.
                           </p>
                         </div>
                       )}
@@ -281,4 +300,3 @@ const Newsletter = () => {
 };
 
 export default Newsletter;
-
