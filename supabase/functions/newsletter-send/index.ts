@@ -1,3 +1,5 @@
+
+// Edge function for newsletter sending with BREVO API
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -16,9 +18,20 @@ serve(async (req) => {
   }
 
   try {
-    // Parse request body for custom email settings
-    const requestBody = await req.json().catch(() => ({}));
-    const { subject, customContent, senderName, senderEmail } = requestBody;
+    // Parse request body
+    let newsletterConfig = {};
+    try {
+      newsletterConfig = await req.json();
+    } catch (e) {
+      // Default empty object if no body
+    }
+
+    const {
+      subject = `KI-Newsletter vom ${new Date().toLocaleDateString('de-DE')}`,
+      senderName = "KI-Newsletter",
+      senderEmail = "newsletter@decoderproject.com",
+      customContent = null,
+    } = newsletterConfig;
 
     // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -36,14 +49,14 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get all confirmed subscribers
-    const { data: subscribers, error: fetchError } = await supabase
+    // Get confirmed subscribers
+    const { data: subscribers, error: subscribersError } = await supabase
       .from("newsletter_subscribers")
       .select("email")
       .eq("confirmed", true);
 
-    if (fetchError) {
-      console.error("Error fetching subscribers:", fetchError);
+    if (subscribersError) {
+      console.error("Error fetching subscribers:", subscribersError);
       return new Response(
         JSON.stringify({ error: "Failed to fetch subscribers" }),
         {
@@ -54,7 +67,6 @@ serve(async (req) => {
     }
 
     if (!subscribers || subscribers.length === 0) {
-      console.log("No confirmed subscribers found");
       return new Response(
         JSON.stringify({ message: "No confirmed subscribers found" }),
         {
@@ -64,130 +76,95 @@ serve(async (req) => {
       );
     }
 
-    // Content for the newsletter
-    let newsletterContent = "";
+    // Default HTML content for the newsletter
+    let htmlContent = customContent;
     
-    // If custom content was provided, use that
-    if (customContent) {
-      newsletterContent = customContent;
-    } else {
-      // Otherwise get the latest gemini_job with the newsletter content
-      const { data: jobsData, error: jobsError } = await supabase
-        .from("gemini_jobs")
-        .select("result")
-        .eq("status", "pending_newsletter")
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      if (jobsError || !jobsData || jobsData.length === 0) {
-        console.error("Error fetching newsletter content:", jobsError);
-        return new Response(
-          JSON.stringify({ error: "Newsletter content not found" }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-
-      newsletterContent = jobsData[0].result?.content || "No content available for this week's newsletter.";
-    }
-
-    const currentDate = new Date().toLocaleDateString('de-DE', { 
-      day: '2-digit', 
-      month: '2-digit',
-      year: 'numeric' 
-    });
-
-    // Prepare subscriber emails for Brevo API
-    const recipients = subscribers.map(subscriber => ({
-      email: subscriber.email
-    }));
-
-    // Send newsletter using Brevo API
-    const brevoUrl = "https://api.brevo.com/v3/smtp/email";
-    const payload = {
-      sender: {
-        name: senderName || "KI-Newsletter",
-        email: senderEmail || "newsletter@decoderproject.com" // Replace with your verified sender
-      },
-      to: recipients,
-      subject: subject || `KI-Newsletter vom ${currentDate}`,
-      htmlContent: `
+    // If no custom content is provided, use default template
+    if (!htmlContent) {
+      htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">Wöchentlicher KI-Newsletter</h1>
-          <p>Hier sind die neuesten Entwicklungen im Bereich der künstlichen Intelligenz:</p>
-          <div style="margin: 20px 0;">${newsletterContent}</div>
-          <p style="margin-top: 30px; font-size: 12px; color: #777; border-top: 1px solid #eee; padding-top: 15px;">
+          <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">KI-Newsletter</h1>
+          <p>Willkommen zu unserem wöchentlichen KI-Newsletter.</p>
+          <p>Hier sind die wichtigsten Neuigkeiten aus der Welt der Künstlichen Intelligenz:</p>
+          <ul>
+            <li>GPT-5 soll in den nächsten Monaten erscheinen</li>
+            <li>Google stellt neue KI-Funktionen für Workspace vor</li>
+            <li>EU einigt sich auf KI-Regulierung</li>
+          </ul>
+          <p style="margin-top: 30px; font-size: 14px; color: #777;">
             Sie erhalten diesen Newsletter, weil Sie sich dafür angemeldet haben. 
-            <a href="${supabaseUrl}/functions/v1/newsletter-unsubscribe?email={{params.EMAIL}}" style="color: #777;">Abmelden</a>
+            <a href="{{{unsubscribe}}}" style="color: #777;">Hier abmelden</a>
           </p>
         </div>
-      `
-    };
-
-    console.log(`Attempting to send newsletter to ${subscribers.length} subscribers`);
-
-    try {
-      const response = await fetch(brevoUrl, {
-        method: "POST",
-        headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json",
-          "api-key": BREVO_API_KEY
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        console.error("Brevo API error:", result);
-        return new Response(
-          JSON.stringify({ error: "Failed to send newsletter", details: result }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-
-      console.log(`Newsletter sent successfully to ${subscribers.length} subscribers:`, result);
-
-      // Update the job status to complete
-      const { error: updateError } = await supabase
-        .from("gemini_jobs")
-        .update({ status: "completed" })
-        .eq("status", "pending_newsletter");
-
-      if (updateError) {
-        console.error("Error updating job status:", updateError);
-      }
-
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: `Newsletter sent to ${subscribers.length} subscribers` 
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    } catch (emailError) {
-      console.error("Error sending newsletter:", emailError);
-      return new Response(
-        JSON.stringify({ error: "Failed to send newsletter", details: emailError.message }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      `;
     }
+
+    // Send newsletter to each subscriber using Brevo API
+    const brevoUrl = "https://api.brevo.com/v3/smtp/email";
+    const successfulSends = [];
+    const failedSends = [];
+
+    for (const subscriber of subscribers) {
+      try {
+        const unsubscribeUrl = `${supabaseUrl}/functions/v1/newsletter-unsubscribe?email=${encodeURIComponent(subscriber.email)}`;
+        
+        // Replace {{{unsubscribe}}} placeholder with actual unsubscribe URL
+        const personalizedContent = htmlContent.replace("{{{unsubscribe}}}", unsubscribeUrl);
+        
+        const payload = {
+          sender: {
+            name: senderName,
+            email: senderEmail
+          },
+          to: [
+            {
+              email: subscriber.email
+            }
+          ],
+          subject: subject,
+          htmlContent: personalizedContent
+        };
+
+        const response = await fetch(brevoUrl, {
+          method: "POST",
+          headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "api-key": BREVO_API_KEY
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error(`Failed to send to ${subscriber.email}:`, errorData);
+          failedSends.push({ email: subscriber.email, error: errorData });
+          continue;
+        }
+
+        successfulSends.push(subscriber.email);
+      } catch (error) {
+        console.error(`Error sending to ${subscriber.email}:`, error);
+        failedSends.push({ email: subscriber.email, error: error.message });
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: `Newsletter sent to ${successfulSends.length} subscribers`,
+        successfulSends,
+        failedSends
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   } catch (error) {
     console.error("Server error:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", details: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
