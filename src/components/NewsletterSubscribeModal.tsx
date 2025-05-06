@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NewsletterSubscribeModalProps {
   newsletterContent?: string;
@@ -52,17 +53,39 @@ const NewsletterSubscribeModal = ({ newsletterContent }: NewsletterSubscribeModa
     setIsSubmitting(true);
     
     try {
-      // In a real application with Supabase, we would add code here to:
-      // 1. Check if email already exists in subscribers table
-      // 2. Add email to subscribers table if it doesn't exist
-      // 3. Send confirmation email with Supabase Edge Function
-      
-      // For now, simulate a successful submission
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Show success message
-      setIsSuccess(true);
-      toast.success("Vielen Dank für Ihr Interesse! Sie erhalten bald eine Bestätigungs-E-Mail.");
+      // Check if email already exists in subscribers table
+      const { data: existingSubscriber, error: checkError } = await supabase
+        .from('newsletter_subscribers')
+        .select('email')
+        .eq('email', values.email)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        // Error other than "no rows returned"
+        console.error("Error checking subscriber:", checkError);
+        toast.error("Es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.");
+        return;
+      }
+
+      if (existingSubscriber) {
+        toast.info("Diese E-Mail ist bereits registriert. Vielen Dank für Ihr Interesse!");
+        setIsSuccess(true);
+      } else {
+        // Insert new subscriber
+        const { error: insertError } = await supabase
+          .from('newsletter_subscribers')
+          .insert([{ email: values.email }]);
+
+        if (insertError) {
+          console.error("Error adding subscriber:", insertError);
+          toast.error("Es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.");
+          return;
+        }
+
+        // Show success message
+        setIsSuccess(true);
+        toast.success("Vielen Dank für Ihr Interesse! Sie erhalten bald eine Bestätigungs-E-Mail.");
+      }
       
       // Reset success state after 3 seconds and close dialog
       setTimeout(() => {

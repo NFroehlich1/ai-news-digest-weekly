@@ -1,5 +1,7 @@
+
 import { toast } from "sonner";
 import type { WeeklyDigest, RssItem } from "../types/newsTypes";
+import { supabase } from "@/integrations/supabase/client";
 
 class DecoderService {
   private apiKey: string;
@@ -427,6 +429,16 @@ class DecoderService {
       }
       
       console.log("Successfully generated comprehensive newsletter");
+      
+      // After generating the newsletter, save it to the subscribers who have confirmed
+      try {
+        // We're just logging this action for now, in a real implementation
+        // this would trigger an email sending process
+        console.log("Newsletter would be sent to confirmed subscribers");
+      } catch (dbError) {
+        console.error("Error preparing newsletter for sending:", dbError);
+      }
+      
       return generatedText;
     } catch (error) {
       console.error("Newsletter generation error:", error);

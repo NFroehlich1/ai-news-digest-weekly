@@ -36,6 +36,33 @@ export type Database = {
         }
         Relationships: []
       }
+      newsletter_subscribers: {
+        Row: {
+          confirmation_token: string
+          confirmed: boolean
+          created_at: string
+          email: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          confirmation_token?: string
+          confirmed?: boolean
+          created_at?: string
+          email: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          confirmation_token?: string
+          confirmed?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pomodoro_sessions: {
         Row: {
           completed_at: string
@@ -257,6 +284,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_newsletter_schedule: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       clean_old_gemini_jobs: {
         Args: Record<PropertyKey, never>
         Returns: undefined

@@ -1,1 +1,8 @@
+
 project_id = "nywmylszhzifqovfnbva"
+
+[functions.newsletter-confirm]
+verify_jwt = false
+
+[functions.newsletter-send-confirmation]
+verify_jwt = false
