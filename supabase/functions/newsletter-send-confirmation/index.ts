@@ -123,14 +123,13 @@ serve(async (req) => {
 
     console.log("Email link generated successfully");
     
-    // Since we're using a workaround, we need to manually handle the email sending if needed
-    // For now, we'll just return a success message
+    // Fix: Removed the problematic "process.env.NODE_ENV" check
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: "Confirmation email sent",
-        // Include the link in dev environments for easy testing
-        devInfo: process.env.NODE_ENV === 'development' ? { confirmUrl } : undefined
+        // Include the link for testing purposes
+        devInfo: { confirmUrl }
       }),
       {
         status: 200,

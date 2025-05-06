@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { Calendar, Send, Mail, User, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import NewsletterHistory from "./NewsletterHistory";
 
 const NewsletterManagement = () => {
   const [isLoadingSubscribers, setIsLoadingSubscribers] = useState(false);
@@ -24,6 +24,8 @@ const NewsletterManagement = () => {
   const [senderName, setSenderName] = useState<string>("KI-Newsletter");
   const [senderEmail, setSenderEmail] = useState<string>("newsletter@decoderproject.com");
   const [useCustomContent, setUseCustomContent] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState("basic");
+  const [previewHtml, setPreviewHtml] = useState<string>("");
 
   const loadSubscriberCount = async () => {
     setIsLoadingSubscribers(true);
@@ -41,6 +43,34 @@ const NewsletterManagement = () => {
     } finally {
       setIsLoadingSubscribers(false);
     }
+  };
+
+  const generatePreview = () => {
+    let content = "";
+    
+    if (useCustomContent && customContent) {
+      content = customContent;
+    } else {
+      content = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">${senderName}</h1>
+          <p>Willkommen zu unserem wöchentlichen KI-Newsletter.</p>
+          <p>Hier sind die wichtigsten Neuigkeiten aus der Welt der Künstlichen Intelligenz:</p>
+          <ul>
+            <li>GPT-5 soll in den nächsten Monaten erscheinen</li>
+            <li>Google stellt neue KI-Funktionen für Workspace vor</li>
+            <li>EU einigt sich auf KI-Regulierung</li>
+          </ul>
+          <p style="margin-top: 30px; font-size: 14px; color: #777;">
+            Sie erhalten diesen Newsletter, weil Sie sich dafür angemeldet haben. 
+            <a href="#" style="color: #777;">Hier abmelden</a>
+          </p>
+        </div>
+      `;
+    }
+    
+    setPreviewHtml(content);
+    setActiveTab("preview");
   };
 
   const handleSendNewsletter = async () => {
@@ -63,6 +93,22 @@ const NewsletterManagement = () => {
       }
       
       toast.success("Newsletter wurde erfolgreich versendet!");
+      
+      // Add to newsletter history (this would normally be done on the server)
+      try {
+        const { error } = await supabase.from('newsletters').insert({
+          subject: subject,
+          content: useCustomContent ? customContent : previewHtml,
+          sender_name: senderName,
+          sender_email: senderEmail,
+          sent_at: new Date().toISOString(),
+          recipients_count: subscriberCount || 0
+        });
+        
+        if (error) console.error("Fehler beim Speichern des Newsletters:", error);
+      } catch (err) {
+        console.error("Fehler beim Speichern des Newsletter-Eintrags:", err);
+      }
     } catch (error: any) {
       console.error("Fehler beim Versenden des Newsletters:", error);
       toast.error("Newsletter konnte nicht versendet werden: " + (error.message || "Unbekannter Fehler"));
@@ -80,10 +126,11 @@ const NewsletterManagement = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Tabs defaultValue="basic">
-          <TabsList className="grid grid-cols-2 w-full mb-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid grid-cols-3 w-full mb-4">
             <TabsTrigger value="basic">Grundeinstellungen</TabsTrigger>
             <TabsTrigger value="content">Newsletter-Inhalt</TabsTrigger>
+            <TabsTrigger value="preview">Vorschau</TabsTrigger>
           </TabsList>
           
           <TabsContent value="basic" className="space-y-4">
@@ -192,6 +239,29 @@ const NewsletterManagement = () => {
                 />
               </div>
             )}
+            
+            <Button
+              onClick={generatePreview}
+              variant="outline"
+              className="w-full mt-4"
+            >
+              Vorschau generieren
+            </Button>
+          </TabsContent>
+          
+          <TabsContent value="preview">
+            <div className="space-y-4">
+              <div className="border rounded-md p-4">
+                <h3 className="text-lg font-medium mb-2">{subject}</h3>
+                <div className="text-sm text-muted-foreground mb-4">
+                  Von: {senderName} &lt;{senderEmail}&gt;
+                </div>
+                <div 
+                  className="newsletter-body"
+                  dangerouslySetInnerHTML={{ __html: previewHtml || "Klicken Sie auf 'Vorschau generieren', um eine Vorschau zu sehen." }}
+                />
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </CardContent>

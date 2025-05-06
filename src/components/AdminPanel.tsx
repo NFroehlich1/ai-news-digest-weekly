@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import NewsletterManagement from "@/components/NewsletterManagement";
 import NewsContentTab from "@/components/NewsContentTab";
+import NewsletterHistory from "@/components/NewsletterHistory";
 import NewsService from "@/services/NewsService";
 import { toast } from "sonner";
 
@@ -36,11 +37,16 @@ const AdminPanel = ({ onExit }: AdminPanelProps) => {
       <Tabs value={currentTab} onValueChange={setCurrentTab}>
         <TabsList className="mb-4">
           <TabsTrigger value="manage">Newsletter-Versand</TabsTrigger>
+          <TabsTrigger value="history">Newsletter-Archiv</TabsTrigger>
           <TabsTrigger value="news">KI-News-Generator</TabsTrigger>
         </TabsList>
         
         <TabsContent value="manage" className="space-y-6">
           <NewsletterManagement />
+        </TabsContent>
+        
+        <TabsContent value="history" className="space-y-6">
+          <NewsletterHistory />
         </TabsContent>
         
         <TabsContent value="news" className="space-y-6">
