@@ -122,9 +122,28 @@ class RssSourceService {
     if (source) {
       source.enabled = enabled;
       this.saveRssSources();
+      toast.success(`RSS-Quelle ${enabled ? 'aktiviert' : 'deaktiviert'}`);
       return true;
     }
     return false;
+  }
+  
+  // Check if any sources are enabled
+  public hasEnabledSources(): boolean {
+    return this.rssSources.some(source => source.enabled);
+  }
+  
+  // Get source by URL
+  public getSourceByUrl(url: string): RssSource | undefined {
+    return this.rssSources.find(source => source.url === url);
+  }
+  
+  // Filter sources by name (partial match)
+  public filterSourcesByName(name: string): RssSource[] {
+    const lowerCaseName = name.toLowerCase();
+    return this.rssSources.filter(
+      source => source.name.toLowerCase().includes(lowerCaseName)
+    );
   }
 }
 
