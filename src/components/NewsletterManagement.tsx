@@ -101,27 +101,15 @@ const NewsletterManagement = () => {
         throw new Error(response.error.message);
       }
       
-      toast.success("Newsletter wurde erfolgreich versendet!");
+      const data = response.data;
       
-      // Add to newsletter history (this would normally be done on the server)
-      try {
-        const finalContent = useCustomContent ? customContent : previewHtml;
+      if (data.success) {
+        toast.success(`Newsletter wurde an ${data.emailsSent} Abonnenten verarbeitet!`);
         
-        // Use type assertion with 'as any' to bypass TypeScript checking
-        const { error } = await (supabase
-          .from('newsletters' as any)
-          .insert({
-            subject: subject,
-            content: finalContent,
-            sender_name: senderName,
-            sender_email: senderEmail,
-            sent_at: new Date().toISOString(),
-            recipients_count: subscriberCount || 0
-          }));
-        
-        if (error) console.error("Fehler beim Speichern des Newsletters:", error);
-      } catch (err) {
-        console.error("Fehler beim Speichern des Newsletter-Eintrags:", err);
+        // The edge function now handles storing the newsletter in the database
+        // so we don't need to do it here anymore
+      } else {
+        throw new Error(data.message || "Unbekannter Fehler");
       }
     } catch (error: any) {
       console.error("Fehler beim Versenden des Newsletters:", error);

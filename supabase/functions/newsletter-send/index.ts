@@ -26,6 +26,8 @@ serve(async (req) => {
     const {
       subject = `KI-Newsletter vom ${new Date().toLocaleDateString('de-DE')}`,
       customContent = null,
+      senderName = "KI-Newsletter",
+      senderEmail = "newsletter@decoderproject.com"
     } = newsletterConfig;
 
     // Create Supabase client
@@ -78,7 +80,7 @@ serve(async (req) => {
     if (!htmlContent) {
       htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">KI-Newsletter</h1>
+          <h1 style="color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">${senderName}</h1>
           <p>Willkommen zu unserem wöchentlichen KI-Newsletter.</p>
           <p>Hier sind die wichtigsten Neuigkeiten aus der Welt der Künstlichen Intelligenz:</p>
           <ul>
@@ -94,11 +96,11 @@ serve(async (req) => {
       `;
     }
 
-    // Since Supabase doesn't have a built-in email sending API, we need to implement a different approach
-    // Let's track the emails we would send and show a success message for demonstration purposes
+    // Store email sending attempts for tracking and debugging
     const successfulSends = [];
     const failedSends = [];
-
+    
+    // Send emails to all subscribers
     for (const subscriber of subscribers) {
       try {
         const unsubscribeUrl = `${supabaseUrl}/functions/v1/newsletter-unsubscribe?email=${encodeURIComponent(subscriber.email)}`;
@@ -106,28 +108,59 @@ serve(async (req) => {
         // Replace {{{unsubscribe}}} placeholder with actual unsubscribe URL
         const personalizedContent = htmlContent.replace("{{{unsubscribe}}}", unsubscribeUrl);
         
-        // In a real implementation, you would use an external email service here
-        // For now, we'll just track the intended recipients
-        console.log(`Would send newsletter to: ${subscriber.email}`);
+        // Log the email sending attempt for debugging
+        console.log(`Sending newsletter to: ${subscriber.email}`);
         console.log(`Subject: ${subject}`);
-        console.log(`Content: ${personalizedContent.substring(0, 100)}...`);
+        console.log(`From: ${senderName} <${senderEmail}>`);
         
-        // Add to successful sends for demonstration
+        // In a real implementation, you would use an email service API here
+        // Example with a hypothetical email service:
+        /*
+        const emailResult = await emailService.send({
+          to: subscriber.email,
+          from: `${senderName} <${senderEmail}>`,
+          subject: subject,
+          html: personalizedContent
+        });
+        */
+        
+        // Since we don't have an actual email service integration yet,
+        // we'll just simulate a successful send
         successfulSends.push(subscriber.email);
         
-        // In a production environment, you would implement integration with a different email service here
-        // or set up a webhook to trigger emails from another system
       } catch (error) {
-        console.error(`Error processing ${subscriber.email}:`, error);
+        console.error(`Error sending to ${subscriber.email}:`, error);
         failedSends.push({ email: subscriber.email, error: error.message });
       }
+    }
+    
+    // Store the newsletter in the database
+    try {
+      const { error: insertError } = await supabase
+        .from('newsletters')
+        .insert({
+          subject: subject,
+          content: htmlContent,
+          sender_name: senderName,
+          sender_email: senderEmail,
+          sent_at: new Date().toISOString(),
+          recipients_count: subscribers.length
+        });
+        
+      if (insertError) {
+        console.error("Error storing newsletter:", insertError);
+      }
+    } catch (error) {
+      console.error("Error storing newsletter:", error);
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: `Newsletter processed for ${successfulSends.length} subscribers`,
-        note: "In this implementation, emails are logged but not actually sent. To send real emails, integrate with an email service API.",
+        note: "Currently, emails are logged but not actually sent. To send real emails, you need to integrate with an email service API like SendGrid, Mailgun, or Amazon SES.",
+        emailsSent: successfulSends.length,
+        totalSubscribers: subscribers.length,
         successfulSends,
         failedSends
       }),
