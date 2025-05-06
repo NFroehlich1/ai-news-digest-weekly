@@ -12,36 +12,64 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Mail } from "lucide-react";
+import { Mail, Check } from "lucide-react";
+import { z } from "zod";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 interface NewsletterSubscribeModalProps {
   newsletterContent?: string;
 }
 
-const NewsletterSubscribeModal = ({ newsletterContent }: NewsletterSubscribeModalProps) => {
-  const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+// Form validation schema
+const formSchema = z.object({
+  email: z.string().email("Bitte geben Sie eine gültige E-Mail-Adresse ein.")
+});
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email.trim() || !email.includes('@')) {
-      toast.error("Bitte geben Sie eine gültige E-Mail-Adresse ein.");
-      return;
-    }
-    
+const NewsletterSubscribeModal = ({ newsletterContent }: NewsletterSubscribeModalProps) => {
+  const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  // Initialize form with validation
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     
     try {
-      // In a real application, this would send the email to a backend service
-      // For demo purposes, we'll simulate a successful submission
+      // In a real application with Supabase, we would add code here to:
+      // 1. Check if email already exists in subscribers table
+      // 2. Add email to subscribers table if it doesn't exist
+      // 3. Send confirmation email with Supabase Edge Function
+      
+      // For now, simulate a successful submission
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      toast.success("Vielen Dank für Ihr Interesse! Der Newsletter wurde an Ihre E-Mail-Adresse gesendet.");
-      setEmail("");
+      // Show success message
+      setIsSuccess(true);
+      toast.success("Vielen Dank für Ihr Interesse! Sie erhalten bald eine Bestätigungs-E-Mail.");
       
-      // In a real application, you would close the dialog here
-      // dialogRef.current?.close();
+      // Reset success state after 3 seconds and close dialog
+      setTimeout(() => {
+        setIsSuccess(false);
+        setOpen(false);
+        form.reset();
+      }, 3000);
     } catch (error) {
       console.error("Fehler beim Abonnieren:", error);
       toast.error("Es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.");
@@ -51,7 +79,7 @@ const NewsletterSubscribeModal = ({ newsletterContent }: NewsletterSubscribeModa
   };
   
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="default" className="gap-2">
           <Mail className="h-4 w-4" />
@@ -60,34 +88,54 @@ const NewsletterSubscribeModal = ({ newsletterContent }: NewsletterSubscribeModa
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Newsletter abonnieren</DialogTitle>
+          <DialogTitle>KI-Newsletter abonnieren</DialogTitle>
           <DialogDescription>
-            Erhalten Sie wöchentlich die wichtigsten KI-Nachrichten direkt in Ihrem Postfach.
+            Erhalten Sie jeden Dienstagmorgen die wichtigsten KI-Nachrichten direkt in Ihrem Postfach.
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Input
-              id="email"
-              type="email"
-              placeholder="ihre.email@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full"
-              required
-            />
-            <p className="text-sm text-muted-foreground">
-              Wir verwenden Ihre E-Mail-Adresse nur für den Versand des Newsletters.
+        {isSuccess ? (
+          <div className="py-6 text-center">
+            <div className="mx-auto rounded-full bg-green-100 p-3 w-fit mb-4">
+              <Check className="h-6 w-6 text-green-600" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">Anmeldung erfolgreich!</h3>
+            <p className="text-muted-foreground">
+              Bitte bestätigen Sie Ihre E-Mail-Adresse über den Link, den wir Ihnen gesendet haben.
             </p>
           </div>
-          
-          <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Wird abonniert..." : "Abonnieren"}
-            </Button>
-          </DialogFooter>
-        </form>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>E-Mail-Adresse</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="ihre.email@example.com" 
+                        type="email"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Wir verwenden Ihre E-Mail-Adresse nur für den Versand des Newsletters.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Wird abonniert..." : "Abonnieren"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   );
