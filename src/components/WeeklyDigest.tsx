@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
 import NewsletterSubscribeModal from "./NewsletterSubscribeModal";
 import ArticleSelector from "./ArticleSelector";
-import { Calendar, FileEdit, Mail, Star } from "lucide-react";
+import { Calendar, FileEdit, Mail, Star, RefreshCw } from "lucide-react";
 import NewsService from "@/services/NewsService";
 
 interface WeeklyDigestProps {
@@ -27,6 +27,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   const [selectedArticles, setSelectedArticles] = useState<RssItem[] | null>(null);
   const [isPrioritized, setIsPrioritized] = useState<boolean>(false);
   const [prioritizedArticles, setPrioritizedArticles] = useState<RssItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   
   const handleGenerateSummary = async () => {
     setIsGenerating(true);
@@ -58,11 +59,17 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   };
   
   const handlePrioritizeArticles = () => {
-    const newsService = new NewsService(apiKey);
-    const topArticles = newsService.prioritizeNewsForNewsletter(digest.items, 10);
-    setPrioritizedArticles(topArticles);
-    setIsPrioritized(true);
-    toast.success(`Die 10 wichtigsten Artikel wurden priorisiert`);
+    try {
+      const newsService = new NewsService(apiKey);
+      const topArticles = newsService.prioritizeNewsForNewsletter(digest.items, 10);
+      setPrioritizedArticles(topArticles);
+      setIsPrioritized(true);
+      toast.success(`Die 10 wichtigsten Artikel wurden priorisiert`);
+      console.log("Prioritized articles:", topArticles);
+    } catch (error) {
+      console.error("Error prioritizing articles:", error);
+      toast.error("Fehler bei der Priorisierung der Artikel");
+    }
   };
   
   const startArticleSelection = () => {
@@ -99,6 +106,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
             KI-Update KW {digest.weekNumber}
           </CardTitle>
           <p className="text-muted-foreground">{digest.dateRange}</p>
+          <p className="text-muted-foreground">({digest.items.length} Artikel)</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <NewsletterSubscribeModal newsletterContent={generatedContent || undefined} />
@@ -108,15 +116,16 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
               variant="outline" 
               onClick={handlePrioritizeArticles}
               className="gap-2"
-              disabled={isPrioritized}
+              disabled={isPrioritized && prioritizedArticles.length > 0}
             >
               <Star className="h-4 w-4" />
-              {isPrioritized ? "Top 10 priorisiert" : "Top 10 priorisieren"}
+              {isPrioritized ? `Top 10 (${prioritizedArticles.length})` : "Top 10 priorisieren"}
             </Button>
           )}
           
           {!isGenerating && selectedArticles && selectedArticles.length > 0 && (
-            <Button variant="outline" onClick={startArticleSelection}>
+            <Button variant="outline" onClick={startArticleSelection} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
               {selectedArticles.length} Artikel ausgewählt
             </Button>
           )}
@@ -157,15 +166,23 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
-              <TabsTrigger value="news">Nachrichten {isPrioritized ? "(Top 10)" : ""}</TabsTrigger>
+              <TabsTrigger value="news">
+                Nachrichten {isPrioritized ? `(Top ${prioritizedArticles.length})` : `(${digest.items.length})`}
+              </TabsTrigger>
               <TabsTrigger value="summary" disabled={!generatedContent}>Zusammenfassung</TabsTrigger>
             </TabsList>
             
             <TabsContent value="news">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {getDisplayArticles().map((item, index) => (
-                  <NewsCard key={index} item={item} />
-                ))}
+                {isLoading ? (
+                  <p className="col-span-full text-center py-8">Artikel werden geladen...</p>
+                ) : getDisplayArticles().length > 0 ? (
+                  getDisplayArticles().map((item, index) => (
+                    <NewsCard key={`${item.guid || item.link}-${index}`} item={item} />
+                  ))
+                ) : (
+                  <p className="col-span-full text-center py-8">Keine Artikel gefunden</p>
+                )}
               </div>
             </TabsContent>
             

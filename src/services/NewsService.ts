@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
 import RssSourceService from "./RssSourceService";
@@ -78,23 +79,31 @@ class NewsService {
     }
     
     try {
-      // Fetch from all enabled sources
-      const allPromises = enabledSources.map(source => this.rssFeedService.fetchRssSource(source));
-      const results = await Promise.allSettled(allPromises);
+      console.log(`Fetching news from ${enabledSources.length} enabled sources`);
       
-      // Collect successful results
+      // Process sources one by one for better error handling
       const allItems: RssItem[] = [];
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled' && result.value.length > 0) {
-          // Update last fetched timestamp
-          enabledSources[index].lastFetched = new Date();
-          allItems.push(...result.value);
-          console.log(`Successfully loaded ${result.value.length} items from ${enabledSources[index].name}`);
-        } else if (result.status === 'rejected') {
-          console.error(`Error fetching ${enabledSources[index].name}:`, result.reason);
-          toast.error(`Fehler beim Laden von ${enabledSources[index].name}`);
+      let successfulSources = 0;
+      
+      for (const source of enabledSources) {
+        try {
+          console.log(`Fetching from ${source.name} (${source.url})`);
+          const sourceItems = await this.rssFeedService.fetchRssSource(source);
+          
+          if (sourceItems.length > 0) {
+            // Update last fetched timestamp
+            source.lastFetched = new Date();
+            allItems.push(...sourceItems);
+            successfulSources++;
+            console.log(`Successfully loaded ${sourceItems.length} items from ${source.name}`);
+          } else {
+            console.warn(`No items found in ${source.name} feed`);
+          }
+        } catch (sourceError) {
+          console.error(`Error fetching ${source.name}:`, sourceError);
+          toast.error(`Fehler beim Laden von ${source.name}`);
         }
-      });
+      }
       
       if (allItems.length === 0) {
         console.warn("No items found in any RSS feed, using fallback data");
@@ -102,9 +111,11 @@ class NewsService {
         return MOCK_NEWS_ITEMS;
       }
       
+      console.log(`Successfully fetched from ${successfulSources} out of ${enabledSources.length} sources`);
+      
       // Sort all items by date (newest first)
       allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
-      console.log(`Loaded ${allItems.length} news items from ${enabledSources.length} sources`);
+      console.log(`Loaded ${allItems.length} news items from ${successfulSources} sources`);
       
       return allItems;
     } catch (error) {
@@ -119,8 +130,11 @@ class NewsService {
   
   // Get top 10 most important articles for the newsletter
   public prioritizeNewsForNewsletter(items: RssItem[], limit: number = 10): RssItem[] {
+    console.log(`Prioritizing ${items.length} items for newsletter`);
+    
     // First, filter out items without titles or descriptions as they're not useful
     const validItems = items.filter(item => item.title && (item.description || item.content));
+    console.log(`Found ${validItems.length} valid items after filtering`);
     
     // Get the current date to calculate recency score
     const now = new Date();
@@ -132,31 +146,45 @@ class NewsService {
       // Score based on recency (newer articles get higher score)
       const pubDate = new Date(item.pubDate);
       const daysDiff = (now.getTime() - pubDate.getTime()) / (1000 * 60 * 60 * 24);
-      score += Math.max(0, 10 - daysDiff); // More recent = higher score
+      const recencyScore = Math.max(0, 10 - daysDiff * 2); // More recent = higher score, decay faster
+      score += recencyScore;
       
       // Score based on content length (more detailed articles get higher score)
       const contentLength = (item.content?.length || 0) + (item.description?.length || 0);
-      score += Math.min(5, contentLength / 1000); // Up to 5 points for content
+      const contentScore = Math.min(5, contentLength / 1000); // Up to 5 points for content
+      score += contentScore;
       
       // Score based on having an image (articles with images get a bonus)
-      if (item.imageUrl) {
-        score += 2;
-      }
+      const imageScore = item.imageUrl ? 3 : 0;
+      score += imageScore;
       
       // Score based on keywords related to AI importance
       const aiKeywords = [
         'künstliche intelligenz', 'ki ', 'ai ', 'machine learning', 'deep learning', 
         'neural network', 'gpt', 'llm', 'openai', 'microsoft', 'google', 'anthropic', 
-        'claude', 'gemini', 'mistral', 'meta'
+        'claude', 'gemini', 'mistral', 'meta', 'chatgpt', 'sora', 'midjourney', 'stable diffusion',
+        'kognitive', 'roboter', 'automation', 'algorithmus', 'big data', 'nlp', 'computer vision',
+        'maschinelles lernen', 'generative ai', 'generative ki', 'large language model',
+        'sprachmodell', 'technologie', 'innovation'
       ];
       
       const combinedText = `${item.title} ${item.description} ${item.content || ''}`.toLowerCase();
       
+      let keywordScore = 0;
       aiKeywords.forEach(keyword => {
         if (combinedText.includes(keyword)) {
-          score += 1;
+          keywordScore += 1;
         }
       });
+      score += Math.min(7, keywordScore); // Cap keyword score at 7
+      
+      // Give a bonus to certain high-quality sources
+      const premiumSources = ['heise.de', 'golem.de', 't3n.de', 'netzpolitik.org', 'thedecoder.de'];
+      const sourceScore = premiumSources.some(s => item.sourceUrl?.includes(s)) ? 2 : 0;
+      score += sourceScore;
+      
+      // Log the scoring details for debugging
+      console.log(`Article: "${item.title}" - Score: ${score.toFixed(2)} (recency: ${recencyScore.toFixed(2)}, content: ${contentScore.toFixed(2)}, image: ${imageScore}, keywords: ${keywordScore}, source: ${sourceScore})`);
       
       return { item, score };
     });
@@ -166,6 +194,11 @@ class NewsService {
     
     const topItems = scoredItems.slice(0, limit).map(scored => scored.item);
     console.log(`Prioritized ${topItems.length} items out of ${items.length} total items`);
+    
+    // Log the selected items
+    topItems.forEach((item, index) => {
+      console.log(`Top ${index + 1}: "${item.title}" from ${item.sourceName || item.sourceUrl}`);
+    });
     
     return topItems;
   }

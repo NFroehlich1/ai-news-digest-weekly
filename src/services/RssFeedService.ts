@@ -10,10 +10,16 @@ class RssFeedService {
   private corsProxies: string[] = [
     "https://api.allorigins.win/raw?url=",
     "https://corsproxy.io/?",
-    "https://cors-anywhere.herokuapp.com/"
+    "https://cors-anywhere.herokuapp.com/",
+    "https://api.codetabs.com/v1/proxy?quest=",
+    "https://cors-proxy.taskcluster.net/",
+    "https://crossorigin.me/",
+    "https://yacdn.org/proxy/",
+    "https://thingproxy.freeboard.io/fetch/"
   ];
   
   private currentProxyIndex: number = 0;
+  private maxRetries: number = 3;
   
   constructor() {}
   
@@ -30,7 +36,7 @@ class RssFeedService {
   // Fetch from a specific RSS source
   public async fetchRssSource(source: RssSource): Promise<RssItem[]> {
     let attempts = 0;
-    const maxAttempts = this.corsProxies.length;
+    const maxAttempts = this.corsProxies.length * this.maxRetries;
     
     while (attempts < maxAttempts) {
       try {
@@ -42,9 +48,10 @@ class RssFeedService {
         
         const response = await fetch(proxyUrl, {
           headers: {
-            'Accept': 'application/xml, text/xml, */*',
+            'Accept': 'application/xml, text/xml, application/rss+xml, application/atom+xml, */*',
             'User-Agent': 'Mozilla/5.0 (compatible; NewsDigestApp/1.0)'
-          }
+          },
+          cache: 'no-store', // Prevent caching issues
         });
         
         if (!response.ok) {
@@ -58,8 +65,11 @@ class RssFeedService {
         }
         
         // Check if we got HTML instead of XML
-        if (xmlText.toLowerCase().includes('<!doctype html>')) {
-          throw new Error("Received HTML instead of XML feed");
+        if (xmlText.toLowerCase().includes('<!doctype html>') || 
+            xmlText.toLowerCase().includes('<html') ||
+            xmlText.toLowerCase().includes('error ') ||
+            xmlText.toLowerCase().includes('access denied')) {
+          throw new Error("Received HTML or error page instead of XML feed");
         }
         
         // Parse the RSS feed using DOMParser
@@ -77,112 +87,165 @@ class RssFeedService {
         console.log(`Found ${itemElements.length} items in feed ${source.name}`);
         
         if (itemElements.length === 0) {
+          // No items found, check if any RSS structure exists
+          const rssElement = xmlDoc.querySelector("rss, feed, rdf\\:RDF");
+          if (!rssElement) {
+            throw new Error("No RSS structure found in response");
+          }
           return [];
         }
         
         const items: RssItem[] = [];
+        let successfullyParsed = 0;
         
         itemElements.forEach((item) => {
-          // Helper function to safely get text content from an element
-          const getElementText = (parent: Element, selectors: string): string => {
-            // Split multiple possible selectors
-            const selectorArray = selectors.split(',').map(s => s.trim());
+          try {
+            // Helper function to safely get text content from an element
+            const getElementText = (parent: Element, selectors: string): string => {
+              // Split multiple possible selectors
+              const selectorArray = selectors.split(',').map(s => s.trim());
+              
+              for (const selector of selectorArray) {
+                try {
+                  const element = parent.querySelector(selector);
+                  if (element && element.textContent) {
+                    return element.textContent;
+                  }
+                } catch (err) {
+                  // Ignore selector errors
+                }
+              }
+              return "";
+            };
             
-            for (const selector of selectorArray) {
-              const element = parent.querySelector(selector);
-              if (element && element.textContent) {
-                return element.textContent;
+            // Extract CDATA content from content:encoded
+            const getContentEncoded = (parent: Element): string => {
+              try {
+                const contentEncoded = parent.querySelector("content\\:encoded, encoded, content");
+                return contentEncoded ? contentEncoded.textContent || "" : "";
+              } catch (err) {
+                return "";
+              }
+            };
+            
+            // Extract categories
+            const getCategories = (parent: Element): string[] => {
+              try {
+                const categoryElements = parent.querySelectorAll("category");
+                const categories: string[] = [];
+                categoryElements.forEach((cat) => {
+                  if (cat.textContent) categories.push(cat.textContent);
+                });
+                return categories;
+              } catch (err) {
+                return [];
+              }
+            };
+            
+            // Extract image URL from content or media:content
+            const getImageUrl = (parent: Element, content: string): string | undefined => {
+              try {
+                // Try media:content first
+                const mediaContent = parent.querySelector("media\\:content, content");
+                if (mediaContent && mediaContent.getAttribute("url")) {
+                  return mediaContent.getAttribute("url") || undefined;
+                }
+                
+                // Try media:thumbnail
+                const mediaThumbnail = parent.querySelector("media\\:thumbnail");
+                if (mediaThumbnail && mediaThumbnail.getAttribute("url")) {
+                  return mediaThumbnail.getAttribute("url") || undefined;
+                }
+                
+                // Try enclosure
+                const enclosure = parent.querySelector("enclosure");
+                if (enclosure && enclosure.getAttribute("url")) {
+                  const type = enclosure.getAttribute("type") || "";
+                  if (type.startsWith("image/")) {
+                    return enclosure.getAttribute("url") || undefined;
+                  }
+                }
+                
+                // Extract from content if available
+                if (content) {
+                  const imgRegex = /<img[^>]+src="([^">]+)"/;
+                  const match = content.match(imgRegex);
+                  return match ? match[1] : undefined;
+                }
+                
+                return undefined;
+              } catch (err) {
+                return undefined;
+              }
+            };
+            
+            // Get title from either title or atom:title
+            const title = getElementText(item, "title, atom:title");
+            
+            // Get link from either link or atom:link
+            let link = getElementText(item, "link, atom:link");
+            if (!link) {
+              const linkElement = item.querySelector("link, atom:link");
+              if (linkElement && linkElement.getAttribute("href")) {
+                link = linkElement.getAttribute("href") || "";
               }
             }
-            return "";
-          };
-          
-          // Extract CDATA content from content:encoded
-          const getContentEncoded = (parent: Element): string => {
-            const contentEncoded = parent.querySelector("content\\:encoded, encoded, content");
-            return contentEncoded ? contentEncoded.textContent || "" : "";
-          };
-          
-          // Extract categories
-          const getCategories = (parent: Element): string[] => {
-            const categoryElements = parent.querySelectorAll("category");
-            const categories: string[] = [];
-            categoryElements.forEach((cat) => {
-              if (cat.textContent) categories.push(cat.textContent);
-            });
-            return categories;
-          };
-          
-          // Extract image URL from content or media:content
-          const getImageUrl = (parent: Element, content: string): string | undefined => {
-            // Try media:content first
-            const mediaContent = parent.querySelector("media\\:content, content");
-            if (mediaContent && mediaContent.getAttribute("url")) {
-              return mediaContent.getAttribute("url") || undefined;
-            }
             
-            // Try enclosure
-            const enclosure = parent.querySelector("enclosure");
-            if (enclosure && enclosure.getAttribute("url")) {
-              return enclosure.getAttribute("url") || undefined;
-            }
+            // Get publication date from either pubDate or published or updated
+            const pubDate = getElementText(item, "pubDate, published, updated, atom:published, atom:updated, dc\\:date");
             
-            // Extract from content if available
-            if (content) {
-              const imgRegex = /<img[^>]+src="([^">]+)"/;
-              const match = content.match(imgRegex);
-              return match ? match[1] : undefined;
-            }
+            const description = getElementText(item, "description, summary, atom:summary");
+            const content = getContentEncoded(item) || getElementText(item, "content, atom:content");
+            const categories = getCategories(item);
+            const creator = getElementText(item, "dc\\:creator, creator, author, atom:author");
+            const guid = getElementText(item, "guid, id, atom:id");
+            const imageUrl = getImageUrl(item, content);
             
-            return undefined;
-          };
-          
-          // Get title from either title or atom:title
-          const title = getElementText(item, "title, atom:title");
-          
-          // Get link from either link or atom:link
-          let link = getElementText(item, "link, atom:link");
-          if (!link) {
-            const linkElement = item.querySelector("link, atom:link");
-            if (linkElement && linkElement.getAttribute("href")) {
-              link = linkElement.getAttribute("href") || "";
+            // Only add if we have required fields
+            if (title && (link || guid) && pubDate) {
+              items.push({
+                title,
+                link: link || guid || "",
+                pubDate,
+                description,
+                content,
+                categories,
+                creator,
+                guid,
+                imageUrl,
+                sourceUrl: source.url,
+                sourceName: source.name
+              });
+              successfullyParsed++;
             }
+          } catch (itemError) {
+            console.error("Error parsing item:", itemError);
           }
-          
-          // Get publication date from either pubDate or published or updated
-          const pubDate = getElementText(item, "pubDate, published, updated, atom:published, atom:updated");
-          
-          const description = getElementText(item, "description, summary, atom:summary");
-          const content = getContentEncoded(item) || getElementText(item, "content, atom:content");
-          const categories = getCategories(item);
-          const creator = getElementText(item, "dc\\:creator, creator, author, atom:author");
-          const guid = getElementText(item, "guid, id, atom:id");
-          const imageUrl = getImageUrl(item, content);
-          
-          items.push({
-            title,
-            link,
-            pubDate,
-            description,
-            content,
-            categories,
-            creator,
-            guid,
-            imageUrl,
-            sourceUrl: source.url,
-            sourceName: source.name
-          });
         });
+        
+        console.log(`Successfully parsed ${successfullyParsed} items from ${source.name}`);
+        
+        if (items.length === 0) {
+          console.warn(`No valid items found in ${source.name}`);
+          return [];
+        }
         
         return items;
       } catch (error) {
         console.error(`Error fetching RSS source ${source.name} with proxy ${this.getCurrentProxy()}:`, error);
+        
+        // Increment attempts and try next proxy
         attempts++;
-        this.switchToNextProxy(); // Try with next proxy
+        
+        // Switch proxy every maxRetries attempts
+        if (attempts % this.maxRetries === 0) {
+          this.switchToNextProxy(); 
+        }
       }
     }
     
     console.error(`Failed to fetch ${source.name} after trying all proxies`);
+    toast.error(`Fehler beim Laden von ${source.name} Feed`);
     return [];
   }
 }

@@ -17,10 +17,41 @@ class RssSourceService {
   private loadRssSources(): void {
     try {
       const savedSources = localStorage.getItem('rss_sources');
-      this.rssSources = savedSources ? JSON.parse(savedSources) : [...DEFAULT_RSS_SOURCES];
+      
+      // If no sources saved, initialize with defaults plus additional AI news sources
+      if (!savedSources) {
+        const additionalSources: RssSource[] = [
+          {
+            name: "Heise KI-News",
+            url: "https://www.heise.de/thema/kuenstliche_intelligenz/feed/",
+            enabled: true
+          },
+          {
+            name: "t3n KI-News",
+            url: "https://t3n.de/tag/kuenstliche-intelligenz/feed/",
+            enabled: true
+          },
+          {
+            name: "Golem KI-News",
+            url: "https://rss.golem.de/rss.php?feed=RSS2.0",
+            enabled: true
+          },
+          {
+            name: "Netzpolitik KI",
+            url: "https://netzpolitik.org/category/ki/feed/",
+            enabled: true
+          }
+        ];
+        
+        this.rssSources = [...DEFAULT_RSS_SOURCES, ...additionalSources];
+        this.saveRssSources();
+      } else {
+        this.rssSources = JSON.parse(savedSources);
+      }
     } catch (error) {
       console.error("Error loading RSS sources:", error);
       this.rssSources = [...DEFAULT_RSS_SOURCES];
+      this.saveRssSources();
     }
   }
   
