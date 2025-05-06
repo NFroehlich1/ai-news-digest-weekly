@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
 import RssSourceService from "./RssSourceService";
@@ -32,6 +33,11 @@ class NewsService {
   public setApiKey(apiKey: string): void {
     this.apiKey = apiKey;
     this.decoderService.setApiKey(apiKey);
+  }
+  
+  // Get the default API key
+  public getDefaultApiKey(): string {
+    return this.apiKey;
   }
   
   // Enable or disable mock data
