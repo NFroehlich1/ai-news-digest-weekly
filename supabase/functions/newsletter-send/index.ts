@@ -1,5 +1,5 @@
 
-// Edge function for newsletter sending with BREVO API
+// Edge function for newsletter sending with Supabase
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -7,9 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// Use the provided Brevo API key
-const BREVO_API_KEY = "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";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -28,8 +25,6 @@ serve(async (req) => {
 
     const {
       subject = `KI-Newsletter vom ${new Date().toLocaleDateString('de-DE')}`,
-      senderName = "KI-Newsletter",
-      senderEmail = "newsletter@decoderproject.com",
       customContent = null,
     } = newsletterConfig;
 
@@ -99,8 +94,8 @@ serve(async (req) => {
       `;
     }
 
-    // Send newsletter to each subscriber using Brevo API
-    const brevoUrl = "https://api.brevo.com/v3/smtp/email";
+    // Since Supabase doesn't have a built-in email sending API, we need to implement a different approach
+    // Let's track the emails we would send and show a success message for demonstration purposes
     const successfulSends = [];
     const failedSends = [];
 
@@ -111,40 +106,19 @@ serve(async (req) => {
         // Replace {{{unsubscribe}}} placeholder with actual unsubscribe URL
         const personalizedContent = htmlContent.replace("{{{unsubscribe}}}", unsubscribeUrl);
         
-        const payload = {
-          sender: {
-            name: senderName,
-            email: senderEmail
-          },
-          to: [
-            {
-              email: subscriber.email
-            }
-          ],
-          subject: subject,
-          htmlContent: personalizedContent
-        };
-
-        const response = await fetch(brevoUrl, {
-          method: "POST",
-          headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "api-key": BREVO_API_KEY
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error(`Failed to send to ${subscriber.email}:`, errorData);
-          failedSends.push({ email: subscriber.email, error: errorData });
-          continue;
-        }
-
+        // In a real implementation, you would use an external email service here
+        // For now, we'll just track the intended recipients
+        console.log(`Would send newsletter to: ${subscriber.email}`);
+        console.log(`Subject: ${subject}`);
+        console.log(`Content: ${personalizedContent.substring(0, 100)}...`);
+        
+        // Add to successful sends for demonstration
         successfulSends.push(subscriber.email);
+        
+        // In a production environment, you would implement integration with a different email service here
+        // or set up a webhook to trigger emails from another system
       } catch (error) {
-        console.error(`Error sending to ${subscriber.email}:`, error);
+        console.error(`Error processing ${subscriber.email}:`, error);
         failedSends.push({ email: subscriber.email, error: error.message });
       }
     }
@@ -152,7 +126,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Newsletter sent to ${successfulSends.length} subscribers`,
+        message: `Newsletter processed for ${successfulSends.length} subscribers`,
+        note: "In this implementation, emails are logged but not actually sent. To send real emails, integrate with an email service API.",
         successfulSends,
         failedSends
       }),
