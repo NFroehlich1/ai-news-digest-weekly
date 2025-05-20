@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +13,7 @@ interface HeaderProps {
   defaultApiKey?: string;
 }
 
-const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey }: HeaderProps) => {
+const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey = "AIzaSyDLVTnP6DxlDqnyXYSZ-i_tkeopxDgm_u0" }: HeaderProps) => {
   const [apiKey, setApiKey] = useState<string>("");
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState<boolean>(false);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
@@ -23,8 +22,10 @@ const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey }: HeaderProps)
   useEffect(() => {
     if (defaultApiKey) {
       setApiKey(defaultApiKey);
+      // Also set the API key immediately for use in the app
+      onApiKeySet(defaultApiKey);
     }
-  }, [defaultApiKey]);
+  }, [defaultApiKey, onApiKeySet]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

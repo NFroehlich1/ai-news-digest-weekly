@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import type { WeeklyDigest, RssItem } from "../types/newsTypes";
 import { supabase } from "@/integrations/supabase/client";
@@ -5,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 class DecoderService {
   private apiKey: string;
   // Default API key for Google AI API
-  private defaultApiKey: string = "AIzaSyA_hFXBg2EOipSEgF7nJxxDET632Kw1YFc";
+  private defaultApiKey: string = "AIzaSyDLVTnP6DxlDqnyXYSZ-i_tkeopxDgm_u0";
   // Default API key for RSS2JSON service (free tier)
   private rss2jsonApiKey: string = "qbcrwnepkv8jmcr09zzxgtsmpnjmwroec9aymj1e";
   // Using Google AI API v1 instead of v1beta
