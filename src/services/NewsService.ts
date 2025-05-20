@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
 import RssSourceService from "./RssSourceService";
@@ -6,6 +7,8 @@ import DigestService from "./DigestService";
 import type { RssItem, RssSource, WeeklyDigest } from "../types/newsTypes";
 import { MOCK_NEWS_ITEMS } from "../data/mockNews";
 import { formatDate, getCurrentWeek, getCurrentYear, getWeekDateRange } from "../utils/dateUtils";
+import { LocalNewsletter } from "../types/newsletterTypes";
+import LocalNewsletterService from "./LocalNewsletterService";
 
 // Re-export types
 export type { RssItem, RssSource, WeeklyDigest };
@@ -18,12 +21,14 @@ class NewsService {
   private rssSourceService: RssSourceService;
   private rssFeedService: RssFeedService;
   private digestService: DigestService;
+  private localNewsletterService: LocalNewsletterService;
   private useMockData: boolean = false;
   
   constructor(apiKey?: string) {
     this.rssSourceService = new RssSourceService();
     this.rssFeedService = new RssFeedService();
     this.digestService = new DigestService();
+    this.localNewsletterService = new LocalNewsletterService();
     this.decoderService = new DecoderService(apiKey);
     this.apiKey = apiKey || this.decoderService.getRss2JsonApiKey();
   }
@@ -282,6 +287,26 @@ class NewsService {
   
   public groupNewsByWeek(items: RssItem[]): Record<string, WeeklyDigest> {
     return this.digestService.groupNewsByWeek(items);
+  }
+  
+  // Save newsletter to localStorage using LocalNewsletterService
+  public async saveNewsletterToLocal(newsletter: LocalNewsletter): Promise<void> {
+    return this.localNewsletterService.saveNewsletter(newsletter);
+  }
+  
+  // Get newsletters from localStorage using LocalNewsletterService
+  public async getLocalNewsletters(): Promise<LocalNewsletter[]> {
+    return this.localNewsletterService.getNewsletters();
+  }
+  
+  // Clear newsletters from localStorage using LocalNewsletterService
+  public async clearLocalNewsletters(): Promise<void> {
+    return this.localNewsletterService.clearNewsletters();
+  }
+  
+  // Generate demo data for newsletters using LocalNewsletterService
+  public async generateDemoNewsletters(): Promise<void> {
+    return this.localNewsletterService.generateDemoData();
   }
   
   // Modify the newsletter generation method to save to localStorage instead of Supabase

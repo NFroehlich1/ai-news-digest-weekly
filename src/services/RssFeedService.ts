@@ -1,4 +1,3 @@
-
 import { RssItem, RssSource } from '../types/newsTypes';
 import { toast } from "sonner";
 
@@ -8,13 +7,10 @@ import { toast } from "sonner";
 class RssFeedService {
   // Use a more reliable CORS proxy with fallbacks
   private corsProxies: string[] = [
-    "https://api.allorigins.win/raw?url=",
+    "https://api.allorigins.win/get?url=", // Changed to use ?get instead of ?raw for better compatibility
     "https://corsproxy.io/?",
     "https://cors-anywhere.herokuapp.com/",
     "https://api.codetabs.com/v1/proxy?quest=",
-    "https://cors-proxy.taskcluster.net/",
-    "https://crossorigin.me/",
-    "https://yacdn.org/proxy/",
     "https://thingproxy.freeboard.io/fetch/"
   ];
   
@@ -33,6 +29,17 @@ class RssFeedService {
     return this.getCurrentProxy();
   }
   
+  // Extract XML content from AllOrigins response if needed
+  private extractXmlFromResponse(response: any): string {
+    // Check if this is an AllOrigins response with contents property
+    if (response && typeof response === 'object' && response.contents) {
+      return response.contents;
+    }
+    
+    // Otherwise return the response as is
+    return response;
+  }
+  
   // Fetch from a specific RSS source
   public async fetchRssSource(source: RssSource): Promise<RssItem[]> {
     let attempts = 0;
@@ -48,7 +55,7 @@ class RssFeedService {
         
         const response = await fetch(proxyUrl, {
           headers: {
-            'Accept': 'application/xml, text/xml, application/rss+xml, application/atom+xml, */*',
+            'Accept': 'application/json, application/xml, text/xml, application/rss+xml, application/atom+xml, */*',
             'User-Agent': 'Mozilla/5.0 (compatible; NewsDigestApp/1.0)'
           },
           cache: 'no-store', // Prevent caching issues
@@ -58,7 +65,18 @@ class RssFeedService {
           throw new Error(`Failed to fetch RSS feed: ${response.status} ${response.statusText}`);
         }
         
-        const xmlText = await response.text();
+        // Handle different response types
+        let xmlText;
+        const contentType = response.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/json')) {
+          // This is likely from AllOrigins which returns JSON with contents
+          const jsonResponse = await response.json();
+          xmlText = this.extractXmlFromResponse(jsonResponse);
+        } else {
+          // Regular XML response
+          xmlText = await response.text();
+        }
         
         if (!xmlText || xmlText.trim().length === 0) {
           throw new Error("Empty RSS feed response");

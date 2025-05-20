@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Rss } from "lucide-react";
@@ -16,6 +16,14 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentWeekDigest, setCurrentWeekDigest] = useState<WeeklyDigestType | null>(null);
   const [allNews, setAllNews] = useState<Record<string, WeeklyDigestType>>({});
+
+  // Automatically load news on component mount
+  useEffect(() => {
+    // Load news when the component mounts or when newsService changes
+    if (newsService) {
+      loadNews();
+    }
+  }, [newsService]);
 
   const loadNews = async () => {
     if (!newsService) return;
@@ -97,7 +105,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
               onClick={loadNews} 
               disabled={isLoading}
             >
-              {isLoading ? "Lädt..." : "Nachrichten laden"}
+              {isLoading ? "Lädt..." : "Nachrichten neu laden"}
             </Button>
           </CardHeader>
           <CardContent>
