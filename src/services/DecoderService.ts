@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import type { WeeklyDigest, RssItem } from "../types/newsTypes";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +25,66 @@ class DecoderService {
   
   getDefaultApiKey(): string {
     return this.defaultApiKey;
+  }
+  
+  // Verify if the API key is working correctly
+  async verifyApiKey(): Promise<{ isValid: boolean; message: string }> {
+    try {
+      if (!this.apiKey) {
+        return { isValid: false, message: "API-Schlüssel fehlt" };
+      }
+      
+      console.log("Verifying Google AI API key...");
+      
+      const testPrompt = "Hello, this is a test. Please respond with 'API key is working'";
+      const apiUrl = `${this.aiApiUrl}?key=${this.apiKey}`;
+      
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: testPrompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 50,
+          }
+        })
+      });
+      
+      console.log("API response status:", response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("API key verification failed:", errorData);
+        
+        // Check for specific error types
+        if (response.status === 403) {
+          return { isValid: false, message: "API-Schlüssel ungültig oder keine Zugriffsrechte" };
+        } else if (response.status === 429) {
+          return { isValid: false, message: "Anfragelimit für den API-Schlüssel überschritten" };
+        }
+        
+        return { isValid: false, message: `API-Fehler: ${response.status}` };
+      }
+      
+      const data = await response.json();
+      const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      console.log("API test response:", generatedText);
+      
+      return { isValid: true, message: "API-Schlüssel funktioniert" };
+    } catch (error) {
+      console.error("API key verification error:", error);
+      return { isValid: false, message: `Verbindungsfehler: ${(error as Error).message}` };
+    }
   }
   
   // Extract metadata from a URL using Google AI API
@@ -78,35 +137,13 @@ class DecoderService {
           })
         });
         
+        // Log detailed API response info for debugging
+        console.log("API Status:", response.status);
+        
         if (!response.ok) {
-          // Fallback to URL-based extraction but with a better title generation
-          const urlPath = new URL(url).pathname;
-          const slug = urlPath.split('/').pop() || '';
-          const titleFromSlug = slug
-            .replace(/-/g, ' ')
-            .replace(/\b\w/g, l => l.toUpperCase());
-            
-          const metadata = {
-            title: titleFromSlug || "KI-Forschung und Innovation",
-            description: "Ein Artikel über aktuelle KI-Entwicklungen und deren Auswirkungen.",
-            categories: ["KI", "Technologie", "Innovation"],
-            imageUrl: "https://the-decoder.de/wp-content/uploads/2022/01/logo.png",
-            sourceName: "The Decoder"
-          };
-          
-          // Generate AI summary as well
-          const aiSummary = await this.generateArticleSummary({
-            title: metadata.title,
-            description: metadata.description,
-            link: url,
-            pubDate: new Date().toISOString(),
-            content: ""
-          });
-          
-          return {
-            ...metadata,
-            aiSummary
-          };
+          const errorText = await response.text();
+          console.error("API Error:", errorText);
+          throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
         }
         
         const data = await response.json();
@@ -187,7 +224,8 @@ class DecoderService {
       console.log("Google AI API response status:", response.status);
       
       if (!response.ok) {
-        console.error("API error:", await response.text());
+        const errorText = await response.text();
+        console.error("API error:", errorText);
         // If API fails, create placeholder data based on URL
         const domain = new URL(url).hostname;
         return this.generateFallbackMetadata(url, domain);
@@ -323,7 +361,8 @@ class DecoderService {
       });
       
       if (!response.ok) {
-        console.error("AI summary generation API error:", await response.text());
+        const errorText = await response.text();
+        console.error("AI summary generation API error:", errorText);
         return article.description || "";
       }
       
@@ -347,6 +386,13 @@ class DecoderService {
   // Generate newsletter summary
   async generateSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
     try {
+      // First verify if the API key is working
+      const { isValid, message } = await this.verifyApiKey();
+      if (!isValid) {
+        toast.error(`API-Schlüssel Problem: ${message}`);
+        throw new Error(`API-Schlüssel Problem: ${message}`);
+      }
+      
       // Use selected articles if provided, otherwise use top 5 from digest
       const items = selectedArticles || digest.items.slice(0, 5);
       
@@ -385,6 +431,7 @@ class DecoderService {
       Schreibe in einem freundlichen, informativen Stil mit Markdown-Formatierung.`;
       
       console.log("Generating comprehensive newsletter for digest:", digest.id);
+      console.log("Prompt for AI:", prompt.substring(0, 200) + "...");
       
       // Use Google AI API
       const url = `${this.aiApiUrl}?key=${this.apiKey}`;
@@ -410,25 +457,32 @@ class DecoderService {
         })
       });
       
+      console.log("API response status:", response.status);
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Google AI API error for newsletter generation:", errorData);
+        const errorText = await response.text();
+        console.error("Google AI API error for newsletter generation:", errorText);
+        toast.error(`Fehler beim API-Aufruf: ${response.status}`);
+        
         // Fallback to formatted newsletter if API fails
         return this.formatComprehensiveNewsletter(digest, items, linkedInPage);
       }
       
       const data = await response.json();
+      console.log("API response structure:", Object.keys(data));
       
       // Extract the generated text from the response
       const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
       
       if (!generatedText) {
         console.error("No newsletter text generated by API");
+        toast.error("Keine Inhalte von der API erhalten");
         // Fallback to formatted newsletter if Google AI API fails
         return this.formatComprehensiveNewsletter(digest, items, linkedInPage);
       }
       
       console.log("Successfully generated comprehensive newsletter");
+      toast.success("Newsletter erfolgreich generiert");
       
       // After generating the newsletter, save it to the subscribers who have confirmed
       try {

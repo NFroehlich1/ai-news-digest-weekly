@@ -3,8 +3,9 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Rss, Key } from "lucide-react";
+import { Rss, Key, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import DecoderService from "@/services/DecoderService";
 
 interface HeaderProps {
   onApiKeySet: (apiKey: string) => void;
@@ -16,6 +17,7 @@ interface HeaderProps {
 const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey }: HeaderProps) => {
   const [apiKey, setApiKey] = useState<string>("");
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState<boolean>(false);
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
   
   // Initialize with default API key if provided
   useEffect(() => {
@@ -24,16 +26,33 @@ const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey }: HeaderProps)
     }
   }, [defaultApiKey]);
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!apiKey.trim()) {
       toast.error("Bitte gib einen API-Schlüssel ein.");
       return;
     }
     
-    onApiKeySet(apiKey.trim());
-    toast.success("API-Schlüssel gespeichert!");
-    setApiKeyDialogOpen(false);
+    setIsVerifying(true);
+    
+    try {
+      // Verify if the API key is working
+      const decoderService = new DecoderService(apiKey.trim());
+      const { isValid, message } = await decoderService.verifyApiKey();
+      
+      if (isValid) {
+        onApiKeySet(apiKey.trim());
+        toast.success("API-Schlüssel verifiziert und gespeichert!");
+        setApiKeyDialogOpen(false);
+      } else {
+        toast.error(`API-Schlüssel Problem: ${message}`);
+      }
+    } catch (error) {
+      console.error("API key verification error:", error);
+      toast.error(`Fehler bei der Überprüfung: ${(error as Error).message}`);
+    } finally {
+      setIsVerifying(false);
+    }
   };
   
   return (
@@ -61,6 +80,14 @@ const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey }: HeaderProps)
                 <DialogDescription>
                   Geben Sie einen gültigen API-Schlüssel für die Google/Gemini API ein. 
                   Der Schlüssel wird lokal in Ihrem Browser gespeichert.
+                  <a 
+                    href="https://makersuite.google.com/app/apikey" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline block mt-2"
+                  >
+                    Hier können Sie einen neuen API-Schlüssel erstellen
+                  </a>
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 pt-4">
@@ -74,7 +101,20 @@ const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey }: HeaderProps)
                   />
                 </div>
                 <DialogFooter>
-                  <Button type="submit">Speichern</Button>
+                  <Button 
+                    type="submit" 
+                    disabled={isVerifying}
+                    className="flex items-center gap-2"
+                  >
+                    {isVerifying ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        Wird verifiziert...
+                      </>
+                    ) : (
+                      <>Speichern & Verifizieren</>
+                    )}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
