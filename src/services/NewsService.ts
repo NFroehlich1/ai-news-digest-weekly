@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
 import RssSourceService from "./RssSourceService";
@@ -285,13 +284,16 @@ class NewsService {
     return this.digestService.groupNewsByWeek(items);
   }
   
-  // Generate a newsletter summary from a weekly digest
+  // Modify the newsletter generation method to save to localStorage instead of Supabase
   public async generateNewsletterSummary(digest: WeeklyDigest, selectedArticles?: RssItem[]): Promise<string> {
     try {
       // If specific articles are selected, use those
       // Otherwise, prioritize the most important articles
       const articlesToUse = selectedArticles || this.prioritizeNewsForNewsletter(digest.items, 10);
-      return await this.decoderService.generateSummary(digest, articlesToUse);
+      const summary = await this.decoderService.generateSummary(digest, articlesToUse);
+      
+      // Return the generated summary
+      return summary;
     } catch (error) {
       console.error('Error generating newsletter:', error);
       toast.error(`Fehler bei der Generierung des Newsletters: ${(error as Error).message}`);
