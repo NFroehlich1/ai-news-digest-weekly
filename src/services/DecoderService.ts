@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import type { WeeklyDigest, RssItem } from "../types/newsTypes";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +9,7 @@ class DecoderService {
   private defaultApiKey: string = "AIzaSyDLVTnP6DxlDqnyXYSZ-i_tkeopxDgm_u0";
   // Default API key for RSS2JSON service (free tier)
   private rss2jsonApiKey: string = "qbcrwnepkv8jmcr09zzxgtsmpnjmwroec9aymj1e";
-  // Using Google AI API v1 instead of v1beta
+  // Using Google AI API v1 for Gemini 1.5 Pro
   private aiApiUrl = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent";
   
   constructor(apiKey?: string) {
@@ -87,7 +88,7 @@ class DecoderService {
     }
   }
   
-  // Improved function for generating article summaries
+  // Function for generating article summaries
   async generateArticleSummary(article: Partial<RssItem>): Promise<string> {
     try {
       if (!this.apiKey) {
@@ -392,8 +393,8 @@ class DecoderService {
         throw new Error(`API-Schlüssel Problem: ${message}`);
       }
       
-      // Use selected articles if provided, otherwise use top 5 from digest
-      const items = selectedArticles || digest.items.slice(0, 5);
+      // Use selected articles if provided, otherwise use ALL from digest (not just 5)
+      const items = selectedArticles || digest.items;
       
       // Get titles and descriptions to create a prompt
       const contentSummaries = items.map(item => 
@@ -406,7 +407,7 @@ class DecoderService {
       
       // Create a prompt for Google AI with more comprehensive instructions
       const prompt = `Erstelle einen ausführlichen, detaillierten Newsletter im LINKIT-Format für KW ${digest.weekNumber} (${digest.dateRange}) 
-      basierend auf diesen AI-News-Artikeln:
+      basierend auf diesen ${items.length} AI-News-Artikeln:
       
       ${contentSummaries}
       
@@ -416,7 +417,7 @@ class DecoderService {
       - Kalendarwoche und Datum
       - Persönliche Anrede
       - Umfassende Einleitung mit Überblick über die wichtigsten Themen der Woche (2-3 Absätze)
-      - Detaillierte Zusammenfassungen der Nachrichtenartikel mit:
+      - Detaillierte Zusammenfassungen von ALLEN ${items.length} Nachrichtenartikeln mit:
           * prägnanten Überschriften
           * umfangreichen Beschreibungen (mindestens 4-5 Sätze pro Artikel)
           * Einordnung der Bedeutung für die KI-Branche
@@ -426,13 +427,13 @@ class DecoderService {
       - Abschluss mit Hinweis auf LINKIT-Veranstaltungen${linkedInReference}
       - Signatur des LINKIT-Teams
       
-      Der Newsletter soll einen Wochenrückblick-Charakter haben, alle Aspekte der Artikel integrieren und tiefgreifende Einblicke bieten.
+      Der Newsletter soll einen Wochenrückblick-Charakter haben, alle Aspekte ALLER bereitgestellten Artikel integrieren und tiefgreifende Einblicke bieten.
       Schreibe in einem freundlichen, informativen Stil mit Markdown-Formatierung.`;
       
-      console.log("Generating comprehensive newsletter for digest:", digest.id);
+      console.log(`Generating comprehensive newsletter for digest (${items.length} articles):`, digest.id);
       console.log("Prompt for AI:", prompt.substring(0, 200) + "...");
       
-      // Use Google AI API
+      // Use Google AI API with Gemini 1.5 Pro
       const url = `${this.aiApiUrl}?key=${this.apiKey}`;
       const response = await fetch(url, {
         method: "POST",
@@ -451,7 +452,7 @@ class DecoderService {
             temperature: 0.7,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 3000, // Increased token limit for more comprehensive content
+            maxOutputTokens: 8000, // Increased token limit for more comprehensive content
           }
         })
       });
@@ -497,7 +498,7 @@ class DecoderService {
       console.error("Newsletter generation error:", error);
       toast.error(`Fehler bei der Zusammenfassung: ${(error as Error).message}`);
       // Fallback to formatted newsletter if there's an error
-      return this.formatComprehensiveNewsletter(digest, selectedArticles || digest.items.slice(0, 5), linkedInPage);
+      return this.formatComprehensiveNewsletter(digest, selectedArticles || digest.items, linkedInPage);
     }
   }
   
@@ -513,7 +514,7 @@ Hey zusammen,
 
 willkommen zu unserem ausführlichen Wochenrückblick! Die vergangene Woche brachte einige bedeutende Entwicklungen im KI-Bereich, die wir für euch zusammengefasst haben. Von revolutionären Fortschritten in der KI-Forschung bis hin zu praktischen Anwendungen in verschiedenen Industrien – diese Ausgabe bietet einen tiefgreifenden Einblick in die wichtigsten Themen der Woche.
 
-Diese Entwicklungen könnten nicht nur die Forschungslandschaft verändern, sondern auch direkte Auswirkungen auf kommende Projekte und Anforderungen in der Berufswelt haben. Hier sind die wichtigsten Neuigkeiten der Woche:
+Diese Entwicklungen könnten nicht nur die Forschungslandschaft verändern, sondern auch direkte Auswirkungen auf kommende Projekte und Anforderungen in der Berufswelt haben. Hier sind alle wichtigen Neuigkeiten der Woche:
 
 ${items.map((item, idx) => `
 ### ${item.title}
