@@ -2,11 +2,12 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Rss } from "lucide-react";
+import { Calendar, Rss, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import WeeklyDigest from "@/components/WeeklyDigest";
 import RssSourceManager from "@/components/RssSourceManager";
 import NewsService, { WeeklyDigest as WeeklyDigestType } from "@/services/NewsService";
+import NewsCardSkeleton from "@/components/NewsCardSkeleton";
 
 interface NewsContentTabProps {
   newsService: NewsService | null;
@@ -16,6 +17,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentWeekDigest, setCurrentWeekDigest] = useState<WeeklyDigestType | null>(null);
   const [allNews, setAllNews] = useState<Record<string, WeeklyDigestType>>({});
+  const [loadingStatus, setLoadingStatus] = useState<string>("");
 
   // Automatically load news on component mount
   useEffect(() => {
@@ -28,9 +30,14 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
   const loadNews = async () => {
     if (!newsService) return;
     setIsLoading(true);
+    setLoadingStatus("Initialisiere News-Abruf...");
     
     try {
+      // Zeige Fortschritt an
+      toast.info("News werden abgerufen...");
+      
       // Fetch only from enabled sources
+      setLoadingStatus("Rufe RSS-Feeds ab...");
       const news = await newsService.fetchNews();
       
       if (news.length === 0) {
@@ -39,6 +46,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
         return;
       }
       
+      setLoadingStatus("Gruppiere Nachrichten nach Woche...");
       // Group by week
       const weeklyDigests = newsService.groupNewsByWeek(news);
       setAllNews(weeklyDigests);
@@ -47,14 +55,16 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
       const currentWeekKey = Object.keys(weeklyDigests)[0];
       if (currentWeekKey) {
         setCurrentWeekDigest(weeklyDigests[currentWeekKey]);
+        setLoadingStatus("Fertig!");
       }
       
-      toast.success("Nachrichten erfolgreich geladen");
+      toast.success(`${news.length} Nachrichten erfolgreich geladen`);
     } catch (error) {
       console.error("Error loading news:", error);
       toast.error(`Fehler beim Laden der Nachrichten: ${(error as Error).message}`);
     } finally {
       setIsLoading(false);
+      setLoadingStatus("");
     }
   };
 
@@ -63,6 +73,21 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
     if (newsService) {
       loadNews();
     }
+  };
+
+  const renderLoadingState = () => {
+    return (
+      <div className="space-y-4">
+        <p className="text-center text-muted-foreground mb-4">
+          {loadingStatus || "Nachrichten werden geladen..."}
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <NewsCardSkeleton key={i} hasImage={i % 2 === 0} />
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -104,15 +129,24 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
             <Button 
               onClick={loadNews} 
               disabled={isLoading}
+              className="gap-2"
             >
-              {isLoading ? "Lädt..." : "Nachrichten neu laden"}
+              {isLoading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Lädt...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Nachrichten neu laden
+                </>
+              )}
             </Button>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="flex justify-center py-8">
-                <p>Nachrichten werden geladen...</p>
-              </div>
+              renderLoadingState()
             ) : currentWeekDigest ? (
               <WeeklyDigest 
                 digest={currentWeekDigest} 
@@ -128,6 +162,14 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
                 <p className="text-center text-muted-foreground mt-2">
                   Stellen Sie sicher, dass mindestens eine RSS-Quelle aktiviert ist.
                 </p>
+                <Button 
+                  onClick={loadNews}
+                  className="mt-6"
+                  variant="outline"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Jetzt Nachrichten laden
+                </Button>
               </div>
             )}
           </CardContent>

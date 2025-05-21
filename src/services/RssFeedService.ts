@@ -1,3 +1,4 @@
+
 import { RssItem, RssSource } from '../types/newsTypes';
 import { toast } from "sonner";
 
@@ -9,9 +10,9 @@ class RssFeedService {
   private corsProxies: string[] = [
     "https://api.allorigins.win/get?url=", // Changed to use ?get instead of ?raw for better compatibility
     "https://corsproxy.io/?",
-    "https://cors-anywhere.herokuapp.com/",
     "https://api.codetabs.com/v1/proxy?quest=",
-    "https://thingproxy.freeboard.io/fetch/"
+    "https://thingproxy.freeboard.io/fetch/",
+    "https://cors-anywhere.herokuapp.com/" // Moved to last as it often requires authorization
   ];
   
   private currentProxyIndex: number = 0;
@@ -40,8 +41,83 @@ class RssFeedService {
     return response;
   }
   
-  // Fetch from a specific RSS source
-  public async fetchRssSource(source: RssSource): Promise<RssItem[]> {
+  // Special handling for The Decoder website
+  private async fetchTheDecoderFeed(source: RssSource): Promise<RssItem[]> {
+    try {
+      console.log("Using specialized handling for The Decoder feed");
+      // The Decoder doesn't have a proper RSS feed, so we're fetching directly from the website
+      const response = await fetch("https://corsproxy.io/?https://the-decoder.de/", {
+        headers: {
+          'Accept': 'text/html',
+          'User-Agent': 'Mozilla/5.0 (compatible; NewsDigestApp/1.0)'
+        },
+        cache: 'no-store'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch The Decoder: ${response.status}`);
+      }
+      
+      const htmlContent = await response.text();
+      
+      // Extract articles from HTML
+      const items: RssItem[] = [];
+      const articleRegex = /<article[^>]*>([\s\S]*?)<\/article>/gi;
+      const titleRegex = /<h2[^>]*>\s*<a[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i;
+      const imageRegex = /<img[^>]*src="([^"]+)"[^>]*>/i;
+      const dateRegex = /<time[^>]*datetime="([^"]+)"[^>]*>/i;
+      
+      let article;
+      let count = 0;
+      
+      while ((article = articleRegex.exec(htmlContent)) !== null && count < 10) {
+        try {
+          const articleContent = article[1];
+          const titleMatch = articleContent.match(titleRegex);
+          const imageMatch = articleContent.match(imageRegex);
+          const dateMatch = articleContent.match(dateRegex);
+          
+          if (titleMatch) {
+            const link = titleMatch[1];
+            const title = titleMatch[2].trim();
+            const imageUrl = imageMatch ? imageMatch[1] : undefined;
+            const pubDate = dateMatch ? new Date(dateMatch[1]).toISOString() : new Date().toISOString();
+            
+            items.push({
+              title,
+              link,
+              pubDate,
+              description: `KI-Artikel von The Decoder: ${title}`,
+              content: "",
+              categories: ["KI", "Technologie", "The Decoder"],
+              imageUrl,
+              sourceUrl: source.url,
+              sourceName: "The Decoder"
+            });
+            
+            count++;
+          }
+        } catch (itemError) {
+          console.error("Error extracting The Decoder article:", itemError);
+        }
+      }
+      
+      console.log(`Successfully extracted ${items.length} articles from The Decoder`);
+      return items;
+    } catch (error) {
+      console.error("Error in specialized The Decoder handling:", error);
+      return this.fallbackToStandardFetch(source);
+    }
+  }
+  
+  // Fallback to standard RSS fetching when specialized handling fails
+  private async fallbackToStandardFetch(source: RssSource): Promise<RssItem[]> {
+    console.log("Falling back to standard RSS fetch for:", source.name);
+    return this.fetchStandardRssFeed(source);
+  }
+  
+  // Standard RSS feed fetching
+  private async fetchStandardRssFeed(source: RssSource): Promise<RssItem[]> {
     let attempts = 0;
     const maxAttempts = this.corsProxies.length * this.maxRetries;
     
@@ -265,6 +341,19 @@ class RssFeedService {
     console.error(`Failed to fetch ${source.name} after trying all proxies`);
     toast.error(`Fehler beim Laden von ${source.name} Feed`);
     return [];
+  }
+  
+  // Fetch from a specific RSS source
+  public async fetchRssSource(source: RssSource): Promise<RssItem[]> {
+    console.log(`Starting fetch for source: ${source.name} (${source.url})`);
+    
+    // Special handling for The Decoder
+    if (source.url.includes('the-decoder.de')) {
+      return this.fetchTheDecoderFeed(source);
+    }
+    
+    // Standard handling for other RSS feeds
+    return this.fetchStandardRssFeed(source);
   }
 }
 

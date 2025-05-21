@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import type { WeeklyDigest, RssItem } from "../types/newsTypes";
 import { supabase } from "@/integrations/supabase/client";
@@ -88,6 +87,88 @@ class DecoderService {
     }
   }
   
+  // Verbesserte Funktion zur Generierung von Artikel-Zusammenfassungen
+  async generateArticleSummary(article: Partial<RssItem>): Promise<string> {
+    try {
+      if (!this.apiKey) {
+        throw new Error("API-Schlüssel nicht gesetzt");
+      }
+      
+      const apiUrl = `${this.aiApiUrl}?key=${this.apiKey}`;
+      
+      // Optimierter Prompt für bessere Zusammenfassungen
+      const prompt = `
+      Erstelle eine präzise, informative Zusammenfassung (1-3 Sätze) für den folgenden Artikel:
+      
+      Titel: ${article.title}
+      Beschreibung: ${article.description || ""}
+      URL: ${article.link}
+      ${article.content ? `Inhalt: ${article.content.substring(0, 500)}...` : ""}
+      ${article.sourceName ? `Quelle: ${article.sourceName}` : ""}
+      
+      Die Zusammenfassung soll:
+      1. Den Kerninhalt des Artikels erfassen
+      2. Auf Deutsch sein und in einem sachlichen Ton
+      3. Relevante technische Begriffe und Namen enthalten
+      4. Speziell für KI-News geeignet sein
+      
+      Antworte nur mit der Zusammenfassung, ohne Einleitung oder Abschluss.
+      `;
+      
+      console.log("Requesting improved AI summary for article:", article.title);
+      
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.4, // Etwas höher für bessere Variation
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 300, // Erhöht für längere Zusammenfassungen
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("AI summary generation API error:", errorText);
+        return article.description || "";
+      }
+      
+      const data = await response.json();
+      const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      console.log("Generated AI summary:", summary);
+      
+      if (!summary) {
+        return article.description || "";
+      }
+      
+      // Clean up the summary (remove quotes, trim, etc.)
+      return summary.replace(/^["']|["']$/g, '').trim();
+    } catch (error) {
+      console.error("Summary generation error:", error);
+      // Verbesserte Fallback-Logik
+      if (article.description && article.description.length > 10) {
+        return article.description;
+      } else if (article.title) {
+        return `Artikel über ${article.title.split(' ').slice(0, 3).join(' ')}...`;
+      } else {
+        return "Artikel über KI-Technologie und Innovation.";
+      }
+    }
+  }
+
   // Extract metadata from a URL using Google AI API
   async extractArticleMetadata(url: string): Promise<Partial<RssItem>> {
     try {
@@ -99,88 +180,72 @@ class DecoderService {
       
       // For The Decoder articles, ensure we get a proper title instead of using a placeholder
       if (url.includes('the-decoder.de')) {
-        // Use Google AI API to extract a proper title and metadata
-        const apiUrl = `${this.aiApiUrl}?key=${this.apiKey}`;
-        
-        const prompt = `
-        Extract detailed metadata from this URL: ${url}
-        
-        Please provide the following information as a JSON object:
-        1. title: The specific title of the article (NOT a generic placeholder like 'AI-Artikel von The Decoder')
-        2. description: A proper and descriptive summary 
-        3. categories: Array of categories/tags relevant to the content (max 3)
-        4. imageUrl: URL of the main image (if any)
-        
-        For The Decoder articles specifically, make sure to give an accurate, specific title that reflects the actual content.
-        Return ONLY a valid JSON object without any explanations or markdown.
-        `;
-        
-        console.log("Requesting detailed metadata for The Decoder article");
-        const response = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: prompt }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.2,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 1024,
-            }
-          })
-        });
-        
-        // Log detailed API response info for debugging
-        console.log("API Status:", response.status);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("API Error:", errorText);
-          throw new Error(`API-Fehler: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        
-        if (!generatedText) {
-          return this.generateFallbackMetadata(url, "the-decoder.de");
-        }
-        
-        // Extract JSON from text
-        let jsonText = generatedText;
-        const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          jsonText = jsonMatch[0];
-        }
+        console.log("Specialized handling for The Decoder article metadata");
         
         try {
-          const metadata = JSON.parse(jsonText);
+          // Direktes Abrufen der Artikelseite über CORS Proxy
+          const proxyUrl = `https://corsproxy.io/?${url}`;
+          const response = await fetch(proxyUrl, {
+            headers: {
+              'Accept': 'text/html',
+              'User-Agent': 'Mozilla/5.0 (compatible; NewsDigestApp/1.0)'
+            }
+          });
           
-          // Generate an AI summary after getting metadata
-          const aiSummary = await this.generateArticleSummary({
-            title: metadata.title,
-            description: metadata.description,
+          if (!response.ok) {
+            throw new Error(`Failed to fetch article: ${response.status}`);
+          }
+          
+          const html = await response.text();
+          
+          // Extraktion von Metadaten aus HTML
+          const titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/);
+          const title = titleMatch ? titleMatch[1].trim() : url.split('/').pop()?.replace(/-/g, ' ');
+          
+          // Extrahieren der Beschreibung
+          const descMatch = html.match(/<meta[^>]*name="description"[^>]*content="([^"]+)"/);
+          const description = descMatch ? descMatch[1] : "";
+          
+          // Bild URL extrahieren
+          const imgMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/);
+          const imageUrl = imgMatch ? imgMatch[1] : undefined;
+          
+          // AI Zusammenfassung generieren mit dem Inhalt
+          let content = "";
+          const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/);
+          if (articleMatch) {
+            // Extrahieren des eigentlichen Artikeltexts
+            const articleHtml = articleMatch[1];
+            const textOnly = articleHtml.replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim()
+              .substring(0, 1500);
+            content = textOnly;
+          }
+          
+          const metadata = {
+            title: title || "Artikel von The Decoder",
+            description: description || "Ein Artikel über KI und Technologie",
+            content: content,
             link: url,
-            pubDate: new Date().toISOString(),
-            content: ""
+            categories: ["KI", "Technologie", "The Decoder"],
+            imageUrl,
+            sourceName: "The Decoder"
+          };
+          
+          // Generate AI summary using extracted content
+          const aiSummary = await this.generateArticleSummary({
+            ...metadata,
+            pubDate: new Date().toISOString()
           });
           
           return {
             ...metadata,
-            link: url,
-            sourceName: "The Decoder",
             aiSummary
           };
-        } catch (parseError) {
-          return this.generateFallbackMetadata(url, "the-decoder.de");
+        } catch (scrapingError) {
+          console.error("Error scraping The Decoder article:", scrapingError);
+          // Fallback to AI extraction
         }
       }
       
