@@ -310,12 +310,12 @@ class NewsService {
   }
   
   // Modify the newsletter generation method to save to localStorage instead of Supabase
-  public async generateNewsletterSummary(digest: WeeklyDigest, selectedArticles?: RssItem[]): Promise<string> {
+  public async generateNewsletterSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
     try {
       // If specific articles are selected, use those
       // Otherwise, prioritize the most important articles
       const articlesToUse = selectedArticles || this.prioritizeNewsForNewsletter(digest.items, 10);
-      const summary = await this.decoderService.generateSummary(digest, articlesToUse);
+      const summary = await this.decoderService.generateSummary(digest, articlesToUse, linkedInPage);
       
       // Return the generated summary
       return summary;
