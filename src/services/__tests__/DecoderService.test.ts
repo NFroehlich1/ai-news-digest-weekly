@@ -1,3 +1,4 @@
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import DecoderService from '../DecoderService';
 import type { RssItem, WeeklyDigest } from '@/types/newsTypes';
@@ -34,6 +35,9 @@ describe('DecoderService', () => {
     it('should generate prompt with truncated description for items without aiSummary and full aiSummary for others', async () => {
       // Mock verifyApiKey to be successful
       const verifyApiKeySpy = vi.spyOn(decoderService, 'verifyApiKey').mockResolvedValue({ isValid: true, message: 'API key is valid' });
+
+      // Mock the getUniqueArticles method
+      const getUniqueArticlesSpy = vi.spyOn(decoderService as any, 'getUniqueArticles').mockImplementation((items) => items);
 
       const mockDigest: WeeklyDigest = {
         id: '2023-W40',

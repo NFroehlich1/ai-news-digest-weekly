@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import NewsCard from "./NewsCard";
 import { WeeklyDigest as WeeklyDigestType, RssItem } from "@/services/NewsService";
-import DecoderService from "@/services/DecoderService";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
@@ -29,6 +28,11 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   const [prioritizedArticles, setPrioritizedArticles] = useState<RssItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
+  // Generate a unique identifier for an article (guid or link)
+  const getArticleId = (article: RssItem): string => {
+    return article.guid || article.link;
+  };
+  
   const handleGenerateSummary = async () => {
     if (generatedContent) { // If content already exists, this is a "regenerate" action
       setGeneratedContent(null); // Clear old content to show loading state (skeletons)
@@ -36,14 +40,22 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     setIsGenerating(true);
     
     try {
-      const newsService = new NewsService(apiKey); // Corrected to use NewsService as per previous refactor
-      const newsService = new NewsService(apiKey); // Corrected to use NewsService as per previous refactor
+      const newsService = new NewsService(apiKey); 
       
       // Add LinkedIn page to summary request
       const linkedInPage = "https://www.linkedin.com/company/linkit-karlsruhe/posts/?feedView=all";
-      const summary = await newsService.generateNewsletterSummary( // Corrected to use newsService.generateNewsletterSummary
+      
+      // Use selected articles if available, or prioritized articles if available
+      let articlesToUse = digest.items;
+      if (selectedArticles && selectedArticles.length > 0) {
+        articlesToUse = selectedArticles;
+      } else if (prioritizedArticles.length > 0) {
+        articlesToUse = prioritizedArticles;
+      }
+      
+      const summary = await newsService.generateNewsletterSummary(
         digest, 
-        selectedArticles || prioritizedArticles.length > 0 ? prioritizedArticles : undefined,
+        articlesToUse,
         linkedInPage
       );
       
@@ -65,7 +77,11 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   const handlePrioritizeArticles = () => {
     try {
       const newsService = new NewsService(apiKey);
-      const topArticles = newsService.prioritizeNewsForNewsletter(digest.items, 10);
+      
+      // Ensure we get unique articles
+      const uniqueArticles = getUniqueArticles(digest.items);
+      const topArticles = newsService.prioritizeNewsForNewsletter(uniqueArticles, 10);
+      
       setPrioritizedArticles(topArticles);
       setIsPrioritized(true);
       toast.success(`Die 10 wichtigsten Artikel wurden priorisiert`);
@@ -76,16 +92,32 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     }
   };
   
+  // Helper function to remove duplicate articles
+  const getUniqueArticles = (articles: RssItem[]): RssItem[] => {
+    const uniqueMap = new Map<string, RssItem>();
+    
+    articles.forEach(article => {
+      const id = getArticleId(article);
+      if (!uniqueMap.has(id)) {
+        uniqueMap.set(id, article);
+      }
+    });
+    
+    return Array.from(uniqueMap.values());
+  };
+  
   const startArticleSelection = () => {
     setIsSelecting(true);
   };
   
   const completeArticleSelection = (articles: RssItem[]) => {
-    setSelectedArticles(articles);
+    // Ensure we don't have duplicates in the selected articles
+    const uniqueSelectedArticles = getUniqueArticles(articles);
+    setSelectedArticles(uniqueSelectedArticles);
     setIsSelecting(false);
     
-    if (articles.length > 0) {
-      toast.success(`${articles.length} Artikel für die Zusammenfassung ausgewählt`);
+    if (uniqueSelectedArticles.length > 0) {
+      toast.success(`${uniqueSelectedArticles.length} Artikel für die Zusammenfassung ausgewählt`);
     }
   };
   
@@ -101,7 +133,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     if (selectedArticles && selectedArticles.length > 0) {
       return selectedArticles;
     }
-    return digest.items;
+    return getUniqueArticles(digest.items); // Always ensure we display unique articles
   };
   
   return (
@@ -170,7 +202,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
       <CardContent>
         {isSelecting ? (
           <ArticleSelector 
-            articles={digest.items} 
+            articles={getUniqueArticles(digest.items)} 
             onSubmit={completeArticleSelection}
             onCancel={cancelArticleSelection}
           />
@@ -190,7 +222,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                 ) : getDisplayArticles().length > 0 ? (
                   getDisplayArticles().map((item, index) => (
                     <NewsCard 
-                      key={`${item.guid || item.link}-${index}`} 
+                      key={getArticleId(item) + '-' + index} 
                       item={item} 
                       apiKey={apiKey}
                     />
