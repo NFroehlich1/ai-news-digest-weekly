@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,7 +82,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <NewsCardSkeleton key={i} hasImage={i % 2 === 0} />
+            <NewsCardSkeleton key={i} />
           ))}
         </div>
       </div>

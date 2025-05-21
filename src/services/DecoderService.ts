@@ -87,7 +87,7 @@ class DecoderService {
     }
   }
   
-  // Verbesserte Funktion zur Generierung von Artikel-Zusammenfassungen
+  // Improved function for generating article summaries
   async generateArticleSummary(article: Partial<RssItem>): Promise<string> {
     try {
       if (!this.apiKey) {
@@ -96,7 +96,7 @@ class DecoderService {
       
       const apiUrl = `${this.aiApiUrl}?key=${this.apiKey}`;
       
-      // Optimierter Prompt für bessere Zusammenfassungen
+      // Optimized prompt for better summaries
       const prompt = `
       Erstelle eine präzise, informative Zusammenfassung (1-3 Sätze) für den folgenden Artikel:
       
@@ -158,7 +158,7 @@ class DecoderService {
       return summary.replace(/^["']|["']$/g, '').trim();
     } catch (error) {
       console.error("Summary generation error:", error);
-      // Verbesserte Fallback-Logik
+      // Improved fallback logic
       if (article.description && article.description.length > 10) {
         return article.description;
       } else if (article.title) {
@@ -379,73 +379,6 @@ class DecoderService {
         categories: ["KI", "Technologie"],
         sourceName: "Externe Quelle",
       };
-    }
-  }
-  
-  // Generate summary for a single article
-  async generateArticleSummary(article: Partial<RssItem>): Promise<string> {
-    try {
-      if (!this.apiKey) {
-        throw new Error("API-Schlüssel nicht gesetzt");
-      }
-      
-      const apiUrl = `${this.aiApiUrl}?key=${this.apiKey}`;
-      
-      const prompt = `
-      Erstelle eine kurze Zusammenfassung (1-2 Sätze) für den folgenden Artikel:
-      
-      Titel: ${article.title}
-      Beschreibung: ${article.description}
-      URL: ${article.link}
-      
-      Die Zusammenfassung soll den Kern des Artikels erfassen und auf Deutsch sein.
-      Antworte nur mit der Zusammenfassung, ohne Einleitung oder Abschluss.
-      `;
-      
-      console.log("Requesting AI summary for article:", article.title);
-      
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.3,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 256,
-          }
-        })
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("AI summary generation API error:", errorText);
-        return article.description || "";
-      }
-      
-      const data = await response.json();
-      const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      
-      console.log("Generated AI summary:", summary);
-      
-      if (!summary) {
-        return article.description || "";
-      }
-      
-      // Clean up the summary (remove quotes, trim, etc.)
-      return summary.replace(/^["']|["']$/g, '').trim();
-    } catch (error) {
-      console.error("Summary generation error:", error);
-      return article.description || "";
     }
   }
   

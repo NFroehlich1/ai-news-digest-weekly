@@ -5,21 +5,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 const NewsCardSkeleton = () => {
   return (
     <Card className="overflow-hidden">
-      <Skeleton className="h-48 w-full" />
-      <CardHeader>
-        <Skeleton className="h-6 w-4/5 mb-2" />
-        <Skeleton className="h-4 w-1/3" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-4 w-full mb-2" />
-        <Skeleton className="h-4 w-full mb-2" />
+      <CardHeader className="pb-0">
+        <Skeleton className="h-6 w-full mb-2" />
         <Skeleton className="h-4 w-2/3" />
-      </CardContent>
-      <CardFooter>
-        <div className="flex gap-1">
-          <Skeleton className="h-5 w-16" />
-          <Skeleton className="h-5 w-16" />
+      </CardHeader>
+      <CardContent className="py-4">
+        <Skeleton className="h-32 w-full mb-4" /> {/* Image placeholder */}
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
         </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-9 w-28" />
       </CardFooter>
     </Card>
   );
