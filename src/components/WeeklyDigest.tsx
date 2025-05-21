@@ -30,14 +30,18 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
   const handleGenerateSummary = async () => {
+    if (generatedContent) { // If content already exists, this is a "regenerate" action
+      setGeneratedContent(null); // Clear old content to show loading state (skeletons)
+    }
     setIsGenerating(true);
     
     try {
-      const decoderService = new DecoderService(apiKey);
+      const newsService = new NewsService(apiKey); // Corrected to use NewsService as per previous refactor
+      const newsService = new NewsService(apiKey); // Corrected to use NewsService as per previous refactor
       
       // Add LinkedIn page to summary request
       const linkedInPage = "https://www.linkedin.com/company/linkit-karlsruhe/posts/?feedView=all";
-      const summary = await decoderService.generateSummary(
+      const summary = await newsService.generateNewsletterSummary( // Corrected to use newsService.generateNewsletterSummary
         digest, 
         selectedArticles || prioritizedArticles.length > 0 ? prioritizedArticles : undefined,
         linkedInPage
@@ -151,7 +155,11 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                 disabled={isGenerating}
                 className="gap-2 shrink-0"
               >
-                <Mail className="h-4 w-4" />
+                {isGenerating ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4" />
+                )}
                 {isGenerating ? "Wird generiert..." : generatedContent ? "Neu generieren" : "Zusammenfassen"}
               </Button>
             </>

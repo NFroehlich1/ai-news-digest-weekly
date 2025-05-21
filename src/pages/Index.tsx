@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
 import ArticleSelector from "@/components/ArticleSelector";
@@ -35,8 +35,8 @@ const Index = () => {
   
   const [weeklyDigest, setWeeklyDigest] = useState<WeeklyDigestType>(emptyDigest);
   
-  // Initialize NewsService
-  const newsService = new NewsService(apiKey);
+  // Initialize NewsService using useMemo for a stable instance
+  const newsService = useMemo(() => new NewsService(), []);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -56,6 +56,7 @@ const Index = () => {
     const savedApiKey = localStorage.getItem('api_key');
     if (savedApiKey) {
       setApiKey(savedApiKey);
+      newsService.setApiKey(savedApiKey); // Set API key for the service
     }
 
     // Load RSS sources
@@ -67,7 +68,34 @@ const Index = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [newsService]); // Add newsService to dependency array as it's used inside
+
+  // Effect to load news when API key is available
+  useEffect(() => {
+    if (apiKey && newsService) {
+      const loadInitialNews = async () => {
+        setIsLoading(true);
+        try {
+          const items = await newsService.fetchNews();
+          setNewsItems(items);
+          
+          const currentWeekItems = newsService.filterCurrentWeekNews(items);
+          const updatedDigest = {
+            ...emptyDigest,
+            items: currentWeekItems,
+          };
+          setWeeklyDigest(updatedDigest);
+          // toast.success("Nachrichten automatisch geladen!"); // Optional: consider if this is too noisy
+        } catch (error) {
+          console.error("Error fetching news automatically:", error);
+          toast.error("Fehler beim automatischen Laden der Nachrichten.");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadInitialNews();
+    }
+  }, [apiKey, newsService, emptyDigest]); // Add dependencies
 
   // Handle API key setting
   const handleApiKeySet = (key: string) => {

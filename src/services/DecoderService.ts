@@ -389,8 +389,8 @@ class DecoderService {
       // First verify if the API key is working
       const { isValid, message } = await this.verifyApiKey();
       if (!isValid) {
-        toast.error(`API-Schlüssel Problem: ${message}`);
-        throw new Error(`API-Schlüssel Problem: ${message}`);
+        toast.error(message);
+        throw new Error(message);
       }
       
       // Use selected articles if provided, otherwise use ALL from digest (not just 5)
@@ -398,7 +398,7 @@ class DecoderService {
       
       // Get titles and descriptions to create a prompt
       const contentSummaries = items.map(item => 
-        `Titel: ${item.title}\n${item.aiSummary ? 'AI-Zusammenfassung: ' + item.aiSummary : 'Beschreibung: ' + item.description.substring(0, 150) + '...'}\nURL: ${item.link}\n`
+        `Titel: ${item.title}\n${item.aiSummary ? 'AI-Zusammenfassung: ' + item.aiSummary : 'Beschreibung: ' + item.description.substring(0, 500) + '...'}\nURL: ${item.link}\n`
       ).join("\n");
       
       // Add LinkedIn page to prompt if provided
