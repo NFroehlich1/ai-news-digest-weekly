@@ -1,20 +1,20 @@
+
 import { RssItem, RssSource } from '../types/newsTypes';
 import { toast } from "sonner";
 
 /**
- * Service for fetching and parsing RSS feeds
+ * Service for fetching and parsing RSS feeds - optimized for The Decoder
  */
 class RssFeedService {
   private corsProxies: string[] = [
     "https://api.allorigins.win/get?url=",
     "https://corsproxy.io/?",
     "https://api.codetabs.com/v1/proxy?quest=",
-    "https://thingproxy.freeboard.io/fetch/",
-    "https://cors-anywhere.herokuapp.com/"
+    "https://thingproxy.freeboard.io/fetch/"
   ];
   
   private currentProxyIndex: number = 0;
-  private maxRetries: number = 3;
+  private maxRetries: number = 2;
   
   constructor() {}
   
@@ -28,30 +28,30 @@ class RssFeedService {
     return this.getCurrentProxy();
   }
   
-  private extractXmlFromResponse(response: any): string {
-    if (response && typeof response === 'object' && response.contents) {
-      return response.contents;
-    }
-    return response;
-  }
-  
-  // Enhanced handling for The Decoder website with more articles
+  // Enhanced handling for The Decoder website with many more articles
   private async fetchTheDecoderFeed(source: RssSource): Promise<RssItem[]> {
     try {
-      console.log("Enhanced handling for The Decoder feed - fetching more articles");
+      console.log("Enhanced handling for The Decoder feed - fetching comprehensive article collection");
       
-      // Fetch main page and category pages for more comprehensive coverage
+      // Fetch multiple pages and category sections for maximum coverage
       const urls = [
         "https://the-decoder.de/",
-        "https://the-decoder.de/category/ki/", 
+        "https://the-decoder.de/page/2/",
+        "https://the-decoder.de/page/3/",
+        "https://the-decoder.de/page/4/",
+        "https://the-decoder.de/category/ki/",
+        "https://the-decoder.de/category/ki/page/2/",
         "https://the-decoder.de/category/technologie/",
-        "https://the-decoder.de/page/2/"  // Second page for more articles
+        "https://the-decoder.de/category/technologie/page/2/",
+        "https://the-decoder.de/category/forschung/",
+        "https://the-decoder.de/category/unternehmen/"
       ];
       
       const allItems: RssItem[] = [];
       
       for (const url of urls) {
         try {
+          console.log(`Fetching from: ${url}`);
           const response = await fetch(`https://corsproxy.io/?${url}`, {
             headers: {
               'Accept': 'text/html',
@@ -70,45 +70,55 @@ class RssFeedService {
           allItems.push(...items);
           
           console.log(`Extracted ${items.length} articles from ${url}`);
+          
+          // Small delay to avoid overwhelming the server
+          await new Promise(resolve => setTimeout(resolve, 200));
         } catch (error) {
           console.error(`Error fetching ${url}:`, error);
         }
       }
       
-      // Remove duplicates by URL and sort by date
+      // Remove duplicates and filter for recent articles
       const uniqueItems = this.removeDuplicatesByUrl(allItems);
-      const sortedItems = uniqueItems.sort((a, b) => 
+      const recentItems = this.filterRecentArticles(uniqueItems, 30); // Last 30 days
+      const sortedItems = recentItems.sort((a, b) => 
         new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
       );
       
-      console.log(`Successfully extracted ${sortedItems.length} unique articles from The Decoder`);
-      return sortedItems.slice(0, 30); // Return up to 30 most recent articles
+      console.log(`Successfully extracted ${sortedItems.length} unique recent articles from The Decoder`);
+      return sortedItems.slice(0, 50); // Return up to 50 most recent articles
     } catch (error) {
       console.error("Error in enhanced The Decoder handling:", error);
-      return this.fallbackToStandardFetch(source);
+      return [];
     }
   }
   
-  // Enhanced HTML parsing for The Decoder
+  // Enhanced HTML parsing for The Decoder with better selectors
   private parseDecoderHTML(htmlContent: string, source: RssSource): RssItem[] {
     const items: RssItem[] = [];
     
-    // Multiple article selectors for better coverage
+    // Comprehensive article selectors for The Decoder
     const articleSelectors = [
+      // Main article cards
       /<article[^>]*class="[^"]*post[^"]*"[^>]*>([\s\S]*?)<\/article>/gi,
       /<div[^>]*class="[^"]*entry[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
-      /<div[^>]*class="[^"]*article[^"]*"[^>]*>([\s\S]*?)<\/div>/gi
+      /<div[^>]*class="[^"]*article[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
+      // Grid layout items
+      /<div[^>]*class="[^"]*grid-item[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
+      // List items
+      /<li[^>]*class="[^"]*post[^"]*"[^>]*>([\s\S]*?)<\/li>/gi,
+      // Content blocks
+      /<section[^>]*class="[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/section>/gi
     ];
     
     for (const regex of articleSelectors) {
       let article;
-      while ((article = regex.exec(htmlContent)) !== null && items.length < 50) {
+      while ((article = regex.exec(htmlContent)) !== null && items.length < 100) {
         try {
           const articleContent = article[1];
           const articleData = this.extractArticleData(articleContent);
           
           if (articleData && articleData.title && articleData.link) {
-            // Ensure we have full URLs
             const fullLink = articleData.link.startsWith('http') 
               ? articleData.link 
               : `https://the-decoder.de${articleData.link}`;
@@ -117,9 +127,9 @@ class RssFeedService {
               title: this.cleanTitle(articleData.title),
               link: fullLink,
               pubDate: articleData.pubDate || new Date().toISOString(),
-              description: this.generateDescription(articleData.title),
-              content: articleData.excerpt || "",
-              categories: ["KI", "Technologie", "The Decoder", "Künstliche Intelligenz"],
+              description: this.generateDescription(articleData.title, articleData.excerpt),
+              content: articleData.excerpt || articleData.title,
+              categories: this.extractCategories(articleData.title, articleContent),
               imageUrl: articleData.imageUrl,
               sourceUrl: source.url,
               sourceName: "The Decoder"
@@ -134,54 +144,63 @@ class RssFeedService {
     return items;
   }
   
-  // Extract article data with multiple fallback patterns
+  // Enhanced article data extraction with multiple fallback patterns
   private extractArticleData(articleContent: string): any {
-    // Title extraction with multiple patterns
-    const titlePatterns = [
-      /<h[1-6][^>]*>\s*<a[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i,
-      /<a[^>]*href="([^"]+)"[^>]*>\s*<h[1-6][^>]*>([^<]+)<\/h[1-6]>/i,
+    // Multiple title and link extraction patterns
+    const titleLinkPatterns = [
+      // Standard link with title
+      /<h[1-6][^>]*>\s*<a[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>\s*<\/h[1-6]>/i,
+      /<a[^>]*href="([^"]+)"[^>]*>\s*<h[1-6][^>]*>([^<]+)<\/h[1-6]>\s*<\/a>/i,
+      // Title with separate link
       /<h[1-6][^>]*>([^<]+)<\/h[1-6]>[^<]*<a[^>]*href="([^"]+)"/i,
-      /<a[^>]*class="[^"]*permalink[^"]*"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i
+      // Permalink patterns
+      /<a[^>]*class="[^"]*permalink[^"]*"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i,
+      /<a[^>]*rel="bookmark"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i,
+      // Entry title patterns
+      /<div[^>]*class="[^"]*entry-title[^"]*"[^>]*>.*?<a[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i
     ];
     
     let title = null;
     let link = null;
     
-    for (const pattern of titlePatterns) {
+    for (const pattern of titleLinkPatterns) {
       const match = articleContent.match(pattern);
       if (match) {
-        if (pattern.source.includes('href="([^"]+)"[^>]*>([^<]+)')) {
-          link = match[1];
-          title = match[2];
-        } else {
-          title = match[1];
-          link = match[2];
-        }
-        break;
+        link = match[1];
+        title = match[2];
+        if (title && link) break;
       }
     }
     
-    // Image extraction
+    // Image extraction with multiple patterns
     const imagePatterns = [
-      /<img[^>]*src="([^"]+)"[^>]*>/i,
+      /<img[^>]*src="([^"]+)"[^>]*class="[^"]*featured[^"]*"/i,
+      /<img[^>]*class="[^"]*featured[^"]*"[^>]*src="([^"]+)"/i,
+      /<img[^>]*src="([^"]+)"[^>]*alt="[^"]*"/i,
       /<img[^>]*data-src="([^"]+)"[^>]*>/i,
-      /background-image:\s*url\(['"]([^'"]+)['"]\)/i
+      /background-image:\s*url\(['"]([^'"]+)['"]\)/i,
+      /<picture[^>]*>.*?<img[^>]*src="([^"]+)"[^>]*>.*?<\/picture>/i
     ];
     
     let imageUrl = undefined;
     for (const pattern of imagePatterns) {
       const match = articleContent.match(pattern);
-      if (match) {
-        imageUrl = match[1].startsWith('http') ? match[1] : `https://the-decoder.de${match[1]}`;
-        break;
+      if (match && match[1]) {
+        const url = match[1];
+        if (url.includes('http') || url.startsWith('/')) {
+          imageUrl = url.startsWith('http') ? url : `https://the-decoder.de${url}`;
+          break;
+        }
       }
     }
     
-    // Date extraction
+    // Enhanced date extraction
     const datePatterns = [
       /<time[^>]*datetime="([^"]+)"[^>]*>/i,
       /<span[^>]*class="[^"]*date[^"]*"[^>]*>([^<]+)<\/span>/i,
-      /<div[^>]*class="[^"]*published[^>]*>([^<]+)<\/div>/i
+      /<div[^>]*class="[^"]*published[^"]*"[^>]*>([^<]+)<\/div>/i,
+      /<meta[^>]*property="article:published_time"[^>]*content="([^"]+)"/i,
+      /(\d{1,2}\.\s*(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s*\d{4})/i
     ];
     
     let pubDate = null;
@@ -189,27 +208,44 @@ class RssFeedService {
       const match = articleContent.match(pattern);
       if (match) {
         try {
-          pubDate = new Date(match[1]).toISOString();
+          const dateStr = match[1];
+          // Handle German date format
+          if (dateStr.includes('Januar') || dateStr.includes('Februar')) {
+            const germanToEnglish = {
+              'Januar': 'January', 'Februar': 'February', 'März': 'March',
+              'April': 'April', 'Mai': 'May', 'Juni': 'June',
+              'Juli': 'July', 'August': 'August', 'September': 'September',
+              'Oktober': 'October', 'November': 'November', 'Dezember': 'December'
+            };
+            let englishDate = dateStr;
+            Object.entries(germanToEnglish).forEach(([german, english]) => {
+              englishDate = englishDate.replace(german, english);
+            });
+            pubDate = new Date(englishDate).toISOString();
+          } else {
+            pubDate = new Date(dateStr).toISOString();
+          }
           break;
         } catch {
-          // Try next pattern
+          continue;
         }
       }
     }
     
-    // Excerpt extraction
+    // Enhanced excerpt extraction
     const excerptPatterns = [
       /<p[^>]*class="[^"]*excerpt[^"]*"[^>]*>([^<]+)<\/p>/i,
       /<div[^>]*class="[^"]*summary[^"]*"[^>]*>([^<]+)<\/div>/i,
+      /<div[^>]*class="[^"]*entry-content[^"]*"[^>]*>.*?<p[^>]*>([^<]{50,300})<\/p>/i,
       /<p[^>]*>([^<]{50,200})<\/p>/i
     ];
     
     let excerpt = null;
     for (const pattern of excerptPatterns) {
       const match = articleContent.match(pattern);
-      if (match) {
-        excerpt = match[1].trim();
-        break;
+      if (match && match[1]) {
+        excerpt = this.cleanText(match[1]);
+        if (excerpt.length > 30) break;
       }
     }
     
@@ -224,12 +260,26 @@ class RssFeedService {
       .replace(/&#8217;/g, "'")
       .replace(/&#8211;/g, '–')
       .replace(/&#8212;/g, '—')
+      .replace(/&#8230;/g, '…')
       .replace(/\s+/g, ' ')
       .trim();
   }
   
-  // Generate professional descriptions
-  private generateDescription(title: string): string {
+  // Clean text content
+  private cleanText(text: string): string {
+    return text
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/&[^;]+;/g, ' ') // Remove HTML entities
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  
+  // Generate professional descriptions with excerpt integration
+  private generateDescription(title: string, excerpt?: string): string {
+    if (excerpt && excerpt.length > 20) {
+      return `${excerpt.substring(0, 200)}${excerpt.length > 200 ? '...' : ''}`;
+    }
+    
     const keyWords = title.toLowerCase();
     if (keyWords.includes('ki') || keyWords.includes('ai') || keyWords.includes('künstlich')) {
       return `Aktuelle Entwicklungen im Bereich Künstliche Intelligenz: ${title}`;
@@ -241,11 +291,57 @@ class RssFeedService {
     return `Professioneller Artikel von The Decoder: ${title}`;
   }
   
+  // Extract relevant categories from content
+  private extractCategories(title: string, content: string): string[] {
+    const categories = ["The Decoder"];
+    const titleLower = title.toLowerCase();
+    const contentLower = content.toLowerCase();
+    
+    // AI/KI related
+    if (titleLower.includes('ki') || titleLower.includes('ai') || titleLower.includes('künstlich') ||
+        contentLower.includes('artificial intelligence') || contentLower.includes('machine learning')) {
+      categories.push("Künstliche Intelligenz", "KI");
+    }
+    
+    // Technology
+    if (titleLower.includes('tech') || titleLower.includes('innovation') || titleLower.includes('digital')) {
+      categories.push("Technologie");
+    }
+    
+    // Research
+    if (titleLower.includes('forschung') || titleLower.includes('research') || titleLower.includes('studie')) {
+      categories.push("Forschung");
+    }
+    
+    // Companies
+    if (titleLower.includes('google') || titleLower.includes('microsoft') || titleLower.includes('openai') ||
+        titleLower.includes('meta') || titleLower.includes('apple') || titleLower.includes('amazon')) {
+      categories.push("Unternehmen");
+    }
+    
+    return categories;
+  }
+  
+  // Filter articles from the last 30 days
+  private filterRecentArticles(items: RssItem[], days: number = 30): RssItem[] {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    return items.filter(item => {
+      try {
+        const itemDate = new Date(item.pubDate);
+        return itemDate >= cutoffDate;
+      } catch {
+        return true; // Include items with invalid dates
+      }
+    });
+  }
+  
   // Remove duplicate articles by URL
   private removeDuplicatesByUrl(items: RssItem[]): RssItem[] {
     const seen = new Set<string>();
     return items.filter(item => {
-      const key = item.link.toLowerCase();
+      const key = item.link.toLowerCase().replace(/\/$/, ''); // Remove trailing slash
       if (seen.has(key)) {
         return false;
       }
@@ -254,221 +350,16 @@ class RssFeedService {
     });
   }
   
-  private async fallbackToStandardFetch(source: RssSource): Promise<RssItem[]> {
-    console.log("Falling back to standard RSS fetch for:", source.name);
-    return this.fetchStandardRssFeed(source);
-  }
-  
-  private async fetchStandardRssFeed(source: RssSource): Promise<RssItem[]> {
-    let attempts = 0;
-    const maxAttempts = this.corsProxies.length * this.maxRetries;
-    
-    while (attempts < maxAttempts) {
-      try {
-        const currentProxy = this.getCurrentProxy();
-        const encodedRssUrl = encodeURIComponent(source.url);
-        const proxyUrl = `${currentProxy}${encodedRssUrl}`;
-        
-        console.log(`Fetching RSS feed from: ${source.name} (${source.url}) using proxy: ${currentProxy}`);
-        
-        const response = await fetch(proxyUrl, {
-          headers: {
-            'Accept': 'application/json, application/xml, text/xml, application/rss+xml, application/atom+xml, */*',
-            'User-Agent': 'Mozilla/5.0 (compatible; NewsDigestApp/1.0)'
-          },
-          cache: 'no-store',
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch RSS feed: ${response.status} ${response.statusText}`);
-        }
-        
-        let xmlText;
-        const contentType = response.headers.get('content-type');
-        
-        if (contentType && contentType.includes('application/json')) {
-          const jsonResponse = await response.json();
-          xmlText = this.extractXmlFromResponse(jsonResponse);
-        } else {
-          xmlText = await response.text();
-        }
-        
-        if (!xmlText || xmlText.trim().length === 0) {
-          throw new Error("Empty RSS feed response");
-        }
-        
-        if (xmlText.toLowerCase().includes('<!doctype html>') || 
-            xmlText.toLowerCase().includes('<html') ||
-            xmlText.toLowerCase().includes('error ') ||
-            xmlText.toLowerCase().includes('access denied')) {
-          throw new Error("Received HTML or error page instead of XML feed");
-        }
-        
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-        
-        const parserError = xmlDoc.querySelector("parsererror");
-        if (parserError) {
-          throw new Error("Failed to parse XML: " + parserError.textContent);
-        }
-        
-        const itemElements = xmlDoc.querySelectorAll("item, entry");
-        console.log(`Found ${itemElements.length} items in feed ${source.name}`);
-        
-        if (itemElements.length === 0) {
-          const rssElement = xmlDoc.querySelector("rss, feed, rdf\\:RDF");
-          if (!rssElement) {
-            throw new Error("No RSS structure found in response");
-          }
-          return [];
-        }
-        
-        const items: RssItem[] = [];
-        let successfullyParsed = 0;
-        
-        itemElements.forEach((item) => {
-          try {
-            const getElementText = (parent: Element, selectors: string): string => {
-              const selectorArray = selectors.split(',').map(s => s.trim());
-              
-              for (const selector of selectorArray) {
-                try {
-                  const element = parent.querySelector(selector);
-                  if (element && element.textContent) {
-                    return element.textContent;
-                  }
-                } catch (err) {
-                  // Ignore selector errors
-                }
-              }
-              return "";
-            };
-            
-            const getContentEncoded = (parent: Element): string => {
-              try {
-                const contentEncoded = parent.querySelector("content\\:encoded, encoded, content");
-                return contentEncoded ? contentEncoded.textContent || "" : "";
-              } catch (err) {
-                return "";
-              }
-            };
-            
-            const getCategories = (parent: Element): string[] => {
-              try {
-                const categoryElements = parent.querySelectorAll("category");
-                const categories: string[] = [];
-                categoryElements.forEach((cat) => {
-                  if (cat.textContent) categories.push(cat.textContent);
-                });
-                return categories;
-              } catch (err) {
-                return [];
-              }
-            };
-            
-            const getImageUrl = (parent: Element, content: string): string | undefined => {
-              try {
-                const mediaContent = parent.querySelector("media\\:content, content");
-                if (mediaContent && mediaContent.getAttribute("url")) {
-                  return mediaContent.getAttribute("url") || undefined;
-                }
-                
-                const mediaThumbnail = parent.querySelector("media\\:thumbnail");
-                if (mediaThumbnail && mediaThumbnail.getAttribute("url")) {
-                  return mediaThumbnail.getAttribute("url") || undefined;
-                }
-                
-                const enclosure = parent.querySelector("enclosure");
-                if (enclosure && enclosure.getAttribute("url")) {
-                  const type = enclosure.getAttribute("type") || "";
-                  if (type.startsWith("image/")) {
-                    return enclosure.getAttribute("url") || undefined;
-                  }
-                }
-                
-                if (content) {
-                  const imgRegex = /<img[^>]+src="([^">]+)"/;
-                  const match = content.match(imgRegex);
-                  return match ? match[1] : undefined;
-                }
-                
-                return undefined;
-              } catch (err) {
-                return undefined;
-              }
-            };
-            
-            const title = getElementText(item, "title, atom:title");
-            
-            let link = getElementText(item, "link, atom:link");
-            if (!link) {
-              const linkElement = item.querySelector("link, atom:link");
-              if (linkElement && linkElement.getAttribute("href")) {
-                link = linkElement.getAttribute("href") || "";
-              }
-            }
-            
-            const pubDate = getElementText(item, "pubDate, published, updated, atom:published, atom:updated, dc\\:date");
-            const description = getElementText(item, "description, summary, atom:summary");
-            const content = getContentEncoded(item) || getElementText(item, "content, atom:content");
-            const categories = getCategories(item);
-            const creator = getElementText(item, "dc\\:creator, creator, author, atom:author");
-            const guid = getElementText(item, "guid, id, atom:id");
-            const imageUrl = getImageUrl(item, content);
-            
-            if (title && (link || guid) && pubDate) {
-              items.push({
-                title,
-                link: link || guid || "",
-                pubDate,
-                description,
-                content,
-                categories,
-                creator,
-                guid,
-                imageUrl,
-                sourceUrl: source.url,
-                sourceName: source.name
-              });
-              successfullyParsed++;
-            }
-          } catch (itemError) {
-            console.error("Error parsing item:", itemError);
-          }
-        });
-        
-        console.log(`Successfully parsed ${successfullyParsed} items from ${source.name}`);
-        
-        if (items.length === 0) {
-          console.warn(`No valid items found in ${source.name}`);
-          return [];
-        }
-        
-        return items;
-      } catch (error) {
-        console.error(`Error fetching RSS source ${source.name} with proxy ${this.getCurrentProxy()}:`, error);
-        
-        attempts++;
-        
-        if (attempts % this.maxRetries === 0) {
-          this.switchToNextProxy(); 
-        }
-      }
-    }
-    
-    console.error(`Failed to fetch ${source.name} after trying all proxies`);
-    toast.error(`Fehler beim Laden von ${source.name} Feed`);
-    return [];
-  }
-  
   public async fetchRssSource(source: RssSource): Promise<RssItem[]> {
-    console.log(`Starting enhanced fetch for source: ${source.name} (${source.url})`);
+    console.log(`Starting optimized fetch for The Decoder: ${source.name}`);
     
-    if (source.url.includes('the-decoder.de')) {
-      return this.fetchTheDecoderFeed(source);
+    // Only process The Decoder feeds
+    if (!source.url.includes('the-decoder.de')) {
+      console.log(`Skipping non-Decoder source: ${source.name}`);
+      return [];
     }
     
-    return this.fetchStandardRssFeed(source);
+    return this.fetchTheDecoderFeed(source);
   }
 }
 

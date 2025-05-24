@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -129,208 +128,226 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     }
     return getUniqueArticles(digest.items);
   };
-
+  
   const totalArticles = getUniqueArticles(digest.items).length;
   const displayArticles = getDisplayArticles();
   
   return (
-    <Card className="mb-8 shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
-      <CardHeader className="border-b bg-white/50 backdrop-blur-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Calendar className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-xl md:text-2xl font-bold text-gray-900">
-                  📬 LINKIT WEEKLY KW {digest.weekNumber}
-                </CardTitle>
-                <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                  <span className="font-medium">{digest.dateRange}</span>
-                  <span>•</span>
-                  <div className="flex items-center gap-1">
-                    <BarChart3 className="h-3 w-3" />
-                    <span>{totalArticles} Artikel verfügbar</span>
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <Card className="mb-8 shadow-xl border-0 bg-gradient-to-br from-white to-gray-50/80 backdrop-blur-sm">
+        <CardHeader className="border-b bg-white/70 backdrop-blur-sm">
+          <div className="flex flex-col space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Calendar className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900">
+                    📬 LINKIT WEEKLY KW {digest.weekNumber}
+                  </CardTitle>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600 mt-1">
+                    <span className="font-medium">{digest.dateRange}</span>
+                    <span className="hidden sm:inline">•</span>
+                    <div className="flex items-center gap-1">
+                      <BarChart3 className="h-3 w-3" />
+                      <span>{totalArticles} Artikel verfügbar</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-          
-          <div className="flex flex-wrap gap-2">
-            <NewsletterSubscribeModal newsletterContent={generatedContent || undefined} />
             
-            {!isSelecting && !isGenerating && (
-              <Button 
-                variant="outline" 
-                onClick={handlePrioritizeArticles}
-                className="gap-2 bg-white hover:bg-amber-50 border-amber-200 text-amber-700 hover:text-amber-800"
-                disabled={isPrioritized && prioritizedArticles.length > 0}
-              >
-                <Star className="h-4 w-4" />
-                {isPrioritized ? `Top ${prioritizedArticles.length}` : "Top Artikel"}
-              </Button>
-            )}
-            
-            {!isGenerating && selectedArticles && selectedArticles.length > 0 && (
-              <Button 
-                variant="outline" 
-                onClick={startArticleSelection} 
-                className="gap-2 bg-white hover:bg-blue-50 border-blue-200 text-blue-700"
-              >
-                <RefreshCw className="h-4 w-4" />
-                {selectedArticles.length} ausgewählt
-              </Button>
-            )}
-            
-            {!isSelecting ? (
-              <>
-                {!selectedArticles && !isPrioritized && (
-                  <Button 
-                    variant="outline"
-                    onClick={startArticleSelection} 
-                    className="gap-2 bg-white hover:bg-green-50 border-green-200 text-green-700"
-                  >
-                    <FileEdit className="h-4 w-4" />
-                    Artikel auswählen
-                  </Button>
-                )}
-                
+            <div className="flex flex-wrap gap-2">
+              <NewsletterSubscribeModal newsletterContent={generatedContent || undefined} />
+              
+              {!isSelecting && !isGenerating && (
                 <Button 
-                  onClick={handleGenerateSummary} 
-                  disabled={isGenerating}
-                  className="gap-2 bg-primary hover:bg-primary/90 shadow-lg"
+                  variant="outline" 
+                  onClick={handlePrioritizeArticles}
+                  className="gap-2 bg-white hover:bg-amber-50 border-amber-200 text-amber-700 hover:text-amber-800"
+                  disabled={isPrioritized && prioritizedArticles.length > 0}
                 >
-                  {isGenerating ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Mail className="h-4 w-4" />
-                  )}
-                  {isGenerating ? "Generiert..." : generatedContent ? "Neu generieren" : "Newsletter erstellen"}
+                  <Star className="h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    {isPrioritized ? `Top ${prioritizedArticles.length}` : "Top Artikel"}
+                  </span>
+                  <span className="sm:hidden">Top</span>
                 </Button>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="p-6">
-        {isSelecting ? (
-          <ArticleSelector 
-            articles={getUniqueArticles(digest.items)} 
-            onSubmit={completeArticleSelection}
-            onCancel={cancelArticleSelection}
-          />
-        ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-100">
-              <TabsTrigger 
-                value="news" 
-                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary"
-              >
-                <TrendingUp className="h-4 w-4" />
-                Nachrichten
-                <span className="ml-1 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
-                  {isPrioritized ? prioritizedArticles.length : selectedArticles ? selectedArticles.length : totalArticles}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="summary" 
-                disabled={!generatedContent}
-                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary"
-              >
-                <Mail className="h-4 w-4" />
-                Newsletter
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="news" className="mt-0">
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-600">Artikel werden geladen...</p>
-                </div>
-              ) : displayArticles.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-4 border-b">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      {isPrioritized && (
-                        <>
-                          <Star className="h-4 w-4 text-amber-500" />
-                          <span>Priorisierte Artikel angezeigt</span>
-                        </>
-                      )}
-                      {selectedArticles && (
-                        <>
-                          <FileEdit className="h-4 w-4 text-blue-500" />
-                          <span>Manuell ausgewählte Artikel</span>
-                        </>
-                      )}
-                      {!isPrioritized && !selectedArticles && (
-                        <>
-                          <BarChart3 className="h-4 w-4 text-gray-500" />
-                          <span>Alle verfügbaren Artikel</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {displayArticles.map((item, index) => (
-                      <NewsCard 
-                        key={`${getArticleId(item)}-${index}`}
-                        item={item} 
-                        apiKey={apiKey}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">Keine Artikel gefunden</p>
-                </div>
               )}
-            </TabsContent>
-            
-            <TabsContent value="summary" className="mt-0">
-              {generatedContent ? (
-                <div className="newsletter-content bg-white rounded-lg p-8 shadow-sm border">
-                  <ReactMarkdown className="prose prose-lg max-w-none">
-                    {generatedContent}
-                  </ReactMarkdown>
-                  
-                  {!generatedContent.includes("linkedin.com/company/linkit-karlsruhe") && (
-                    <div className="mt-8 pt-6 border-t border-gray-200">
-                      <p className="font-semibold text-gray-900 mb-2">Weitere Informationen und Updates:</p>
-                      <p className="text-gray-700">
-                        Besuchen Sie unsere{" "}
-                        <a 
-                          href="https://www.linkedin.com/company/linkit-karlsruhe/posts/?feedView=all" 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-primary hover:text-primary/80 font-medium underline decoration-2 underline-offset-2"
-                        >
-                          LinkedIn-Seite
-                        </a>{" "}
-                        für aktuelle Beiträge und Neuigkeiten.
-                      </p>
-                    </div>
+              
+              {!isGenerating && selectedArticles && selectedArticles.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  onClick={startArticleSelection} 
+                  className="gap-2 bg-white hover:bg-blue-50 border-blue-200 text-blue-700"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="hidden sm:inline">{selectedArticles.length} ausgewählt</span>
+                  <span className="sm:hidden">{selectedArticles.length}</span>
+                </Button>
+              )}
+              
+              {!isSelecting ? (
+                <>
+                  {!selectedArticles && !isPrioritized && (
+                    <Button 
+                      variant="outline"
+                      onClick={startArticleSelection} 
+                      className="gap-2 bg-white hover:bg-green-50 border-green-200 text-green-700"
+                    >
+                      <FileEdit className="h-4 w-4" />
+                      <span className="hidden sm:inline">Artikel auswählen</span>
+                      <span className="sm:hidden">Auswählen</span>
+                    </Button>
                   )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <Skeleton className="h-8 w-2/3" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-32 w-full" />
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        )}
-      </CardContent>
-    </Card>
+                  
+                  <Button 
+                    onClick={handleGenerateSummary} 
+                    disabled={isGenerating}
+                    className="gap-2 bg-primary hover:bg-primary/90 shadow-lg"
+                  >
+                    {isGenerating ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Mail className="h-4 w-4" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {isGenerating ? "Generiert..." : generatedContent ? "Neu generieren" : "Newsletter erstellen"}
+                    </span>
+                    <span className="sm:hidden">
+                      {isGenerating ? "..." : generatedContent ? "Neu" : "Erstellen"}
+                    </span>
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="p-4 sm:p-6">
+          {isSelecting ? (
+            <ArticleSelector 
+              articles={getUniqueArticles(digest.items)} 
+              onSubmit={completeArticleSelection}
+              onCancel={cancelArticleSelection}
+            />
+          ) : (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-100">
+                <TabsTrigger 
+                  value="news" 
+                  className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="hidden sm:inline">Nachrichten</span>
+                  <span className="sm:hidden">News</span>
+                  <span className="ml-1 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
+                    {isPrioritized ? prioritizedArticles.length : selectedArticles ? selectedArticles.length : totalArticles}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="summary" 
+                  disabled={!generatedContent}
+                  className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-primary"
+                >
+                  <Mail className="h-4 w-4" />
+                  Newsletter
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="news" className="mt-0">
+                {isLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">Artikel werden geladen...</p>
+                  </div>
+                ) : displayArticles.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-4 border-b">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        {isPrioritized && (
+                          <>
+                            <Star className="h-4 w-4 text-amber-500" />
+                            <span className="hidden sm:inline">Priorisierte Artikel angezeigt</span>
+                            <span className="sm:hidden">Priorisiert</span>
+                          </>
+                        )}
+                        {selectedArticles && (
+                          <>
+                            <FileEdit className="h-4 w-4 text-blue-500" />
+                            <span className="hidden sm:inline">Manuell ausgewählte Artikel</span>
+                            <span className="sm:hidden">Ausgewählt</span>
+                          </>
+                        )}
+                        {!isPrioritized && !selectedArticles && (
+                          <>
+                            <BarChart3 className="h-4 w-4 text-gray-500" />
+                            <span className="hidden sm:inline">Alle verfügbaren Artikel</span>
+                            <span className="sm:hidden">Alle Artikel</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
+                      {displayArticles.map((item, index) => (
+                        <NewsCard 
+                          key={`${getArticleId(item)}-${index}`}
+                          item={item} 
+                          apiKey={apiKey}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">Keine Artikel gefunden</p>
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="summary" className="mt-0">
+                {generatedContent ? (
+                  <div className="newsletter-content bg-white rounded-lg p-4 sm:p-8 shadow-sm border overflow-hidden">
+                    <div className="prose prose-sm sm:prose-lg max-w-none prose-headings:text-primary prose-a:text-blue-600 prose-p:break-words prose-li:break-words">
+                      <ReactMarkdown>
+                        {generatedContent}
+                      </ReactMarkdown>
+                    </div>
+                    
+                    {!generatedContent.includes("linkedin.com/company/linkit-karlsruhe") && (
+                      <div className="mt-8 pt-6 border-t border-gray-200">
+                        <p className="font-semibold text-gray-900 mb-2">Weitere Informationen und Updates:</p>
+                        <p className="text-gray-700 break-words">
+                          Besuchen Sie unsere{" "}
+                          <a 
+                            href="https://www.linkedin.com/company/linkit-karlsruhe/posts/?feedView=all" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-primary hover:text-primary/80 font-medium underline decoration-2 underline-offset-2 break-all"
+                          >
+                            LinkedIn-Seite
+                          </a>{" "}
+                          für aktuelle Beiträge und Neuigkeiten.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <Skeleton className="h-8 w-2/3" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-32 w-full" />
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
