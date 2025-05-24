@@ -157,9 +157,9 @@ class NewsService {
     }
   }
   
-  // Get top articles for the newsletter with increased limits
-  public prioritizeNewsForNewsletter(items: RssItem[], limit: number = 25): RssItem[] { // Increased default from 10 to 25
-    console.log(`Prioritizing ${items.length} items for newsletter (limit: ${limit})`);
+  // Significantly enhanced article prioritization for comprehensive newsletter coverage
+  public prioritizeNewsForNewsletter(items: RssItem[], limit: number = 40): RssItem[] { // Increased default from 25 to 40
+    console.log(`Prioritizing ${items.length} items for comprehensive newsletter (limit: ${limit})`);
     
     // First, filter out items without titles or descriptions as they're not useful
     const validItems = items.filter(item => item.title && (item.description || item.content));
@@ -168,33 +168,35 @@ class NewsService {
     // Get the current date to calculate recency score
     const now = new Date();
     
-    // Score each article based on multiple factors
+    // Enhanced scoring algorithm for comprehensive coverage
     const scoredItems = validItems.map(item => {
       let score = 0;
       
       // Score based on recency (newer articles get higher score)
       const pubDate = new Date(item.pubDate);
       const daysDiff = (now.getTime() - pubDate.getTime()) / (1000 * 60 * 60 * 24);
-      const recencyScore = Math.max(0, 15 - daysDiff * 1.5); // Increased base score and slower decay
+      const recencyScore = Math.max(0, 20 - daysDiff * 1.2); // Increased base score and slower decay
       score += recencyScore;
       
       // Score based on content length (more detailed articles get higher score)
       const contentLength = (item.content?.length || 0) + (item.description?.length || 0);
-      const contentScore = Math.min(8, contentLength / 800); // Increased max score
+      const contentScore = Math.min(10, contentLength / 600); // Increased max score
       score += contentScore;
       
       // Score based on having an image (articles with images get a bonus)
-      const imageScore = item.imageUrl ? 5 : 0; // Increased from 3 to 5
+      const imageScore = item.imageUrl ? 6 : 0; // Increased from 5 to 6
       score += imageScore;
       
-      // Enhanced scoring based on keywords related to AI importance
+      // Significantly enhanced scoring based on keywords related to AI importance
       const aiKeywords = [
         'künstliche intelligenz', 'ki ', 'ai ', 'machine learning', 'deep learning', 
         'neural network', 'gpt', 'llm', 'openai', 'microsoft', 'google', 'anthropic', 
         'claude', 'gemini', 'mistral', 'meta', 'chatgpt', 'sora', 'midjourney', 'stable diffusion',
         'kognitive', 'roboter', 'automation', 'algorithmus', 'big data', 'nlp', 'computer vision',
         'maschinelles lernen', 'generative ai', 'generative ki', 'large language model',
-        'sprachmodell', 'technologie', 'innovation', 'breakthrough', 'durchbruch'
+        'sprachmodell', 'technologie', 'innovation', 'breakthrough', 'durchbruch',
+        'transformer', 'neural', 'dataset', 'training', 'inference', 'huggingface', 'pytorch',
+        'tensorflow', 'ai safety', 'alignment', 'agi', 'multimodal', 'vision', 'speech'
       ];
       
       const combinedText = `${item.title} ${item.description} ${item.content || ''}`.toLowerCase();
@@ -202,18 +204,18 @@ class NewsService {
       let keywordScore = 0;
       aiKeywords.forEach(keyword => {
         if (combinedText.includes(keyword)) {
-          keywordScore += 1.5; // Increased keyword weight
+          keywordScore += 2; // Increased keyword weight
         }
       });
-      score += Math.min(12, keywordScore); // Increased cap from 7 to 12
+      score += Math.min(16, keywordScore); // Increased cap from 12 to 16
       
       // Give a bonus to certain high-quality sources
       const premiumSources = ['heise.de', 'golem.de', 't3n.de', 'netzpolitik.org', 'thedecoder.de'];
-      const sourceScore = premiumSources.some(s => item.sourceUrl?.includes(s)) ? 3 : 0; // Increased from 2 to 3
+      const sourceScore = premiumSources.some(s => item.sourceUrl?.includes(s)) ? 4 : 0; // Increased from 3 to 4
       score += sourceScore;
       
-      // Bonus for articles from The Decoder (our primary source)
-      const decoderBonus = item.sourceName === "The Decoder" ? 5 : 0;
+      // Strong bonus for articles from The Decoder (our primary source)
+      const decoderBonus = item.sourceName === "The Decoder" ? 8 : 0; // Increased from 5 to 8
       score += decoderBonus;
       
       // Log the scoring details for debugging
@@ -226,7 +228,7 @@ class NewsService {
     scoredItems.sort((a, b) => b.score - a.score);
     
     const topItems = scoredItems.slice(0, limit).map(scored => scored.item);
-    console.log(`Prioritized ${topItems.length} items out of ${items.length} total items`);
+    console.log(`Prioritized ${topItems.length} items out of ${items.length} total items for comprehensive coverage`);
     
     // Log the selected items with their scores
     topItems.forEach((item, index) => {
@@ -322,12 +324,12 @@ class NewsService {
     return this.localNewsletterService.generateDemoData();
   }
   
-  // Modify the newsletter generation method to save to localStorage instead of Supabase
+  // Enhanced newsletter generation method with more content focus
   public async generateNewsletterSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
     try {
       // If specific articles are selected, use those
-      // Otherwise, prioritize the most important articles
-      const articlesToUse = selectedArticles || this.prioritizeNewsForNewsletter(digest.items, 25); // Increased default limit
+      // Otherwise, prioritize the most important articles with increased limit
+      const articlesToUse = selectedArticles || this.prioritizeNewsForNewsletter(digest.items, 40); // Increased from 25 to 40
       const summary = await this.decoderService.generateSummary(digest, articlesToUse, linkedInPage);
       
       // Return the generated summary

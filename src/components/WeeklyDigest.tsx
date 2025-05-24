@@ -63,7 +63,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
         articlesToUse = getUniqueArticles(prioritizedArticles);
       }
       
-      console.log(`Generating summary with ${articlesToUse.length} unique articles`);
+      console.log(`Generating comprehensive summary with ${articlesToUse.length} unique articles`);
       
       const summary = await newsService.generateNewsletterSummary(
         digest, 
@@ -74,7 +74,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
       if (summary) {
         setGeneratedContent(summary);
         setActiveTab("summary");
-        toast.success("Professionelle Zusammenfassung erfolgreich generiert!");
+        toast.success("Umfangreiche Newsletter-Zusammenfassung erfolgreich generiert!");
       } else {
         toast.error("Fehler bei der Generierung der Zusammenfassung.");
       }
@@ -90,12 +90,12 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     try {
       const newsService = new NewsService(apiKey);
       const uniqueArticles = getUniqueArticles(digest.items);
-      const topArticles = newsService.prioritizeNewsForNewsletter(uniqueArticles, 25); // Increased from 15 to 25
+      const topArticles = newsService.prioritizeNewsForNewsletter(uniqueArticles, 40); // Increased from 25 to 40
       
       setPrioritizedArticles(topArticles);
       setIsPrioritized(true);
-      toast.success(`Die ${topArticles.length} wichtigsten Artikel wurden priorisiert`);
-      console.log("Prioritized articles:", topArticles);
+      toast.success(`Die ${topArticles.length} wichtigsten Artikel wurden priorisiert für umfassende Abdeckung`);
+      console.log("Prioritized articles for comprehensive coverage:", topArticles);
     } catch (error) {
       console.error("Error prioritizing articles:", error);
       toast.error("Fehler bei der Priorisierung der Artikel");
@@ -112,7 +112,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     setIsSelecting(false);
     
     if (uniqueSelectedArticles.length > 0) {
-      toast.success(`${uniqueSelectedArticles.length} Artikel für die Zusammenfassung ausgewählt`);
+      toast.success(`${uniqueSelectedArticles.length} Artikel für die umfassende Zusammenfassung ausgewählt`);
     }
   };
   
@@ -152,7 +152,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                     <span className="hidden sm:inline">•</span>
                     <div className="flex items-center gap-1">
                       <BarChart3 className="h-3 w-3" />
-                      <span className="font-semibold text-green-600">{totalArticles} Artikel geladen</span>
+                      <span className="font-semibold text-green-600">{totalArticles} Artikel (Umfassende Wochenabdeckung)</span>
                     </div>
                   </div>
                 </div>
@@ -171,7 +171,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                 >
                   <Star className="h-4 w-4" />
                   <span className="hidden sm:inline">
-                    {isPrioritized ? `Top ${prioritizedArticles.length}` : "Top 25 Artikel"}
+                    {isPrioritized ? `Top ${prioritizedArticles.length}` : "Top 40 Artikel"}
                   </span>
                   <span className="sm:hidden">Top</span>
                 </Button>
@@ -269,7 +269,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                         {isPrioritized && (
                           <>
                             <Star className="h-4 w-4 text-amber-500" />
-                            <span className="hidden sm:inline">Top {prioritizedArticles.length} priorisierte Artikel</span>
+                            <span className="hidden sm:inline">Top {prioritizedArticles.length} priorisierte Artikel für umfassende Abdeckung</span>
                             <span className="sm:hidden">Top {prioritizedArticles.length}</span>
                           </>
                         )}
@@ -283,7 +283,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                         {!isPrioritized && !selectedArticles && (
                           <>
                             <BarChart3 className="h-4 w-4 text-green-500" />
-                            <span className="hidden sm:inline font-semibold">Alle {totalArticles} verfügbaren Artikel</span>
+                            <span className="hidden sm:inline font-semibold">Alle {totalArticles} verfügbaren Artikel (Komplette Wochenabdeckung)</span>
                             <span className="sm:hidden">Alle {totalArticles}</span>
                           </>
                         )}

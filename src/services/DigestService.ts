@@ -1,21 +1,19 @@
-
 import type { RssItem, WeeklyDigest } from '../types/newsTypes';
 import { getWeekNumber, getWeekDateRange } from '../utils/dateUtils';
 
 /**
- * Service for managing weekly news digests with improved week coverage
+ * Service for managing weekly news digests with comprehensive week coverage
  */
 class DigestService {
   constructor() {}
   
-  // Filter news to only current week with intelligent fallback
+  // Enhanced current week filtering with much more aggressive coverage strategy
   public filterCurrentWeekNews(items: RssItem[]): RssItem[] {
     const now = new Date();
     const currentWeek = getWeekNumber(now);
     const currentYear = now.getFullYear();
     
-    // Log filtering operation
-    console.log(`Filtering for current week: ${currentWeek}, year: ${currentYear}`);
+    console.log(`Comprehensive filtering for current week: ${currentWeek}, year: ${currentYear}`);
     console.log(`Total items before filtering: ${items.length}`);
     
     const filteredItems = items.filter(item => {
@@ -33,24 +31,59 @@ class DigestService {
       const isCurrentWeek = itemWeek === currentWeek && itemYear === currentYear;
       
       if (!isCurrentWeek) {
-        console.log(`Article filtered out - Week ${itemWeek}/${itemYear} vs Current ${currentWeek}/${currentYear}: ${item.title}`);
+        console.log(`Article from different week - Week ${itemWeek}/${itemYear}: ${item.title}`);
       }
       
       return isCurrentWeek;
     });
     
-    console.log(`Items after filtering for current week: ${filteredItems.length}`);
+    console.log(`Items after current week filtering: ${filteredItems.length}`);
     
-    // If we don't have enough articles for current week, include previous week
-    if (filteredItems.length < 10) {
-      console.log(`Not enough current week articles (${filteredItems.length}), including previous week`);
+    // Much more aggressive fallback strategy - we want 40+ articles minimum
+    if (filteredItems.length < 40) {
+      console.log(`Insufficient current week articles (${filteredItems.length}), implementing aggressive comprehensive fallback`);
+      
+      // Include previous week
       const previousWeekItems = this.filterPreviousWeekNews(items, currentWeek, currentYear);
-      const combinedItems = [...filteredItems, ...previousWeekItems];
-      console.log(`Combined current + previous week articles: ${combinedItems.length}`);
-      return combinedItems;
+      console.log(`Previous week articles found: ${previousWeekItems.length}`);
+      
+      // Include articles from last 14 days regardless of week boundaries
+      const recentItems = this.filterRecentDaysNews(items, 14);
+      console.log(`Recent 14-day items found: ${recentItems.length}`);
+      
+      // If still not enough, expand to 21 days
+      let extendedRecentItems: RssItem[] = [];
+      const combinedItems = [...filteredItems, ...previousWeekItems, ...recentItems];
+      
+      if (combinedItems.length < 35) {
+        console.log(`Still insufficient articles (${combinedItems.length}), expanding to 21 days`);
+        extendedRecentItems = this.filterRecentDaysNews(items, 21);
+        console.log(`Extended 21-day items found: ${extendedRecentItems.length}`);
+      }
+      
+      // Merge and deduplicate all sources
+      const itemMap = new Map<string, RssItem>();
+      [...filteredItems, ...previousWeekItems, ...recentItems, ...extendedRecentItems].forEach(item => {
+        const key = item.link || item.title;
+        if (!itemMap.has(key)) {
+          itemMap.set(key, item);
+        }
+      });
+      
+      const allRecentItems = Array.from(itemMap.values());
+      console.log(`After aggressive comprehensive fallback: ${allRecentItems.length} articles`);
+      
+      // Sort by date (newest first) and return more articles
+      const sortedItems = allRecentItems.sort((a, b) => 
+        new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
+      );
+      
+      return sortedItems.slice(0, 80); // Significantly increased limit for comprehensive coverage
     }
     
-    return filteredItems;
+    return filteredItems.sort((a, b) => 
+      new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
+    );
   }
   
   // Helper method to get previous week articles
@@ -74,6 +107,21 @@ class DigestService {
       const itemYear = pubDate.getFullYear();
       
       return itemWeek === previousWeek && itemYear === previousYear;
+    });
+  }
+  
+  // Filter articles from recent days regardless of week boundaries
+  private filterRecentDaysNews(items: RssItem[], days: number): RssItem[] {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    return items.filter(item => {
+      if (!item.pubDate || isNaN(new Date(item.pubDate).getTime())) {
+        return true;
+      }
+      
+      const pubDate = new Date(item.pubDate);
+      return pubDate >= cutoffDate;
     });
   }
   
