@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Rss, RefreshCw } from "lucide-react";
+import { Calendar, Rss, RefreshCw, BarChart3, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import WeeklyDigest from "@/components/WeeklyDigest";
 import RssSourceManager from "@/components/RssSourceManager";
@@ -18,10 +18,10 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
   const [currentWeekDigest, setCurrentWeekDigest] = useState<WeeklyDigestType | null>(null);
   const [allNews, setAllNews] = useState<Record<string, WeeklyDigestType>>({});
   const [loadingStatus, setLoadingStatus] = useState<string>("");
+  const [totalArticlesLoaded, setTotalArticlesLoaded] = useState<number>(0);
 
   // Automatically load news on component mount
   useEffect(() => {
-    // Load news when the component mounts or when newsService changes
     if (newsService) {
       loadNews();
     }
@@ -30,15 +30,19 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
   const loadNews = async () => {
     if (!newsService) return;
     setIsLoading(true);
-    setLoadingStatus("Initialisiere News-Abruf...");
+    setLoadingStatus("Starte umfassenden News-Abruf...");
     
     try {
-      // Zeige Fortschritt an
-      toast.info("News werden abgerufen...");
+      console.log("=== STARTING COMPREHENSIVE NEWS LOAD ===");
       
-      // Fetch only from enabled sources
-      setLoadingStatus("Rufe RSS-Feeds ab...");
+      // Show enhanced progress
+      toast.info("Lade umfassende Artikel-Sammlung...");
+      
+      setLoadingStatus("Rufe maximale Artikel-Anzahl ab...");
       const news = await newsService.fetchNews();
+      setTotalArticlesLoaded(news.length);
+      
+      console.log(`Raw articles loaded: ${news.length}`);
       
       if (news.length === 0) {
         toast.warning("Keine Artikel gefunden. Bitte aktivieren Sie mindestens eine RSS-Quelle.");
@@ -46,21 +50,29 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
         return;
       }
       
-      setLoadingStatus("Gruppiere Nachrichten nach Woche...");
+      setLoadingStatus("Organisiere Artikel nach Wochen...");
+      
       // Group by week
       const weeklyDigests = newsService.groupNewsByWeek(news);
       setAllNews(weeklyDigests);
       
-      // Set current week digest if available
-      const currentWeekKey = Object.keys(weeklyDigests)[0];
+      // Set current week digest with enhanced info
+      const currentWeekKey = Object.keys(weeklyDigests).sort().reverse()[0]; // Most recent week
       if (currentWeekKey) {
-        setCurrentWeekDigest(weeklyDigests[currentWeekKey]);
-        setLoadingStatus("Fertig!");
+        const currentDigest = weeklyDigests[currentWeekKey];
+        setCurrentWeekDigest(currentDigest);
+        setLoadingStatus("Fertig! Umfassende Wochenabdeckung geladen.");
+        
+        console.log(`Current week digest: ${currentDigest.items.length} articles`);
+        console.log(`Total digests created: ${Object.keys(weeklyDigests).length}`);
       }
       
-      toast.success(`${news.length} Nachrichten erfolgreich geladen`);
+      // Enhanced success message with statistics
+      const digestCount = Object.keys(weeklyDigests).length;
+      toast.success(`${news.length} Artikel geladen • ${digestCount} Wochen • Umfassende Abdeckung aktiviert`);
+      
     } catch (error) {
-      console.error("Error loading news:", error);
+      console.error("Error loading comprehensive news:", error);
       toast.error(`Fehler beim Laden der Nachrichten: ${(error as Error).message}`);
     } finally {
       setIsLoading(false);
@@ -69,7 +81,10 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
   };
 
   const handleRssSourceChange = () => {
-    // Reload news after RSS source changes
+    // Clear current data and reload
+    setCurrentWeekDigest(null);
+    setAllNews({});
+    setTotalArticlesLoaded(0);
     if (newsService) {
       loadNews();
     }
@@ -78,11 +93,22 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
   const renderLoadingState = () => {
     return (
       <div className="space-y-4">
-        <p className="text-center text-muted-foreground mb-4">
-          {loadingStatus || "Nachrichten werden geladen..."}
-        </p>
+        <div className="text-center mb-6">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+            <p className="text-lg font-medium text-muted-foreground">
+              {loadingStatus || "Lade umfassende Artikel-Sammlung..."}
+            </p>
+          </div>
+          {totalArticlesLoaded > 0 && (
+            <div className="flex items-center justify-center gap-2 text-sm text-green-600">
+              <BarChart3 className="h-4 w-4" />
+              <span>{totalArticlesLoaded} Artikel bisher geladen</span>
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
             <NewsCardSkeleton key={i} />
           ))}
         </div>
@@ -101,7 +127,6 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
             onToggleSource={(url, enabled) => {
               const result = newsService.toggleRssSource(url, enabled);
               if (result) {
-                // If sources changed, clear current digest to force reload
                 setCurrentWeekDigest(null);
               }
               return result;
@@ -120,10 +145,16 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                KI-News-Zusammenfassung
+                KI-News Comprehensive Coverage
               </CardTitle>
-              <CardDescription>
-                Aktuelle Nachrichten laden und als Newsletter zusammenfassen
+              <CardDescription className="flex items-center gap-2 mt-1">
+                <TrendingUp className="h-4 w-4" />
+                Umfassende Artikel-Sammlung für vollständige Wochenabdeckung
+                {totalArticlesLoaded > 0 && (
+                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                    {totalArticlesLoaded} Artikel geladen
+                  </span>
+                )}
               </CardDescription>
             </div>
             <Button 
@@ -139,7 +170,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
               ) : (
                 <>
                   <RefreshCw className="h-4 w-4" />
-                  Nachrichten neu laden
+                  Artikel neu laden
                 </>
               )}
             </Button>
@@ -148,27 +179,42 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
             {isLoading ? (
               renderLoadingState()
             ) : currentWeekDigest ? (
-              <WeeklyDigest 
-                digest={currentWeekDigest} 
-                apiKey={newsService?.getDefaultApiKey() || ""}
-              />
+              <>
+                {Object.keys(allNews).length > 1 && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm text-blue-700">
+                      <BarChart3 className="h-4 w-4" />
+                      <span className="font-medium">
+                        Wochenübersicht: {Object.keys(allNews).length} Wochen verfügbar, 
+                        Gesamt: {Object.values(allNews).reduce((sum, digest) => sum + digest.items.length, 0)} Artikel
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <WeeklyDigest 
+                  digest={currentWeekDigest} 
+                  apiKey={newsService?.getDefaultApiKey() || ""}
+                />
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center py-12">
                 <Rss className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-center text-muted-foreground">
-                  Keine aktuellen Nachrichten verfügbar. Klicken Sie auf "Nachrichten laden", 
-                  um die neuesten Artikel zu laden.
+                <p className="text-center text-muted-foreground text-lg font-medium mb-2">
+                  Keine Artikel verfügbar
                 </p>
-                <p className="text-center text-muted-foreground mt-2">
-                  Stellen Sie sicher, dass mindestens eine RSS-Quelle aktiviert ist.
+                <p className="text-center text-muted-foreground mb-4">
+                  Klicken Sie auf "Artikel neu laden" für umfassende Wochenabdeckung
+                </p>
+                <p className="text-center text-sm text-muted-foreground mb-6">
+                  Stellen Sie sicher, dass mindestens eine RSS-Quelle aktiviert ist
                 </p>
                 <Button 
                   onClick={loadNews}
-                  className="mt-6"
-                  variant="outline"
+                  className="gap-2"
+                  size="lg"
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Jetzt Nachrichten laden
+                  <RefreshCw className="h-4 w-4" />
+                  Jetzt comprehensive Artikel laden
                 </Button>
               </div>
             )}

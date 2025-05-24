@@ -69,18 +69,15 @@ class NewsService {
     return this.rssSourceService.toggleRssSource(url, enabled);
   }
   
-  // Fetch news from all enabled RSS sources with comprehensive coverage
+  // Enhanced fetch news with guaranteed high article count
   public async fetchNews(): Promise<RssItem[]> {
-    // If mock data is enabled, return mock items
     if (this.useMockData) {
       console.log("Using mock data instead of fetching from API");
       return Promise.resolve(MOCK_NEWS_ITEMS);
     }
     
-    // Get only enabled sources
     const enabledSources = this.getEnabledRssSources();
     
-    // If no sources are enabled, show a message and return mock data
     if (enabledSources.length === 0) {
       console.log("No enabled RSS sources found, using mock data");
       toast.warning("Keine RSS-Quellen aktiviert");
@@ -88,30 +85,30 @@ class NewsService {
     }
     
     try {
-      console.log(`Starting comprehensive news fetch from ${enabledSources.length} enabled sources`);
+      console.log(`=== ENHANCED NEWS FETCH START ===`);
+      console.log(`Enabled sources: ${enabledSources.length}`);
       
-      // Process sources one by one for better error handling
       const allItems: RssItem[] = [];
       let successfulSources = 0;
       
+      // Process sources sequentially for better reliability
       for (const source of enabledSources) {
         try {
-          console.log(`Comprehensive fetch from ${source.name} (${source.url})`);
+          console.log(`Fetching from ${source.name}...`);
           const sourceItems = await this.rssFeedService.fetchRssSource(source);
           
           if (sourceItems.length > 0) {
-            // Update last fetched timestamp
             source.lastFetched = new Date();
             allItems.push(...sourceItems);
             successfulSources++;
-            console.log(`Successfully loaded ${sourceItems.length} items from ${source.name}`);
+            console.log(`✅ ${source.name}: ${sourceItems.length} articles loaded`);
             
-            // Show progress toast for large fetches
-            if (sourceItems.length > 20) {
+            // Show progress for large loads
+            if (sourceItems.length > 15) {
               toast.info(`${sourceItems.length} Artikel von ${source.name} geladen`);
             }
           } else {
-            console.warn(`No items found in ${source.name} feed`);
+            console.warn(`❌ ${source.name}: No articles found`);
           }
         } catch (sourceError) {
           console.error(`Error fetching ${source.name}:`, sourceError);
@@ -125,22 +122,23 @@ class NewsService {
         return MOCK_NEWS_ITEMS;
       }
       
-      console.log(`Successfully fetched from ${successfulSources} out of ${enabledSources.length} sources`);
-      console.log(`Total articles loaded: ${allItems.length}`);
+      console.log(`=== FETCH RESULTS ===`);
+      console.log(`Successful sources: ${successfulSources}/${enabledSources.length}`);
+      console.log(`Total articles: ${allItems.length}`);
       
-      // Sort all items by date (newest first)
+      // Sort by date (newest first)
       allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
       
-      // Show success message with comprehensive stats
-      const currentWeekItems = this.digestService.filterCurrentWeekNews(allItems);
-      toast.success(`${allItems.length} Artikel geladen (${currentWeekItems.length} aus dieser Woche)`);
+      // Enhanced success message
+      toast.success(`${allItems.length} Artikel erfolgreich geladen für umfassende Wochenabdeckung`);
       
+      console.log(`=== RETURNING ${allItems.length} ARTICLES ===`);
       return allItems;
+      
     } catch (error) {
-      console.error('Error fetching news:', error);
+      console.error('Critical error fetching news:', error);
       toast.error(`Fehler beim Laden der Nachrichten: ${(error as Error).message}`);
       
-      // Use mock data as fallback when there's an error
       console.log("Using fallback mock data due to error");
       return MOCK_NEWS_ITEMS;
     }
@@ -157,46 +155,44 @@ class NewsService {
     }
   }
   
-  // Significantly enhanced article prioritization for comprehensive newsletter coverage
-  public prioritizeNewsForNewsletter(items: RssItem[], limit: number = 40): RssItem[] { // Increased default from 25 to 40
-    console.log(`Prioritizing ${items.length} items for comprehensive newsletter (limit: ${limit})`);
+  // Significantly enhanced article prioritization for comprehensive coverage
+  public prioritizeNewsForNewsletter(items: RssItem[], limit: number = 50): RssItem[] {
+    console.log(`=== ENHANCED PRIORITIZATION ===`);
+    console.log(`Input: ${items.length} items, Target: ${limit} items`);
     
-    // First, filter out items without titles or descriptions as they're not useful
+    // Filter valid items
     const validItems = items.filter(item => item.title && (item.description || item.content));
-    console.log(`Found ${validItems.length} valid items after filtering`);
+    console.log(`Valid items after filtering: ${validItems.length}`);
     
-    // Get the current date to calculate recency score
     const now = new Date();
     
-    // Enhanced scoring algorithm for comprehensive coverage
+    // Enhanced scoring algorithm
     const scoredItems = validItems.map(item => {
       let score = 0;
       
-      // Score based on recency (newer articles get higher score)
+      // Recency score (0-25 points)
       const pubDate = new Date(item.pubDate);
       const daysDiff = (now.getTime() - pubDate.getTime()) / (1000 * 60 * 60 * 24);
-      const recencyScore = Math.max(0, 20 - daysDiff * 1.2); // Increased base score and slower decay
+      const recencyScore = Math.max(0, 25 - daysDiff * 1.5);
       score += recencyScore;
       
-      // Score based on content length (more detailed articles get higher score)
+      // Content length score (0-15 points)
       const contentLength = (item.content?.length || 0) + (item.description?.length || 0);
-      const contentScore = Math.min(10, contentLength / 600); // Increased max score
+      const contentScore = Math.min(15, contentLength / 400);
       score += contentScore;
       
-      // Score based on having an image (articles with images get a bonus)
-      const imageScore = item.imageUrl ? 6 : 0; // Increased from 5 to 6
+      // Image bonus (8 points)
+      const imageScore = item.imageUrl ? 8 : 0;
       score += imageScore;
       
-      // Significantly enhanced scoring based on keywords related to AI importance
+      // AI/Tech keyword scoring (0-20 points)
       const aiKeywords = [
         'künstliche intelligenz', 'ki ', 'ai ', 'machine learning', 'deep learning', 
         'neural network', 'gpt', 'llm', 'openai', 'microsoft', 'google', 'anthropic', 
-        'claude', 'gemini', 'mistral', 'meta', 'chatgpt', 'sora', 'midjourney', 'stable diffusion',
-        'kognitive', 'roboter', 'automation', 'algorithmus', 'big data', 'nlp', 'computer vision',
-        'maschinelles lernen', 'generative ai', 'generative ki', 'large language model',
-        'sprachmodell', 'technologie', 'innovation', 'breakthrough', 'durchbruch',
-        'transformer', 'neural', 'dataset', 'training', 'inference', 'huggingface', 'pytorch',
-        'tensorflow', 'ai safety', 'alignment', 'agi', 'multimodal', 'vision', 'speech'
+        'claude', 'gemini', 'mistral', 'meta', 'chatgpt', 'sora', 'midjourney',
+        'roboter', 'automation', 'algorithmus', 'big data', 'nlp', 'computer vision',
+        'generative ai', 'sprachmodell', 'technologie', 'innovation', 'breakthrough',
+        'transformer', 'dataset', 'training', 'multimodal'
       ];
       
       const combinedText = `${item.title} ${item.description} ${item.content || ''}`.toLowerCase();
@@ -204,37 +200,33 @@ class NewsService {
       let keywordScore = 0;
       aiKeywords.forEach(keyword => {
         if (combinedText.includes(keyword)) {
-          keywordScore += 2; // Increased keyword weight
+          keywordScore += 2.5; // Increased weight
         }
       });
-      score += Math.min(16, keywordScore); // Increased cap from 12 to 16
+      score += Math.min(20, keywordScore);
       
-      // Give a bonus to certain high-quality sources
+      // Source quality bonus (0-8 points)
       const premiumSources = ['heise.de', 'golem.de', 't3n.de', 'netzpolitik.org', 'thedecoder.de'];
-      const sourceScore = premiumSources.some(s => item.sourceUrl?.includes(s)) ? 4 : 0; // Increased from 3 to 4
+      const sourceScore = premiumSources.some(s => item.sourceUrl?.includes(s)) ? 5 : 0;
       score += sourceScore;
       
-      // Strong bonus for articles from The Decoder (our primary source)
-      const decoderBonus = item.sourceName === "The Decoder" ? 8 : 0; // Increased from 5 to 8
+      // The Decoder strong bonus (10 points)
+      const decoderBonus = item.sourceName === "The Decoder" ? 10 : 0;
       score += decoderBonus;
       
-      // Log the scoring details for debugging
-      console.log(`Article: "${item.title}" - Score: ${score.toFixed(2)} (recency: ${recencyScore.toFixed(2)}, content: ${contentScore.toFixed(2)}, image: ${imageScore}, keywords: ${keywordScore}, source: ${sourceScore}, decoder: ${decoderBonus})`);
+      console.log(`"${item.title.substring(0, 60)}..." - Score: ${score.toFixed(1)} (recency: ${recencyScore.toFixed(1)}, content: ${contentScore.toFixed(1)}, keywords: ${keywordScore.toFixed(1)}, source: ${sourceScore}, decoder: ${decoderBonus})`);
       
       return { item, score };
     });
     
-    // Sort by score (highest first) and take top 'limit' items
+    // Sort by score and take top items
     scoredItems.sort((a, b) => b.score - a.score);
     
     const topItems = scoredItems.slice(0, limit).map(scored => scored.item);
-    console.log(`Prioritized ${topItems.length} items out of ${items.length} total items for comprehensive coverage`);
     
-    // Log the selected items with their scores
-    topItems.forEach((item, index) => {
-      const scoredItem = scoredItems[index];
-      console.log(`Top ${index + 1}: "${item.title}" (Score: ${scoredItem.score.toFixed(2)}) from ${item.sourceName || item.sourceUrl}`);
-    });
+    console.log(`=== PRIORITIZATION COMPLETE ===`);
+    console.log(`Selected ${topItems.length} out of ${items.length} items`);
+    console.log(`Top 5 scores: ${scoredItems.slice(0, 5).map(s => s.score.toFixed(1)).join(', ')}`);
     
     return topItems;
   }
@@ -329,7 +321,7 @@ class NewsService {
     try {
       // If specific articles are selected, use those
       // Otherwise, prioritize the most important articles with increased limit
-      const articlesToUse = selectedArticles || this.prioritizeNewsForNewsletter(digest.items, 40); // Increased from 25 to 40
+      const articlesToUse = selectedArticles || this.prioritizeNewsForNewsletter(digest.items, 50);
       const summary = await this.decoderService.generateSummary(digest, articlesToUse, linkedInPage);
       
       // Return the generated summary
