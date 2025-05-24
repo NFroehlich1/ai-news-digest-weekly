@@ -100,7 +100,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-2 mb-2">
             <RefreshCw className="h-5 w-5 animate-spin text-primary" />
-            <p className="text-lg font-medium text-muted-foreground">
+            <p className="text-base sm:text-lg font-medium text-muted-foreground">
               {loadingStatus || "Lade KI-Nachrichten..."}
             </p>
           </div>
@@ -111,7 +111,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
             </div>
           )}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <NewsCardSkeleton key={i} />
           ))}
@@ -121,109 +121,223 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="md:col-span-1">
-        {newsService && (
-          <RssSourceManager 
-            sources={newsService.getRssSources()}
-            onAddSource={(url, name) => newsService.addRssSource(url, name)}
-            onRemoveSource={(url) => newsService.removeRssSource(url)}
-            onToggleSource={(url, enabled) => {
-              const result = newsService.toggleRssSource(url, enabled);
-              if (result) {
+    <div className="space-y-6">
+      {/* Mobile-first responsive layout */}
+      <div className="block lg:hidden">
+        {/* Mobile: Stack vertically */}
+        <div className="space-y-6">
+          {newsService && (
+            <RssSourceManager 
+              sources={newsService.getRssSources()}
+              onAddSource={(url, name) => newsService.addRssSource(url, name)}
+              onRemoveSource={(url) => newsService.removeRssSource(url)}
+              onToggleSource={(url, enabled) => {
+                const result = newsService.toggleRssSource(url, enabled);
+                if (result) {
+                  setCurrentWeekDigest(null);
+                }
+                return result;
+              }}
+              onRefresh={() => {
                 setCurrentWeekDigest(null);
-              }
-              return result;
-            }}
-            onRefresh={() => {
-              setCurrentWeekDigest(null);
-              handleRssSourceChange();
-            }}
-          />
-        )}
-      </div>
-      
-      <div className="md:col-span-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                KI-News Aktuell
-              </CardTitle>
-              <CardDescription className="flex items-center gap-2 mt-1">
-                <TrendingUp className="h-4 w-4" />
-                Aktuelle KI-Nachrichten
-                {totalArticlesLoaded > 0 && (
-                  <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                    {currentWeekDigest?.items.length || 0} Artikel
-                  </span>
-                )}
-              </CardDescription>
-            </div>
-            <Button 
-              onClick={loadNews} 
-              disabled={isLoading}
-              className="gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Lädt...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4" />
-                  Nachrichten laden
-                </>
-              )}
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              renderLoadingState()
-            ) : currentWeekDigest ? (
-              <>
-                {Object.keys(allNews).length > 1 && (
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-sm text-blue-700">
-                      <BarChart3 className="h-4 w-4" />
-                      <span className="font-medium">
-                        Wochenübersicht: {Object.keys(allNews).length} Wochen verfügbar
-                      </span>
+                handleRssSourceChange();
+              }}
+            />
+          )}
+          
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="space-y-1">
+                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                    <Calendar className="h-5 w-5" />
+                    KI-News Aktuell
+                  </CardTitle>
+                  <CardDescription className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" />
+                      Aktuelle KI-Nachrichten
                     </div>
-                  </div>
-                )}
-                
-                <WeeklyDigest 
-                  digest={currentWeekDigest} 
-                  apiKey={newsService?.getDefaultApiKey() || ""}
-                />
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Rss className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-center text-muted-foreground text-lg font-medium mb-2">
-                  Keine Artikel verfügbar
-                </p>
-                <p className="text-center text-muted-foreground mb-4">
-                  Klicken Sie auf "Nachrichten laden" um KI-News zu laden
-                </p>
-                <p className="text-center text-sm text-muted-foreground mb-6">
-                  Stellen Sie sicher, dass mindestens eine RSS-Quelle aktiviert ist
-                </p>
+                    {totalArticlesLoaded > 0 && (
+                      <span className="inline-flex px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                        {currentWeekDigest?.items.length || 0} Artikel
+                      </span>
+                    )}
+                  </CardDescription>
+                </div>
                 <Button 
-                  onClick={loadNews}
-                  className="gap-2"
-                  size="lg"
+                  onClick={loadNews} 
+                  disabled={isLoading}
+                  className="gap-2 w-full sm:w-auto"
+                  size="sm"
                 >
-                  <RefreshCw className="h-4 w-4" />
-                  Nachrichten jetzt laden
+                  {isLoading ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Lädt...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      Nachrichten laden
+                    </>
+                  )}
                 </Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                renderLoadingState()
+              ) : currentWeekDigest ? (
+                <>
+                  {Object.keys(allNews).length > 1 && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm text-blue-700">
+                        <BarChart3 className="h-4 w-4" />
+                        <span className="font-medium">
+                          Wochenübersicht: {Object.keys(allNews).length} Wochen verfügbar
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <WeeklyDigest 
+                    digest={currentWeekDigest} 
+                    apiKey={newsService?.getDefaultApiKey() || ""}
+                  />
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
+                  <Rss className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+                  <p className="text-center text-muted-foreground text-base sm:text-lg font-medium mb-2">
+                    Keine Artikel verfügbar
+                  </p>
+                  <p className="text-center text-muted-foreground mb-4 text-sm sm:text-base max-w-md">
+                    Klicken Sie auf "Nachrichten laden" um KI-News zu laden
+                  </p>
+                  <p className="text-center text-xs sm:text-sm text-muted-foreground mb-6 max-w-md">
+                    Stellen Sie sicher, dass mindestens eine RSS-Quelle aktiviert ist
+                  </p>
+                  <Button 
+                    onClick={loadNews}
+                    className="gap-2 w-full sm:w-auto"
+                    size="lg"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Nachrichten jetzt laden
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Desktop: Side-by-side layout */}
+      <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6">
+        <div className="lg:col-span-1">
+          {newsService && (
+            <RssSourceManager 
+              sources={newsService.getRssSources()}
+              onAddSource={(url, name) => newsService.addRssSource(url, name)}
+              onRemoveSource={(url) => newsService.removeRssSource(url)}
+              onToggleSource={(url, enabled) => {
+                const result = newsService.toggleRssSource(url, enabled);
+                if (result) {
+                  setCurrentWeekDigest(null);
+                }
+                return result;
+              }}
+              onRefresh={() => {
+                setCurrentWeekDigest(null);
+                handleRssSourceChange();
+              }}
+            />
+          )}
+        </div>
+        
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  KI-News Aktuell
+                </CardTitle>
+                <CardDescription className="flex items-center gap-2 mt-1">
+                  <TrendingUp className="h-4 w-4" />
+                  Aktuelle KI-Nachrichten
+                  {totalArticlesLoaded > 0 && (
+                    <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                      {currentWeekDigest?.items.length || 0} Artikel
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
+              <Button 
+                onClick={loadNews} 
+                disabled={isLoading}
+                className="gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Lädt...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    Nachrichten laden
+                  </>
+                )}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                renderLoadingState()
+              ) : currentWeekDigest ? (
+                <>
+                  {Object.keys(allNews).length > 1 && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm text-blue-700">
+                        <BarChart3 className="h-4 w-4" />
+                        <span className="font-medium">
+                          Wochenübersicht: {Object.keys(allNews).length} Wochen verfügbar
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <WeeklyDigest 
+                    digest={currentWeekDigest} 
+                    apiKey={newsService?.getDefaultApiKey() || ""}
+                  />
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Rss className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-center text-muted-foreground text-lg font-medium mb-2">
+                    Keine Artikel verfügbar
+                  </p>
+                  <p className="text-center text-muted-foreground mb-4">
+                    Klicken Sie auf "Nachrichten laden" um KI-News zu laden
+                  </p>
+                  <p className="text-center text-sm text-muted-foreground mb-6">
+                    Stellen Sie sicher, dass mindestens eine RSS-Quelle aktiviert ist
+                  </p>
+                  <Button 
+                    onClick={loadNews}
+                    className="gap-2"
+                    size="lg"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Nachrichten jetzt laden
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
