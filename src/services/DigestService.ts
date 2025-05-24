@@ -1,154 +1,82 @@
-
 import type { RssItem, WeeklyDigest } from '../types/newsTypes';
 import { getWeekNumber, getWeekDateRange } from '../utils/dateUtils';
 
 /**
- * Service for managing weekly news digests with guaranteed comprehensive coverage
+ * Service for managing weekly news digests with strict current week focus
  */
 class DigestService {
   constructor() {}
   
-  // Massively enhanced current week filtering to guarantee minimum 30-50 articles
+  // Strict current week filtering - no aggressive fallbacks
   public filterCurrentWeekNews(items: RssItem[]): RssItem[] {
     const now = new Date();
     const currentWeek = getWeekNumber(now);
     const currentYear = now.getFullYear();
     
-    console.log(`=== COMPREHENSIVE WEEK FILTERING START ===`);
+    console.log(`=== STRICT CURRENT WEEK FILTERING ===`);
     console.log(`Target week: ${currentWeek}, year: ${currentYear}`);
     console.log(`Input articles: ${items.length}`);
     
-    // Step 1: Filter exact current week articles
+    // Get week boundaries
+    const weekStart = this.getWeekStart(now);
+    const weekEnd = this.getWeekEnd(now);
+    
+    console.log(`Week boundaries: ${weekStart.toISOString()} to ${weekEnd.toISOString()}`);
+    
+    // Filter articles strictly within current week
     const currentWeekItems = items.filter(item => {
       if (!item.pubDate || isNaN(new Date(item.pubDate).getTime())) {
-        console.log(`Article without valid date assigned to current week: ${item.title}`);
-        item.pubDate = now.toISOString();
-        return true;
+        console.log(`Article rejected - invalid date: ${item.title}`);
+        return false; // Strict: reject articles without valid dates
       }
       
       const pubDate = new Date(item.pubDate);
       const itemWeek = getWeekNumber(pubDate);
       const itemYear = pubDate.getFullYear();
       
-      return itemWeek === currentWeek && itemYear === currentYear;
-    });
-    
-    console.log(`Step 1 - Current week articles: ${currentWeekItems.length}`);
-    
-    // Step 2: If we don't have enough, be MUCH more aggressive
-    if (currentWeekItems.length < 30) {
-      console.log(`=== AGGRESSIVE EXPANSION MODE ACTIVATED ===`);
-      console.log(`Current articles insufficient (${currentWeekItems.length}), expanding search...`);
+      // Check if article is in current week
+      const isCurrentWeek = itemWeek === currentWeek && itemYear === currentYear;
+      const isWithinBoundaries = pubDate >= weekStart && pubDate <= weekEnd;
       
-      // Include last 14 days regardless of week boundaries
-      const last14Days = this.filterByDays(items, 14);
-      console.log(`Last 14 days: ${last14Days.length} articles`);
-      
-      // Include previous week
-      const previousWeek = this.filterPreviousWeekNews(items, currentWeek, currentYear);
-      console.log(`Previous week: ${previousWeek.length} articles`);
-      
-      // If still not enough, expand to 21 days
-      let expandedItems: RssItem[] = [];
-      if (currentWeekItems.length + last14Days.length + previousWeek.length < 40) {
-        expandedItems = this.filterByDays(items, 21);
-        console.log(`Expanded to 21 days: ${expandedItems.length} articles`);
-      }
-      
-      // Combine all sources and remove duplicates
-      const allSources = [currentWeekItems, last14Days, previousWeek, expandedItems];
-      const combined = this.mergeAndDeduplicateArticles(allSources);
-      
-      console.log(`=== FINAL COMPREHENSIVE RESULT ===`);
-      console.log(`Combined and deduplicated: ${combined.length} articles`);
-      
-      // Return at least 50 articles if available, up to 100
-      const finalResult = combined.slice(0, 100);
-      console.log(`Final return: ${finalResult.length} articles`);
-      
-      return finalResult;
-    }
-    
-    console.log(`=== STANDARD FILTERING RESULT ===`);
-    console.log(`Returning ${currentWeekItems.length} current week articles`);
-    
-    return currentWeekItems.sort((a, b) => 
-      new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
-    );
-  }
-  
-  // New helper: Filter articles by number of days back
-  private filterByDays(items: RssItem[], days: number): RssItem[] {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - days);
-    
-    const filtered = items.filter(item => {
-      if (!item.pubDate || isNaN(new Date(item.pubDate).getTime())) {
-        return true; // Include articles without dates
-      }
-      
-      const pubDate = new Date(item.pubDate);
-      return pubDate >= cutoffDate;
-    });
-    
-    console.log(`Filter by ${days} days: ${filtered.length} articles (cutoff: ${cutoffDate.toISOString()})`);
-    return filtered;
-  }
-  
-  // Enhanced previous week filtering
-  private filterPreviousWeekNews(items: RssItem[], currentWeek: number, currentYear: number): RssItem[] {
-    let previousWeek = currentWeek - 1;
-    let previousYear = currentYear;
-    
-    if (previousWeek <= 0) {
-      previousWeek = 52;
-      previousYear = currentYear - 1;
-    }
-    
-    const filtered = items.filter(item => {
-      if (!item.pubDate || isNaN(new Date(item.pubDate).getTime())) {
+      if (!isCurrentWeek || !isWithinBoundaries) {
+        console.log(`Article rejected - wrong week: ${item.title} (Week ${itemWeek}/${itemYear}, Date: ${pubDate.toISOString()})`);
         return false;
       }
       
-      const pubDate = new Date(item.pubDate);
-      const itemWeek = getWeekNumber(pubDate);
-      const itemYear = pubDate.getFullYear();
-      
-      return itemWeek === previousWeek && itemYear === previousYear;
+      console.log(`✅ Article accepted: ${item.title} (${pubDate.toISOString()})`);
+      return true;
     });
     
-    console.log(`Previous week ${previousWeek}/${previousYear}: ${filtered.length} articles`);
-    return filtered;
-  }
-  
-  // Advanced merge and deduplication
-  private mergeAndDeduplicateArticles(articleArrays: RssItem[][]): RssItem[] {
-    const seen = new Set<string>();
-    const merged: RssItem[] = [];
-    
-    // Flatten all arrays and deduplicate
-    articleArrays.forEach(array => {
-      array.forEach(item => {
-        const key = this.generateArticleKey(item);
-        if (!seen.has(key)) {
-          seen.add(key);
-          merged.push(item);
-        }
-      });
-    });
+    console.log(`=== STRICT FILTERING RESULT ===`);
+    console.log(`Current week articles: ${currentWeekItems.length}`);
     
     // Sort by date (newest first)
-    merged.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
+    const sortedItems = currentWeekItems.sort((a, b) => 
+      new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
+    );
     
-    console.log(`Merged and deduplicated: ${merged.length} unique articles`);
-    return merged;
+    console.log(`Final sorted result: ${sortedItems.length} articles`);
+    return sortedItems;
   }
   
-  // Generate unique key for article deduplication
-  private generateArticleKey(item: RssItem): string {
-    const normalizedUrl = item.link.toLowerCase().replace(/\/$/, '').replace(/^https?:\/\//, '');
-    const normalizedTitle = item.title.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
-    return `${normalizedUrl}|${normalizedTitle}`;
+  // Get start of current week (Monday 00:00:00)
+  private getWeekStart(date: Date): Date {
+    const start = new Date(date);
+    const day = start.getDay();
+    const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Monday as start
+    start.setDate(diff);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }
+  
+  // Get end of current week (Sunday 23:59:59)
+  private getWeekEnd(date: Date): Date {
+    const end = new Date(date);
+    const day = end.getDay();
+    const diff = end.getDate() - day + (day === 0 ? 0 : 7); // Sunday as end
+    end.setDate(diff);
+    end.setHours(23, 59, 59, 999);
+    return end;
   }
   
   // Enhanced specific week filtering
@@ -166,7 +94,13 @@ class DigestService {
       const itemWeek = getWeekNumber(pubDate);
       const itemYear = pubDate.getFullYear();
       
-      return itemWeek === weekNumber && itemYear === year;
+      const isTargetWeek = itemWeek === weekNumber && itemYear === year;
+      
+      if (isTargetWeek) {
+        console.log(`✅ Week ${weekNumber} article: ${item.title}`);
+      }
+      
+      return isTargetWeek;
     });
     
     console.log(`Specific week result: ${filteredItems.length} articles`);
@@ -175,18 +109,20 @@ class DigestService {
     );
   }
   
-  // Enhanced weekly grouping
+  // Enhanced weekly grouping with strict date validation
   public groupNewsByWeek(items: RssItem[]): Record<string, WeeklyDigest> {
     console.log(`=== ENHANCED WEEKLY GROUPING ===`);
     console.log(`Input items: ${items.length}`);
     
     const weeklyDigests: Record<string, WeeklyDigest> = {};
-    const now = new Date();
+    let validArticlesCount = 0;
+    let invalidArticlesCount = 0;
     
     items.forEach((item, index) => {
       if (!item.pubDate || isNaN(new Date(item.pubDate).getTime())) {
-        console.log(`Item ${index + 1} - Invalid date, setting to now: ${item.title}`);
-        item.pubDate = now.toISOString();
+        console.log(`Item ${index + 1} - Invalid date, skipping: ${item.title}`);
+        invalidArticlesCount++;
+        return; // Skip articles without valid dates
       }
       
       const pubDate = new Date(item.pubDate);
@@ -208,13 +144,18 @@ class DigestService {
       }
       
       weeklyDigests[weekKey].items.push(item);
+      validArticlesCount++;
+      console.log(`✅ Added to ${weekKey}: ${item.title} (${pubDate.toISOString()})`);
     });
     
     // Process each digest
     Object.values(weeklyDigests).forEach(digest => {
       // Remove duplicates within digest
       const uniqueItems = digest.items.filter((item, index, array) => 
-        array.findIndex(other => this.generateArticleKey(other) === this.generateArticleKey(item)) === index
+        array.findIndex(other => 
+          other.link.toLowerCase() === item.link.toLowerCase() ||
+          other.title.toLowerCase() === item.title.toLowerCase()
+        ) === index
       );
       
       digest.items = uniqueItems.sort((a, b) => 
@@ -223,19 +164,20 @@ class DigestService {
       
       digest.summary = `${digest.items.length} KI-Nachrichten der Woche ${digest.weekNumber}`;
       
-      console.log(`Week ${digest.id}: ${digest.items.length} articles`);
+      console.log(`Week ${digest.id}: ${digest.items.length} unique articles`);
     });
     
     console.log(`=== GROUPING COMPLETE ===`);
+    console.log(`Valid articles: ${validArticlesCount}, Invalid: ${invalidArticlesCount}`);
     console.log(`Created ${Object.keys(weeklyDigests).length} weekly digests`);
     
     return weeklyDigests;
   }
   
-  // Old article cleanup - more conservative for comprehensive coverage
+  // Conservative old article cleanup - keep more recent articles
   public getOldArticles(items: RssItem[]): RssItem[] {
-    const threeWeeksAgo = new Date();
-    threeWeeksAgo.setDate(threeWeeksAgo.getDate() - 21); // Changed to 21 days
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); // Changed to 4 weeks
     
     return items.filter(item => {
       if (!item.pubDate || isNaN(new Date(item.pubDate).getTime())) {
@@ -243,7 +185,7 @@ class DigestService {
       }
       
       const pubDate = new Date(item.pubDate);
-      return pubDate < threeWeeksAgo;
+      return pubDate < fourWeeksAgo;
     });
   }
 }
