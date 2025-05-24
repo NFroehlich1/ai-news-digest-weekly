@@ -1,59 +1,74 @@
+
 import type { RssItem, WeeklyDigest } from '../types/newsTypes';
 import { getWeekNumber, getWeekDateRange } from '../utils/dateUtils';
 
 /**
- * Service for managing weekly news digests with strict current week focus
+ * Service for managing weekly news digests with balanced filtering
  */
 class DigestService {
   constructor() {}
   
-  // Strict current week filtering - no aggressive fallbacks
+  // Balanced current week filtering - includes recent articles
   public filterCurrentWeekNews(items: RssItem[]): RssItem[] {
     const now = new Date();
     const currentWeek = getWeekNumber(now);
     const currentYear = now.getFullYear();
     
-    console.log(`=== STRICT CURRENT WEEK FILTERING ===`);
+    console.log(`=== BALANCED CURRENT WEEK FILTERING ===`);
     console.log(`Target week: ${currentWeek}, year: ${currentYear}`);
     console.log(`Input articles: ${items.length}`);
     
-    // Get week boundaries
+    // Get week boundaries with some flexibility
     const weekStart = this.getWeekStart(now);
     const weekEnd = this.getWeekEnd(now);
     
-    console.log(`Week boundaries: ${weekStart.toISOString()} to ${weekEnd.toISOString()}`);
+    // Also include recent articles (last 3 days) even if from previous week
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
     
-    // Filter articles strictly within current week
-    const currentWeekItems = items.filter(item => {
-      if (!item.pubDate || isNaN(new Date(item.pubDate).getTime())) {
-        console.log(`Article rejected - invalid date: ${item.title}`);
-        return false; // Strict: reject articles without valid dates
+    console.log(`Week boundaries: ${weekStart.toISOString()} to ${weekEnd.toISOString()}`);
+    console.log(`Including recent articles from: ${threeDaysAgo.toISOString()}`);
+    
+    // Filter with balanced approach
+    const filteredItems = items.filter(item => {
+      if (!item.pubDate) {
+        // Include articles without date (they're likely recent)
+        console.log(`✅ Article accepted (no date, assuming recent): ${item.title}`);
+        return true;
       }
       
       const pubDate = new Date(item.pubDate);
+      if (isNaN(pubDate.getTime())) {
+        // Include articles with invalid dates (assume recent)
+        console.log(`✅ Article accepted (invalid date, assuming recent): ${item.title}`);
+        return true;
+      }
+      
       const itemWeek = getWeekNumber(pubDate);
       const itemYear = pubDate.getFullYear();
       
-      // Check if article is in current week
+      // Check if article is in current week OR recent (last 3 days)
       const isCurrentWeek = itemWeek === currentWeek && itemYear === currentYear;
-      const isWithinBoundaries = pubDate >= weekStart && pubDate <= weekEnd;
+      const isRecent = pubDate >= threeDaysAgo;
       
-      if (!isCurrentWeek || !isWithinBoundaries) {
-        console.log(`Article rejected - wrong week: ${item.title} (Week ${itemWeek}/${itemYear}, Date: ${pubDate.toISOString()})`);
-        return false;
+      if (isCurrentWeek || isRecent) {
+        console.log(`✅ Article accepted: ${item.title} (Week ${itemWeek}/${itemYear}, Date: ${pubDate.toISOString()})`);
+        return true;
       }
       
-      console.log(`✅ Article accepted: ${item.title} (${pubDate.toISOString()})`);
-      return true;
+      console.log(`❌ Article rejected - too old: ${item.title} (Week ${itemWeek}/${itemYear})`);
+      return false;
     });
     
-    console.log(`=== STRICT FILTERING RESULT ===`);
-    console.log(`Current week articles: ${currentWeekItems.length}`);
+    console.log(`=== BALANCED FILTERING RESULT ===`);
+    console.log(`Filtered articles: ${filteredItems.length}`);
     
     // Sort by date (newest first)
-    const sortedItems = currentWeekItems.sort((a, b) => 
-      new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
-    );
+    const sortedItems = filteredItems.sort((a, b) => {
+      const dateA = a.pubDate ? new Date(a.pubDate).getTime() : Date.now();
+      const dateB = b.pubDate ? new Date(b.pubDate).getTime() : Date.now();
+      return dateB - dateA;
+    });
     
     console.log(`Final sorted result: ${sortedItems.length} articles`);
     return sortedItems;
@@ -79,7 +94,7 @@ class DigestService {
     return end;
   }
   
-  // Enhanced specific week filtering
+  // Specific week filtering (kept for compatibility)
   public filterWeekNews(items: RssItem[], weekNumber: number, year: number): RssItem[] {
     console.log(`=== SPECIFIC WEEK FILTERING ===`);
     console.log(`Target: Week ${weekNumber}, ${year}`);
@@ -109,25 +124,34 @@ class DigestService {
     );
   }
   
-  // Enhanced weekly grouping with strict date validation
+  // Enhanced weekly grouping with balanced approach
   public groupNewsByWeek(items: RssItem[]): Record<string, WeeklyDigest> {
-    console.log(`=== ENHANCED WEEKLY GROUPING ===`);
+    console.log(`=== BALANCED WEEKLY GROUPING ===`);
     console.log(`Input items: ${items.length}`);
     
     const weeklyDigests: Record<string, WeeklyDigest> = {};
     let validArticlesCount = 0;
-    let invalidArticlesCount = 0;
+    let noDateArticlesCount = 0;
     
     items.forEach((item, index) => {
+      let pubDate: Date;
+      let weekNumber: number;
+      let year: number;
+      
       if (!item.pubDate || isNaN(new Date(item.pubDate).getTime())) {
-        console.log(`Item ${index + 1} - Invalid date, skipping: ${item.title}`);
-        invalidArticlesCount++;
-        return; // Skip articles without valid dates
+        // For articles without valid dates, use current week
+        pubDate = new Date();
+        weekNumber = getWeekNumber(pubDate);
+        year = pubDate.getFullYear();
+        noDateArticlesCount++;
+        console.log(`Item ${index + 1} - No valid date, using current week: ${item.title}`);
+      } else {
+        pubDate = new Date(item.pubDate);
+        weekNumber = getWeekNumber(pubDate);
+        year = pubDate.getFullYear();
+        validArticlesCount++;
       }
       
-      const pubDate = new Date(item.pubDate);
-      const weekNumber = getWeekNumber(pubDate);
-      const year = pubDate.getFullYear();
       const weekKey = `${year}-W${weekNumber}`;
       
       if (!weeklyDigests[weekKey]) {
@@ -144,8 +168,7 @@ class DigestService {
       }
       
       weeklyDigests[weekKey].items.push(item);
-      validArticlesCount++;
-      console.log(`✅ Added to ${weekKey}: ${item.title} (${pubDate.toISOString()})`);
+      console.log(`✅ Added to ${weekKey}: ${item.title}`);
     });
     
     // Process each digest
@@ -153,14 +176,15 @@ class DigestService {
       // Remove duplicates within digest
       const uniqueItems = digest.items.filter((item, index, array) => 
         array.findIndex(other => 
-          other.link.toLowerCase() === item.link.toLowerCase() ||
-          other.title.toLowerCase() === item.title.toLowerCase()
+          other.link.toLowerCase() === item.link.toLowerCase()
         ) === index
       );
       
-      digest.items = uniqueItems.sort((a, b) => 
-        new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
-      );
+      digest.items = uniqueItems.sort((a, b) => {
+        const dateA = a.pubDate ? new Date(a.pubDate).getTime() : Date.now();
+        const dateB = b.pubDate ? new Date(b.pubDate).getTime() : Date.now();
+        return dateB - dateA;
+      });
       
       digest.summary = `${digest.items.length} KI-Nachrichten der Woche ${digest.weekNumber}`;
       
@@ -168,16 +192,16 @@ class DigestService {
     });
     
     console.log(`=== GROUPING COMPLETE ===`);
-    console.log(`Valid articles: ${validArticlesCount}, Invalid: ${invalidArticlesCount}`);
+    console.log(`Valid articles: ${validArticlesCount}, No date: ${noDateArticlesCount}`);
     console.log(`Created ${Object.keys(weeklyDigests).length} weekly digests`);
     
     return weeklyDigests;
   }
   
-  // Conservative old article cleanup - keep more recent articles
+  // Conservative old article cleanup
   public getOldArticles(items: RssItem[]): RssItem[] {
-    const fourWeeksAgo = new Date();
-    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28); // Changed to 4 weeks
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
     
     return items.filter(item => {
       if (!item.pubDate || isNaN(new Date(item.pubDate).getTime())) {
@@ -185,7 +209,7 @@ class DigestService {
       }
       
       const pubDate = new Date(item.pubDate);
-      return pubDate < fourWeeksAgo;
+      return pubDate < oneMonthAgo;
     });
   }
 }

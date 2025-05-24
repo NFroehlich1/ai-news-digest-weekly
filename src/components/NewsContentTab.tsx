@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Rss, RefreshCw, BarChart3, TrendingUp, AlertCircle } from "lucide-react";
+import { Calendar, Rss, RefreshCw, BarChart3, TrendingUp, AlertCircle, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import WeeklyDigest from "@/components/WeeklyDigest";
 import RssSourceManager from "@/components/RssSourceManager";
@@ -30,12 +30,12 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
   const loadNews = async () => {
     if (!newsService) return;
     setIsLoading(true);
-    setLoadingStatus("Lade aktuelle Woche KI-News...");
+    setLoadingStatus("Lade KI-Nachrichten...");
     
     try {
-      console.log("=== STARTING CURRENT WEEK NEWS LOAD ===");
+      console.log("=== STARTING NEWS LOAD ===");
       
-      toast.info("Lade KI-Nachrichten der aktuellen Woche...");
+      toast.info("Lade KI-Nachrichten...");
       
       setLoadingStatus("Sammle aktuelle News-Artikel...");
       const news = await newsService.fetchNews();
@@ -44,14 +44,15 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
       console.log(`Raw articles loaded: ${news.length}`);
       
       if (news.length === 0) {
-        toast.warning("Keine aktuellen Artikel gefunden. Bitte aktivieren Sie mindestens eine RSS-Quelle.");
+        toast.warning("Keine Artikel gefunden. Bitte aktivieren Sie mindestens eine RSS-Quelle.");
+        setCurrentWeekDigest(null);
         setIsLoading(false);
         return;
       }
       
-      setLoadingStatus("Filtere Artikel der aktuellen Woche...");
+      setLoadingStatus("Erstelle Wochenübersicht...");
       
-      // Group by week with strict filtering
+      // Group by week
       const weeklyDigests = newsService.groupNewsByWeek(news);
       setAllNews(weeklyDigests);
       
@@ -60,25 +61,24 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
       if (currentWeekKey) {
         const currentDigest = weeklyDigests[currentWeekKey];
         setCurrentWeekDigest(currentDigest);
-        setLoadingStatus("Aktuelle Woche geladen!");
+        setLoadingStatus("Erfolgreich geladen!");
         
         console.log(`Current week digest: ${currentDigest.items.length} articles`);
         console.log(`Total digests created: ${Object.keys(weeklyDigests).length}`);
         
-        // Success message with current week focus
+        // Success message
         const currentWeekArticles = currentDigest.items.length;
-        toast.success(`${currentWeekArticles} Artikel der aktuellen Woche geladen`);
+        toast.success(`${currentWeekArticles} Artikel erfolgreich geladen`);
         
-        if (currentWeekArticles < 5) {
-          toast.info("Wenige Artikel in der aktuellen Woche gefunden. Dies ist normal für frühe Wochentage.");
-        }
       } else {
-        toast.warning("Keine Artikel für die aktuelle Woche gefunden.");
+        toast.warning("Keine Artikel gefunden.");
+        setCurrentWeekDigest(null);
       }
       
     } catch (error) {
-      console.error("Error loading current week news:", error);
+      console.error("Error loading news:", error);
       toast.error(`Fehler beim Laden der Nachrichten: ${(error as Error).message}`);
+      setCurrentWeekDigest(null);
     } finally {
       setIsLoading(false);
       setLoadingStatus("");
@@ -101,12 +101,12 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
           <div className="flex items-center justify-center gap-2 mb-2">
             <RefreshCw className="h-5 w-5 animate-spin text-primary" />
             <p className="text-lg font-medium text-muted-foreground">
-              {loadingStatus || "Lade KI-Nachrichten der aktuellen Woche..."}
+              {loadingStatus || "Lade KI-Nachrichten..."}
             </p>
           </div>
           {totalArticlesLoaded > 0 && (
             <div className="flex items-center justify-center gap-2 text-sm text-green-600">
-              <BarChart3 className="h-4 w-4" />
+              <CheckCircle className="h-4 w-4" />
               <span>{totalArticlesLoaded} Artikel gefunden</span>
             </div>
           )}
@@ -149,14 +149,14 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                KI-News Aktuelle Woche
+                KI-News Aktuell
               </CardTitle>
               <CardDescription className="flex items-center gap-2 mt-1">
                 <TrendingUp className="h-4 w-4" />
-                Nur Artikel der aktuellen Woche
+                Aktuelle KI-Nachrichten
                 {totalArticlesLoaded > 0 && (
                   <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                    {currentWeekDigest?.items.length || 0} aktuelle Woche
+                    {currentWeekDigest?.items.length || 0} Artikel
                   </span>
                 )}
               </CardDescription>
@@ -174,7 +174,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
               ) : (
                 <>
                   <RefreshCw className="h-4 w-4" />
-                  Aktuelle Woche laden
+                  Nachrichten laden
                 </>
               )}
             </Button>
@@ -184,18 +184,6 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
               renderLoadingState()
             ) : currentWeekDigest ? (
               <>
-                {currentWeekDigest.items.length < 5 && (
-                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-sm text-amber-700">
-                      <AlertCircle className="h-4 w-4" />
-                      <span>
-                        Wenige Artikel der aktuellen Woche ({currentWeekDigest.items.length}). 
-                        Normal für frühe Wochentage oder Wochenenden.
-                      </span>
-                    </div>
-                  </div>
-                )}
-                
                 {Object.keys(allNews).length > 1 && (
                   <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center gap-2 text-sm text-blue-700">
@@ -216,10 +204,10 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
               <div className="flex flex-col items-center justify-center py-12">
                 <Rss className="h-12 w-12 text-muted-foreground mb-4" />
                 <p className="text-center text-muted-foreground text-lg font-medium mb-2">
-                  Keine Artikel der aktuellen Woche verfügbar
+                  Keine Artikel verfügbar
                 </p>
                 <p className="text-center text-muted-foreground mb-4">
-                  Klicken Sie auf "Aktuelle Woche laden" für News der laufenden Woche
+                  Klicken Sie auf "Nachrichten laden" um KI-News zu laden
                 </p>
                 <p className="text-center text-sm text-muted-foreground mb-6">
                   Stellen Sie sicher, dass mindestens eine RSS-Quelle aktiviert ist
@@ -230,7 +218,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
                   size="lg"
                 >
                   <RefreshCw className="h-4 w-4" />
-                  Aktuelle Woche jetzt laden
+                  Nachrichten jetzt laden
                 </Button>
               </div>
             )}
