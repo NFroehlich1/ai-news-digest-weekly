@@ -3,7 +3,7 @@ import { RssItem, RssSource } from '../types/newsTypes';
 import { toast } from "sonner";
 
 /**
- * Service for fetching and parsing RSS feeds - optimized for The Decoder
+ * Service for fetching and parsing RSS feeds - optimized for comprehensive The Decoder coverage
  */
 class RssFeedService {
   private corsProxies: string[] = [
@@ -28,72 +28,128 @@ class RssFeedService {
     return this.getCurrentProxy();
   }
   
-  // Enhanced handling for The Decoder website with many more articles
+  // Comprehensive handling for The Decoder website with maximum article coverage
   private async fetchTheDecoderFeed(source: RssSource): Promise<RssItem[]> {
     try {
-      console.log("Enhanced handling for The Decoder feed - fetching comprehensive article collection");
+      console.log("Comprehensive The Decoder feed - fetching maximum article collection for full week coverage");
       
-      // Fetch multiple pages and category sections for maximum coverage
+      // Extensive URL list for comprehensive coverage (25+ pages)
       const urls = [
+        // Main pages (current and recent)
         "https://the-decoder.de/",
         "https://the-decoder.de/page/2/",
         "https://the-decoder.de/page/3/",
         "https://the-decoder.de/page/4/",
+        "https://the-decoder.de/page/5/",
+        "https://the-decoder.de/page/6/",
+        "https://the-decoder.de/page/7/",
+        "https://the-decoder.de/page/8/",
+        
+        // KI category (main focus)
         "https://the-decoder.de/category/ki/",
         "https://the-decoder.de/category/ki/page/2/",
+        "https://the-decoder.de/category/ki/page/3/",
+        "https://the-decoder.de/category/ki/page/4/",
+        "https://the-decoder.de/category/ki/page/5/",
+        
+        // Technology category
         "https://the-decoder.de/category/technologie/",
         "https://the-decoder.de/category/technologie/page/2/",
+        "https://the-decoder.de/category/technologie/page/3/",
+        "https://the-decoder.de/category/technologie/page/4/",
+        
+        // Research category
         "https://the-decoder.de/category/forschung/",
-        "https://the-decoder.de/category/unternehmen/"
+        "https://the-decoder.de/category/forschung/page/2/",
+        "https://the-decoder.de/category/forschung/page/3/",
+        
+        // Companies category
+        "https://the-decoder.de/category/unternehmen/",
+        "https://the-decoder.de/category/unternehmen/page/2/",
+        "https://the-decoder.de/category/unternehmen/page/3/",
+        
+        // Additional specific tags for comprehensive coverage
+        "https://the-decoder.de/tag/openai/",
+        "https://the-decoder.de/tag/chatgpt/",
+        "https://the-decoder.de/tag/google/",
+        "https://the-decoder.de/tag/microsoft/",
+        "https://the-decoder.de/tag/meta/",
+        "https://the-decoder.de/tag/anthropic/",
+        "https://the-decoder.de/tag/machine-learning/",
+        "https://the-decoder.de/tag/deep-learning/"
       ];
       
       const allItems: RssItem[] = [];
+      const promises: Promise<void>[] = [];
       
-      for (const url of urls) {
-        try {
-          console.log(`Fetching from: ${url}`);
-          const response = await fetch(`https://corsproxy.io/?${url}`, {
-            headers: {
-              'Accept': 'text/html',
-              'User-Agent': 'Mozilla/5.0 (compatible; NewsDigestApp/1.0)'
-            },
-            cache: 'no-store'
-          });
-          
-          if (!response.ok) {
-            console.warn(`Failed to fetch ${url}: ${response.status}`);
-            continue;
-          }
-          
-          const htmlContent = await response.text();
-          const items = this.parseDecoderHTML(htmlContent, source);
-          allItems.push(...items);
-          
-          console.log(`Extracted ${items.length} articles from ${url}`);
-          
-          // Small delay to avoid overwhelming the server
-          await new Promise(resolve => setTimeout(resolve, 200));
-        } catch (error) {
-          console.error(`Error fetching ${url}:`, error);
+      // Process URLs in parallel batches for better performance
+      const batchSize = 5;
+      for (let i = 0; i < urls.length; i += batchSize) {
+        const batch = urls.slice(i, i + batchSize);
+        
+        for (const url of batch) {
+          const promise = this.fetchSinglePage(url, source, allItems);
+          promises.push(promise);
         }
+        
+        // Wait for current batch to complete before starting next
+        await Promise.allSettled(promises.splice(0, batchSize));
+        
+        // Small delay between batches to avoid overwhelming the server
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
       
-      // Remove duplicates and filter for recent articles
+      // Wait for any remaining promises
+      if (promises.length > 0) {
+        await Promise.allSettled(promises);
+      }
+      
+      // Remove duplicates and filter for recent articles (extended to 14 days for better week coverage)
       const uniqueItems = this.removeDuplicatesByUrl(allItems);
-      const recentItems = this.filterRecentArticles(uniqueItems, 30); // Last 30 days
+      const recentItems = this.filterRecentArticles(uniqueItems, 14); // Extended from 30 to 14 days
       const sortedItems = recentItems.sort((a, b) => 
         new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()
       );
       
       console.log(`Successfully extracted ${sortedItems.length} unique recent articles from The Decoder`);
-      return sortedItems.slice(0, 50); // Return up to 50 most recent articles
+      console.log(`Total unique articles before date filtering: ${uniqueItems.length}`);
+      console.log(`Articles after 14-day filter: ${recentItems.length}`);
+      
+      return sortedItems.slice(0, 150); // Increased from 50 to 150 articles
     } catch (error) {
-      console.error("Error in enhanced The Decoder handling:", error);
+      console.error("Error in comprehensive The Decoder handling:", error);
       return [];
     }
   }
   
-  // Enhanced HTML parsing for The Decoder with better selectors
+  // Helper method to fetch a single page
+  private async fetchSinglePage(url: string, source: RssSource, allItems: RssItem[]): Promise<void> {
+    try {
+      console.log(`Fetching from: ${url}`);
+      const response = await fetch(`https://corsproxy.io/?${url}`, {
+        headers: {
+          'Accept': 'text/html',
+          'User-Agent': 'Mozilla/5.0 (compatible; NewsDigestApp/1.0)'
+        },
+        cache: 'no-store'
+      });
+      
+      if (!response.ok) {
+        console.warn(`Failed to fetch ${url}: ${response.status}`);
+        return;
+      }
+      
+      const htmlContent = await response.text();
+      const items = this.parseDecoderHTML(htmlContent, source);
+      allItems.push(...items);
+      
+      console.log(`Extracted ${items.length} articles from ${url}`);
+    } catch (error) {
+      console.error(`Error fetching ${url}:`, error);
+    }
+  }
+  
+  // Enhanced HTML parsing for The Decoder with increased limits
   private parseDecoderHTML(htmlContent: string, source: RssSource): RssItem[] {
     const items: RssItem[] = [];
     
@@ -108,12 +164,15 @@ class RssFeedService {
       // List items
       /<li[^>]*class="[^"]*post[^"]*"[^>]*>([\s\S]*?)<\/li>/gi,
       // Content blocks
-      /<section[^>]*class="[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/section>/gi
+      /<section[^>]*class="[^"]*content[^"]*"[^>]*>([\s\S]*?)<\/section>/gi,
+      // Additional selectors for better coverage
+      /<h[1-6][^>]*>\s*<a[^>]*href="[^"]*the-decoder\.de[^"]*"[^>]*>[\s\S]*?<\/a>\s*<\/h[1-6]>/gi,
+      /<a[^>]*href="[^"]*the-decoder\.de[^"]*"[^>]*class="[^"]*title[^"]*"[^>]*>[\s\S]*?<\/a>/gi
     ];
     
     for (const regex of articleSelectors) {
       let article;
-      while ((article = regex.exec(htmlContent)) !== null && items.length < 100) {
+      while ((article = regex.exec(htmlContent)) !== null && items.length < 200) { // Increased limit from 100 to 200
         try {
           const articleContent = article[1];
           const articleData = this.extractArticleData(articleContent);
@@ -157,7 +216,9 @@ class RssFeedService {
       /<a[^>]*class="[^"]*permalink[^"]*"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i,
       /<a[^>]*rel="bookmark"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i,
       // Entry title patterns
-      /<div[^>]*class="[^"]*entry-title[^"]*"[^>]*>.*?<a[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i
+      /<div[^>]*class="[^"]*entry-title[^"]*"[^>]*>.*?<a[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/i,
+      // Direct link patterns
+      /<a[^>]*href="([^"]*the-decoder\.de[^"]*)"[^>]*>([^<]+)<\/a>/i
     ];
     
     let title = null;
@@ -194,13 +255,15 @@ class RssFeedService {
       }
     }
     
-    // Enhanced date extraction
+    // Enhanced date extraction with improved German date recognition
     const datePatterns = [
       /<time[^>]*datetime="([^"]+)"[^>]*>/i,
       /<span[^>]*class="[^"]*date[^"]*"[^>]*>([^<]+)<\/span>/i,
       /<div[^>]*class="[^"]*published[^"]*"[^>]*>([^<]+)<\/div>/i,
       /<meta[^>]*property="article:published_time"[^>]*content="([^"]+)"/i,
-      /(\d{1,2}\.\s*(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s*\d{4})/i
+      /(\d{1,2}\.\s*(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s*\d{4})/i,
+      /(\d{4}-\d{2}-\d{2})/i,
+      /(\d{1,2}\/\d{1,2}\/\d{4})/i
     ];
     
     let pubDate = null;
@@ -210,7 +273,10 @@ class RssFeedService {
         try {
           const dateStr = match[1];
           // Handle German date format
-          if (dateStr.includes('Januar') || dateStr.includes('Februar')) {
+          if (dateStr.includes('Januar') || dateStr.includes('Februar') || dateStr.includes('März') || 
+              dateStr.includes('April') || dateStr.includes('Mai') || dateStr.includes('Juni') ||
+              dateStr.includes('Juli') || dateStr.includes('August') || dateStr.includes('September') ||
+              dateStr.includes('Oktober') || dateStr.includes('November') || dateStr.includes('Dezember')) {
             const germanToEnglish = {
               'Januar': 'January', 'Februar': 'February', 'März': 'March',
               'April': 'April', 'Mai': 'May', 'Juni': 'June',
@@ -322,25 +388,37 @@ class RssFeedService {
     return categories;
   }
   
-  // Filter articles from the last 30 days
-  private filterRecentArticles(items: RssItem[], days: number = 30): RssItem[] {
+  // Filter articles from the last 14 days (improved for better week coverage)
+  private filterRecentArticles(items: RssItem[], days: number = 14): RssItem[] {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
     
-    return items.filter(item => {
+    console.log(`Filtering articles newer than: ${cutoffDate.toISOString()}`);
+    
+    const filteredItems = items.filter(item => {
       try {
         const itemDate = new Date(item.pubDate);
-        return itemDate >= cutoffDate;
+        const isRecent = itemDate >= cutoffDate;
+        if (!isRecent) {
+          console.log(`Filtered out old article: ${item.title} (${itemDate.toISOString()})`);
+        }
+        return isRecent;
       } catch {
-        return true; // Include items with invalid dates
+        // Include items with invalid dates, but set them to current week
+        console.log(`Article with invalid date included: ${item.title}`);
+        item.pubDate = new Date().toISOString();
+        return true;
       }
     });
+    
+    console.log(`Articles after ${days}-day filter: ${filteredItems.length} out of ${items.length}`);
+    return filteredItems;
   }
   
   // Remove duplicate articles by URL
   private removeDuplicatesByUrl(items: RssItem[]): RssItem[] {
     const seen = new Set<string>();
-    return items.filter(item => {
+    const uniqueItems = items.filter(item => {
       const key = item.link.toLowerCase().replace(/\/$/, ''); // Remove trailing slash
       if (seen.has(key)) {
         return false;
@@ -348,10 +426,13 @@ class RssFeedService {
       seen.add(key);
       return true;
     });
+    
+    console.log(`Removed ${items.length - uniqueItems.length} duplicate articles`);
+    return uniqueItems;
   }
   
   public async fetchRssSource(source: RssSource): Promise<RssItem[]> {
-    console.log(`Starting optimized fetch for The Decoder: ${source.name}`);
+    console.log(`Starting comprehensive fetch for The Decoder: ${source.name}`);
     
     // Only process The Decoder feeds
     if (!source.url.includes('the-decoder.de')) {

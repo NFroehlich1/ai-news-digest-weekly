@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
 import RssSourceService from "./RssSourceService";
@@ -70,7 +69,7 @@ class NewsService {
     return this.rssSourceService.toggleRssSource(url, enabled);
   }
   
-  // Fetch news from all enabled RSS sources
+  // Fetch news from all enabled RSS sources with comprehensive coverage
   public async fetchNews(): Promise<RssItem[]> {
     // If mock data is enabled, return mock items
     if (this.useMockData) {
@@ -89,7 +88,7 @@ class NewsService {
     }
     
     try {
-      console.log(`Fetching news from ${enabledSources.length} enabled sources`);
+      console.log(`Starting comprehensive news fetch from ${enabledSources.length} enabled sources`);
       
       // Process sources one by one for better error handling
       const allItems: RssItem[] = [];
@@ -97,7 +96,7 @@ class NewsService {
       
       for (const source of enabledSources) {
         try {
-          console.log(`Fetching from ${source.name} (${source.url})`);
+          console.log(`Comprehensive fetch from ${source.name} (${source.url})`);
           const sourceItems = await this.rssFeedService.fetchRssSource(source);
           
           if (sourceItems.length > 0) {
@@ -106,6 +105,11 @@ class NewsService {
             allItems.push(...sourceItems);
             successfulSources++;
             console.log(`Successfully loaded ${sourceItems.length} items from ${source.name}`);
+            
+            // Show progress toast for large fetches
+            if (sourceItems.length > 20) {
+              toast.info(`${sourceItems.length} Artikel von ${source.name} geladen`);
+            }
           } else {
             console.warn(`No items found in ${source.name} feed`);
           }
@@ -122,10 +126,14 @@ class NewsService {
       }
       
       console.log(`Successfully fetched from ${successfulSources} out of ${enabledSources.length} sources`);
+      console.log(`Total articles loaded: ${allItems.length}`);
       
       // Sort all items by date (newest first)
       allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
-      console.log(`Loaded ${allItems.length} news items from ${successfulSources} sources`);
+      
+      // Show success message with comprehensive stats
+      const currentWeekItems = this.digestService.filterCurrentWeekNews(allItems);
+      toast.success(`${allItems.length} Artikel geladen (${currentWeekItems.length} aus dieser Woche)`);
       
       return allItems;
     } catch (error) {
@@ -149,9 +157,9 @@ class NewsService {
     }
   }
   
-  // Get top 10 most important articles for the newsletter
-  public prioritizeNewsForNewsletter(items: RssItem[], limit: number = 10): RssItem[] {
-    console.log(`Prioritizing ${items.length} items for newsletter`);
+  // Get top articles for the newsletter with increased limits
+  public prioritizeNewsForNewsletter(items: RssItem[], limit: number = 25): RssItem[] { // Increased default from 10 to 25
+    console.log(`Prioritizing ${items.length} items for newsletter (limit: ${limit})`);
     
     // First, filter out items without titles or descriptions as they're not useful
     const validItems = items.filter(item => item.title && (item.description || item.content));
@@ -167,26 +175,26 @@ class NewsService {
       // Score based on recency (newer articles get higher score)
       const pubDate = new Date(item.pubDate);
       const daysDiff = (now.getTime() - pubDate.getTime()) / (1000 * 60 * 60 * 24);
-      const recencyScore = Math.max(0, 10 - daysDiff * 2); // More recent = higher score, decay faster
+      const recencyScore = Math.max(0, 15 - daysDiff * 1.5); // Increased base score and slower decay
       score += recencyScore;
       
       // Score based on content length (more detailed articles get higher score)
       const contentLength = (item.content?.length || 0) + (item.description?.length || 0);
-      const contentScore = Math.min(5, contentLength / 1000); // Up to 5 points for content
+      const contentScore = Math.min(8, contentLength / 800); // Increased max score
       score += contentScore;
       
       // Score based on having an image (articles with images get a bonus)
-      const imageScore = item.imageUrl ? 3 : 0;
+      const imageScore = item.imageUrl ? 5 : 0; // Increased from 3 to 5
       score += imageScore;
       
-      // Score based on keywords related to AI importance
+      // Enhanced scoring based on keywords related to AI importance
       const aiKeywords = [
         'künstliche intelligenz', 'ki ', 'ai ', 'machine learning', 'deep learning', 
         'neural network', 'gpt', 'llm', 'openai', 'microsoft', 'google', 'anthropic', 
         'claude', 'gemini', 'mistral', 'meta', 'chatgpt', 'sora', 'midjourney', 'stable diffusion',
         'kognitive', 'roboter', 'automation', 'algorithmus', 'big data', 'nlp', 'computer vision',
         'maschinelles lernen', 'generative ai', 'generative ki', 'large language model',
-        'sprachmodell', 'technologie', 'innovation'
+        'sprachmodell', 'technologie', 'innovation', 'breakthrough', 'durchbruch'
       ];
       
       const combinedText = `${item.title} ${item.description} ${item.content || ''}`.toLowerCase();
@@ -194,18 +202,22 @@ class NewsService {
       let keywordScore = 0;
       aiKeywords.forEach(keyword => {
         if (combinedText.includes(keyword)) {
-          keywordScore += 1;
+          keywordScore += 1.5; // Increased keyword weight
         }
       });
-      score += Math.min(7, keywordScore); // Cap keyword score at 7
+      score += Math.min(12, keywordScore); // Increased cap from 7 to 12
       
       // Give a bonus to certain high-quality sources
       const premiumSources = ['heise.de', 'golem.de', 't3n.de', 'netzpolitik.org', 'thedecoder.de'];
-      const sourceScore = premiumSources.some(s => item.sourceUrl?.includes(s)) ? 2 : 0;
+      const sourceScore = premiumSources.some(s => item.sourceUrl?.includes(s)) ? 3 : 0; // Increased from 2 to 3
       score += sourceScore;
       
+      // Bonus for articles from The Decoder (our primary source)
+      const decoderBonus = item.sourceName === "The Decoder" ? 5 : 0;
+      score += decoderBonus;
+      
       // Log the scoring details for debugging
-      console.log(`Article: "${item.title}" - Score: ${score.toFixed(2)} (recency: ${recencyScore.toFixed(2)}, content: ${contentScore.toFixed(2)}, image: ${imageScore}, keywords: ${keywordScore}, source: ${sourceScore})`);
+      console.log(`Article: "${item.title}" - Score: ${score.toFixed(2)} (recency: ${recencyScore.toFixed(2)}, content: ${contentScore.toFixed(2)}, image: ${imageScore}, keywords: ${keywordScore}, source: ${sourceScore}, decoder: ${decoderBonus})`);
       
       return { item, score };
     });
@@ -216,9 +228,10 @@ class NewsService {
     const topItems = scoredItems.slice(0, limit).map(scored => scored.item);
     console.log(`Prioritized ${topItems.length} items out of ${items.length} total items`);
     
-    // Log the selected items
+    // Log the selected items with their scores
     topItems.forEach((item, index) => {
-      console.log(`Top ${index + 1}: "${item.title}" from ${item.sourceName || item.sourceUrl}`);
+      const scoredItem = scoredItems[index];
+      console.log(`Top ${index + 1}: "${item.title}" (Score: ${scoredItem.score.toFixed(2)}) from ${item.sourceName || item.sourceUrl}`);
     });
     
     return topItems;
@@ -314,7 +327,7 @@ class NewsService {
     try {
       // If specific articles are selected, use those
       // Otherwise, prioritize the most important articles
-      const articlesToUse = selectedArticles || this.prioritizeNewsForNewsletter(digest.items, 10);
+      const articlesToUse = selectedArticles || this.prioritizeNewsForNewsletter(digest.items, 25); // Increased default limit
       const summary = await this.decoderService.generateSummary(digest, articlesToUse, linkedInPage);
       
       // Return the generated summary

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,7 +90,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     try {
       const newsService = new NewsService(apiKey);
       const uniqueArticles = getUniqueArticles(digest.items);
-      const topArticles = newsService.prioritizeNewsForNewsletter(uniqueArticles, 15); // Increased to 15
+      const topArticles = newsService.prioritizeNewsForNewsletter(uniqueArticles, 25); // Increased from 15 to 25
       
       setPrioritizedArticles(topArticles);
       setIsPrioritized(true);
@@ -151,7 +152,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                     <span className="hidden sm:inline">•</span>
                     <div className="flex items-center gap-1">
                       <BarChart3 className="h-3 w-3" />
-                      <span>{totalArticles} Artikel verfügbar</span>
+                      <span className="font-semibold text-green-600">{totalArticles} Artikel geladen</span>
                     </div>
                   </div>
                 </div>
@@ -170,7 +171,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                 >
                   <Star className="h-4 w-4" />
                   <span className="hidden sm:inline">
-                    {isPrioritized ? `Top ${prioritizedArticles.length}` : "Top Artikel"}
+                    {isPrioritized ? `Top ${prioritizedArticles.length}` : "Top 25 Artikel"}
                   </span>
                   <span className="sm:hidden">Top</span>
                 </Button>
@@ -242,7 +243,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                   <TrendingUp className="h-4 w-4" />
                   <span className="hidden sm:inline">Nachrichten</span>
                   <span className="sm:hidden">News</span>
-                  <span className="ml-1 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
+                  <span className="ml-1 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full font-semibold">
                     {isPrioritized ? prioritizedArticles.length : selectedArticles ? selectedArticles.length : totalArticles}
                   </span>
                 </TabsTrigger>
@@ -268,22 +269,22 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                         {isPrioritized && (
                           <>
                             <Star className="h-4 w-4 text-amber-500" />
-                            <span className="hidden sm:inline">Priorisierte Artikel angezeigt</span>
-                            <span className="sm:hidden">Priorisiert</span>
+                            <span className="hidden sm:inline">Top {prioritizedArticles.length} priorisierte Artikel</span>
+                            <span className="sm:hidden">Top {prioritizedArticles.length}</span>
                           </>
                         )}
                         {selectedArticles && (
                           <>
                             <FileEdit className="h-4 w-4 text-blue-500" />
-                            <span className="hidden sm:inline">Manuell ausgewählte Artikel</span>
-                            <span className="sm:hidden">Ausgewählt</span>
+                            <span className="hidden sm:inline">{selectedArticles.length} manuell ausgewählte Artikel</span>
+                            <span className="sm:hidden">{selectedArticles.length} ausgewählt</span>
                           </>
                         )}
                         {!isPrioritized && !selectedArticles && (
                           <>
-                            <BarChart3 className="h-4 w-4 text-gray-500" />
-                            <span className="hidden sm:inline">Alle verfügbaren Artikel</span>
-                            <span className="sm:hidden">Alle Artikel</span>
+                            <BarChart3 className="h-4 w-4 text-green-500" />
+                            <span className="hidden sm:inline font-semibold">Alle {totalArticles} verfügbaren Artikel</span>
+                            <span className="sm:hidden">Alle {totalArticles}</span>
                           </>
                         )}
                       </div>
@@ -302,6 +303,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                   <div className="text-center py-12">
                     <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600">Keine Artikel gefunden</p>
+                    <p className="text-sm text-gray-500 mt-2">Versuchen Sie, die Nachrichten neu zu laden</p>
                   </div>
                 )}
               </TabsContent>
