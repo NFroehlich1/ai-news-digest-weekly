@@ -17,6 +17,24 @@ class DecoderService {
     return this.rss2JsonApiKey;
   }
 
+  // Verify API key method
+  public async verifyApiKey(): Promise<{ isValid: boolean; message: string }> {
+    if (!this.apiKey) {
+      return { isValid: false, message: "Kein API-Schlüssel vorhanden" };
+    }
+
+    if (this.apiKey === "rss2json-api-key-placeholder") {
+      return { isValid: false, message: "Kein gültiger API-Schlüssel vorhanden" };
+    }
+
+    // For now, just validate that it's not empty and not a placeholder
+    if (this.apiKey.length > 10) {
+      return { isValid: true, message: "API-Schlüssel ist gültig" };
+    }
+
+    return { isValid: false, message: "API-Schlüssel scheint ungültig zu sein" };
+  }
+
   // Enhanced newsletter generation with detailed analysis
   public async generateSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
     if (!this.apiKey) {
@@ -74,7 +92,7 @@ Titel: ${article.title}
 Beschreibung: ${article.description || 'Keine Beschreibung verfügbar'}
 Link: ${article.link}
 Datum: ${article.pubDate}
-Quelle: ${article.source}
+Quelle: ${article.sourceName || 'Unbekannte Quelle'}
 `).join('\n')}
 
 Bitte erstelle eine umfassende, detaillierte Analyse mit mindestens 800-1200 Wörtern. Erkläre die Bedeutung jeder Entwicklung, füge Kontext hinzu und zeige Verbindungen zwischen den verschiedenen Nachrichten auf.`
