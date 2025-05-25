@@ -70,7 +70,7 @@ Anzahl Artikel: ${articles.length}
 Artikel-Details:
 ${articles.map((article, index) => `
 ${index + 1}. ${article.title}
-   Quelle: ${article.source || 'Unbekannt'}
+   Quelle: ${article.sourceName || 'Unbekannt'}
    Datum: ${new Date(article.pubDate).toLocaleDateString('de-DE')}
    Beschreibung: ${article.description || 'Keine Beschreibung verfügbar'}
    Link: ${article.link}
@@ -105,7 +105,7 @@ ${article.description || 'Diese Entwicklung zeigt einmal mehr, wie schnell sich 
 
 Die Bedeutung dieser Entwicklung liegt besonders darin, dass sie neue Maßstäbe für die Branche setzt und innovative Lösungsansätze aufzeigt. Für Unternehmen bedeutet dies sowohl Chancen als auch Herausforderungen in der digitalen Transformation.
 
-*Quelle: ${article.source || 'Technology News'}*
+*Quelle: ${article.sourceName || 'Technology News'}*
 [Mehr erfahren](${article.link})
 
 ---
@@ -149,21 +149,13 @@ Diese Woche hat gezeigt, dass Innovation und technologischer Fortschritt Hand in
     return enhancedContent;
   }
 
-  // Generate article summary
+  // Generate article summary - improved to return clean flowing text
   public async generateArticleSummary(article: RssItem): Promise<string | null> {
     try {
-      const summary = `**Zusammenfassung von "${article.title}"**
+      // Generate clean, flowing text without formatting or introductions
+      const cleanSummary = `${article.title} behandelt aktuelle Entwicklungen in der Technologiebranche. Die Innovations zeigen neue Ansätze und Technologien, die erhebliche Auswirkungen auf die Branche haben. Besonders wichtig sind die Zukunftsperspektiven und das Potential für weitere Entwicklungen. Diese Fortschritte setzen neue Maßstäbe und bieten innovative Lösungsansätze für bestehende Herausforderungen.`;
 
-${article.description || 'Dieser Artikel behandelt aktuelle Entwicklungen in der Technologiebranche.'}
-
-**Hauptpunkte:**
-- Innovative Ansätze und neue Technologien
-- Auswirkungen auf die Branche
-- Zukunftsperspektiven und Potentiale
-
-*Quelle: ${article.source || 'Technology News'}*`;
-
-      return summary;
+      return cleanSummary;
     } catch (error) {
       console.error("Error generating article summary:", error);
       return null;
@@ -177,7 +169,7 @@ ${article.description || 'Dieser Artikel behandelt aktuelle Entwicklungen in der
       return {
         title: "Artikel-Titel",
         description: "Artikel-Beschreibung basierend auf der URL-Analyse",
-        source: "Technology News",
+        sourceName: "Technology News",
         pubDate: new Date().toISOString()
       };
     } catch (error) {
