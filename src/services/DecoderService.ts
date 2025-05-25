@@ -24,7 +24,7 @@ class DecoderService {
       return { isValid: false, message: "Kein API-Schlüssel vorhanden" };
     }
 
-    if (this.apiKey === "rss2json-api-key-placeholder") {
+    if (this.apiKey === "gemini-api-key-placeholder") {
       return { isValid: false, message: "Kein gültiger API-Schlüssel vorhanden" };
     }
 
@@ -36,21 +36,21 @@ class DecoderService {
     return { isValid: false, message: "API-Schlüssel scheint ungültig zu sein" };
   }
 
-  // Enhanced newsletter generation with detailed analysis
+  // Enhanced newsletter generation with detailed analysis using Gemini API
   public async generateSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
-    console.log("=== DECODER SERVICE GENERATE SUMMARY ===");
+    console.log("=== DECODER SERVICE GENERATE SUMMARY WITH GEMINI ===");
     console.log("API Key present:", !!this.apiKey);
     console.log("API Key starts with:", this.apiKey?.substring(0, 10));
     
     if (!this.apiKey) {
-      const error = "API-Schlüssel ist erforderlich für die Newsletter-Generierung";
+      const error = "Gemini API-Schlüssel ist erforderlich für die Newsletter-Generierung";
       console.error(error);
       throw new Error(error);
     }
 
-    // Check if we're using the wrong API key (RSS2JSON instead of OpenAI)
+    // Check if we're using the wrong API key (RSS2JSON instead of Gemini)
     if (this.apiKey === this.rss2JsonApiKey) {
-      const error = "Falscher API-Schlüssel: OpenAI API-Schlüssel erforderlich, nicht RSS2JSON";
+      const error = "Falscher API-Schlüssel: Gemini API-Schlüssel erforderlich, nicht RSS2JSON";
       console.error(error);
       throw new Error(error);
     }
@@ -62,21 +62,10 @@ class DecoderService {
     }
 
     console.log(`Generating detailed summary for ${articlesToUse.length} articles`);
-    console.log("Using OpenAI API key:", this.apiKey.substring(0, 7) + "...");
+    console.log("Using Gemini API key:", this.apiKey.substring(0, 7) + "...");
 
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          model: "gpt-4o",
-          messages: [
-            {
-              role: "system",
-              content: `Du bist ein Experte für KI-Newsletter und schreibst detaillierte, professionelle Zusammenfassungen für das LINKIT WEEKLY. 
+      const prompt = `Du bist ein Experte für KI-Newsletter und schreibst detaillierte, professionelle Zusammenfassungen für das LINKIT WEEKLY. 
 
 WICHTIGE ANFORDERUNGEN:
 - Schreibe einen ausführlichen, detaillierten Newsletter mit mindestens 800-1200 Wörtern
@@ -95,11 +84,9 @@ STRUKTUR:
 4. Ausblick und Implikationen
 5. Fazit
 
-Verwende Markdown-Formatierung für bessere Lesbarkeit.`
-            },
-            {
-              role: "user",
-              content: `Erstelle einen detaillierten Newsletter für Kalenderwoche ${digest.weekNumber}/${digest.year} (${digest.dateRange}) basierend auf diesen KI-Nachrichten:
+Verwende Markdown-Formatierung für bessere Lesbarkeit.
+
+Erstelle einen detaillierten Newsletter für Kalenderwoche ${digest.weekNumber}/${digest.year} (${digest.dateRange}) basierend auf diesen KI-Nachrichten:
 
 ${articlesToUse.map((article, index) => `
 **Artikel ${index + 1}:**
@@ -110,31 +97,45 @@ Datum: ${article.pubDate}
 Quelle: ${article.sourceName || 'Unbekannte Quelle'}
 `).join('\n')}
 
-Bitte erstelle eine umfassende, detaillierte Analyse mit mindestens 800-1200 Wörtern. Erkläre die Bedeutung jeder Entwicklung, füge Kontext hinzu und zeige Verbindungen zwischen den verschiedenen Nachrichten auf.`
-            }
-          ],
-          max_tokens: 3000,
-          temperature: 0.7
+Bitte erstelle eine umfassende, detaillierte Analyse mit mindestens 800-1200 Wörtern. Erkläre die Bedeutung jeder Entwicklung, füge Kontext hinzu und zeige Verbindungen zwischen den verschiedenen Nachrichten auf.`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 3000,
+          }
         })
       });
 
-      console.log("OpenAI API response status:", response.status);
+      console.log("Gemini API response status:", response.status);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        const errorMessage = `OpenAI API Fehler: ${response.status} - ${errorData?.error?.message || response.statusText}`;
-        console.error("OpenAI API Error:", errorMessage);
+        const errorMessage = `Gemini API Fehler: ${response.status} - ${errorData?.error?.message || response.statusText}`;
+        console.error("Gemini API Error:", errorMessage);
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      console.log("OpenAI API response received successfully");
+      console.log("Gemini API response received successfully");
       
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error("Unerwartete Antwort von der OpenAI API");
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]) {
+        throw new Error("Unerwartete Antwort von der Gemini API");
       }
 
-      let content = data.choices[0].message.content;
+      let content = data.candidates[0].content.parts[0].text;
       
       // Add LinkedIn reference if not present and linkedInPage is provided
       if (linkedInPage && !content.includes("linkedin.com/company/linkit-karlsruhe")) {
@@ -157,49 +158,50 @@ Bitte erstelle eine umfassende, detaillierte Analyse mit mindestens 800-1200 Wö
 
   public async generateArticleSummary(article: RssItem): Promise<string | null> {
     if (!this.apiKey) {
-      throw new Error("API-Schlüssel ist erforderlich für die Artikel-Zusammenfassung");
+      throw new Error("Gemini API-Schlüssel ist erforderlich für die Artikel-Zusammenfassung");
     }
 
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content: "Du bist ein KI-Experte und fasst Artikel über künstliche Intelligenz prägnant zusammen. Schreibe eine kurze, aber informative Zusammenfassung in 2-3 Sätzen auf Deutsch."
-            },
-            {
-              role: "user",
-              content: `Fasse diesen KI-Artikel zusammen:
+      const prompt = `Du bist ein KI-Experte und fasst Artikel über künstliche Intelligenz prägnant zusammen. Schreibe eine kurze, aber informative Zusammenfassung in 2-3 Sätzen auf Deutsch.
+
+Fasse diesen KI-Artikel zusammen:
               
 Titel: ${article.title}
 Beschreibung: ${article.description || 'Keine Beschreibung verfügbar'}
-Link: ${article.link}`
-            }
-          ],
-          max_tokens: 200,
-          temperature: 0.7
+Link: ${article.link}`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 200,
+          }
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(`OpenAI API Fehler: ${response.status} - ${errorData?.error?.message || response.statusText}`);
+        throw new Error(`Gemini API Fehler: ${response.status} - ${errorData?.error?.message || response.statusText}`);
       }
 
       const data = await response.json();
       
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error("Unerwartete Antwort von der OpenAI API");
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]) {
+        throw new Error("Unerwartete Antwort von der Gemini API");
       }
 
-      return data.choices[0].message.content;
+      return data.candidates[0].content.parts[0].text;
 
     } catch (error) {
       console.error("Error generating article summary:", error);

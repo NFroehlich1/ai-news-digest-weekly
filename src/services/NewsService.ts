@@ -16,7 +16,7 @@ export { formatDate, getCurrentWeek, getCurrentYear, getWeekDateRange };
 
 // Main service class for fetching news from RSS feeds
 class NewsService {
-  private openaiApiKey: string;
+  private geminiApiKey: string;
   private decoderService: DecoderService;
   private rssSourceService: RssSourceService;
   private rssFeedService: RssFeedService;
@@ -25,9 +25,9 @@ class NewsService {
   private newsletterArchiveService: NewsletterArchiveService;
   private useMockData: boolean = false;
   
-  constructor(openaiApiKey?: string) {
+  constructor(geminiApiKey?: string) {
     console.log("=== NEWS SERVICE CONSTRUCTOR ===");
-    console.log("OpenAI API Key provided:", !!openaiApiKey);
+    console.log("Gemini API Key provided:", !!geminiApiKey);
     
     this.rssSourceService = new RssSourceService();
     this.rssFeedService = new RssFeedService();
@@ -35,34 +35,34 @@ class NewsService {
     this.localNewsletterService = new LocalNewsletterService();
     this.newsletterArchiveService = new NewsletterArchiveService();
     
-    // Store the OpenAI API key separately from RSS2JSON key
-    this.openaiApiKey = openaiApiKey || "";
+    // Store the Gemini API key separately from RSS2JSON key
+    this.geminiApiKey = geminiApiKey || "";
     
-    // Create DecoderService with the OpenAI API key
-    this.decoderService = new DecoderService(this.openaiApiKey);
+    // Create DecoderService with the Gemini API key
+    this.decoderService = new DecoderService(this.geminiApiKey);
     
-    console.log("DecoderService created with OpenAI key:", !!this.openaiApiKey);
+    console.log("DecoderService created with Gemini key:", !!this.geminiApiKey);
   }
   
   // Set the API key
-  public setApiKey(openaiApiKey: string): void {
-    console.log("=== SETTING OPENAI API KEY ===");
-    console.log("New OpenAI API Key provided:", !!openaiApiKey);
+  public setApiKey(geminiApiKey: string): void {
+    console.log("=== SETTING GEMINI API KEY ===");
+    console.log("New Gemini API Key provided:", !!geminiApiKey);
     
-    this.openaiApiKey = openaiApiKey;
-    this.decoderService.setApiKey(openaiApiKey);
+    this.geminiApiKey = geminiApiKey;
+    this.decoderService.setApiKey(geminiApiKey);
     
     console.log("API key updated in DecoderService");
   }
   
-  // Get the default API key (returns RSS2JSON key for RSS feeds, but OpenAI key is used internally)
+  // Get the default API key (returns RSS2JSON key for RSS feeds, but Gemini key is used internally)
   public getDefaultApiKey(): string {
     return this.decoderService.getRss2JsonApiKey();
   }
   
-  // Get the OpenAI API key
-  public getOpenAIApiKey(): string {
-    return this.openaiApiKey;
+  // Get the Gemini API key
+  public getGeminiApiKey(): string {
+    return this.geminiApiKey;
   }
   
   // Enable or disable mock data
@@ -259,10 +259,10 @@ class NewsService {
   // Enhanced newsletter generation method - creates detailed summaries without "KI-News von The Decoder"
   public async generateNewsletterSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
     console.log("=== NEWS SERVICE: GENERATE NEWSLETTER SUMMARY ===");
-    console.log("OpenAI API Key available:", !!this.openaiApiKey);
+    console.log("Gemini API Key available:", !!this.geminiApiKey);
     
-    if (!this.openaiApiKey) {
-      const error = "OpenAI API-Schlüssel ist erforderlich für die Newsletter-Generierung";
+    if (!this.geminiApiKey) {
+      const error = "Gemini API-Schlüssel ist erforderlich für die Newsletter-Generierung";
       console.error(error);
       toast.error(error);
       throw new Error(error);
