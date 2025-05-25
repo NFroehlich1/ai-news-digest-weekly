@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,44 +47,67 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   };
   
   const saveToArchive = async (content: string): Promise<boolean> => {
+    console.log("=== STARTING ARCHIVE SAVE PROCESS ===");
     setIsSaving(true);
+    
     try {
-      console.log("=== SAVING NEWSLETTER TO ARCHIVE ===");
-      console.log("Newsletter content length:", content.length);
-      console.log("Digest info:", {
-        weekNumber: digest.weekNumber,
-        year: digest.year,
-        dateRange: digest.dateRange,
-        itemCount: digest.items.length
+      console.log("Creating archive service instance...");
+      const archiveService = new NewsletterArchiveService();
+      
+      console.log("Digest validation:", {
+        hasDigest: !!digest,
+        weekNumber: digest?.weekNumber,
+        year: digest?.year,
+        dateRange: digest?.dateRange,
+        itemsCount: digest?.items?.length
       });
       
-      const archiveService = new NewsletterArchiveService();
-      const saved = await archiveService.saveNewsletter(digest, content);
+      console.log("Content validation:", {
+        hasContent: !!content,
+        contentLength: content?.length,
+        contentPreview: content?.substring(0, 100)
+      });
       
-      if (saved) {
-        console.log("✅ Newsletter successfully saved to archive:", saved.id);
+      if (!digest) {
+        throw new Error("Digest ist nicht verfügbar");
+      }
+      
+      if (!content || content.trim().length === 0) {
+        throw new Error("Newsletter-Inhalt ist leer");
+      }
+      
+      console.log("Calling saveNewsletter with validated data...");
+      const result = await archiveService.saveNewsletter(digest, content);
+      
+      if (result && result.id) {
+        console.log("✅ Newsletter successfully saved to archive with ID:", result.id);
         setSavedToArchive(true);
         toast.success("Newsletter erfolgreich im Archiv gespeichert!");
         return true;
       } else {
-        console.error("❌ Failed to save newsletter to archive");
-        toast.error("Fehler beim Speichern im Newsletter-Archiv");
+        console.error("❌ Archive service returned no result or invalid result:", result);
+        toast.error("Fehler: Newsletter konnte nicht im Archiv gespeichert werden");
         return false;
       }
     } catch (error) {
       console.error("❌ Error in saveToArchive:", error);
-      toast.error(`Fehler beim Speichern im Archiv: ${(error as Error).message}`);
+      const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
+      toast.error(`Archiv-Fehler: ${errorMessage}`);
       return false;
     } finally {
       setIsSaving(false);
+      console.log("=== ARCHIVE SAVE PROCESS COMPLETED ===");
     }
   };
   
   const handleGenerateSummary = async () => {
+    console.log("=== STARTING NEWSLETTER GENERATION ===");
+    
     if (generatedContent) {
       setGeneratedContent(null);
       setSavedToArchive(false);
     }
+    
     setIsGenerating(true);
     
     try {
@@ -97,7 +119,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
         articlesToUse = getUniqueArticles(selectedArticles);
       }
       
-      console.log(`Generating enhanced newsletter summary with ${articlesToUse.length} articles`);
+      console.log(`Generating newsletter with ${articlesToUse.length} articles`);
       
       const summary = await newsService.generateNewsletterSummary(
         digest, 
@@ -105,30 +127,30 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
         linkedInPage
       );
       
-      if (summary) {
-        console.log("✅ Newsletter summary generated, length:", summary.length);
+      if (summary && summary.trim().length > 0) {
+        console.log("✅ Newsletter generated successfully, length:", summary.length);
         setGeneratedContent(summary);
         setActiveTab("summary");
         
-        // Save to archive after generation
-        console.log("🔄 Attempting to save to archive...");
+        // Immediate save to archive with better error handling
+        console.log("🔄 Attempting immediate archive save...");
         const saveSuccess = await saveToArchive(summary);
         
         if (saveSuccess) {
-          toast.success("Newsletter erfolgreich generiert und im Archiv gespeichert!");
+          console.log("✅ Newsletter generation and archive save completed successfully");
         } else {
-          toast.success("Newsletter erfolgreich generiert!");
-          toast.warning("Newsletter konnte nicht im Archiv gespeichert werden");
+          console.warn("⚠️ Newsletter generated but archive save failed");
         }
       } else {
-        console.error("❌ Newsletter generation returned empty result");
-        toast.error("Fehler bei der Generierung der Zusammenfassung.");
+        throw new Error("Newsletter-Generierung hat leeren Inhalt zurückgegeben");
       }
     } catch (error) {
-      console.error("❌ Error generating summary:", error);
-      toast.error(`Fehler: ${(error as Error).message}`);
+      console.error("❌ Error in newsletter generation:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
+      toast.error(`Generierungs-Fehler: ${errorMessage}`);
     } finally {
       setIsGenerating(false);
+      console.log("=== NEWSLETTER GENERATION PROCESS COMPLETED ===");
     }
   };
 
