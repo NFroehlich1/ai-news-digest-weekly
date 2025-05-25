@@ -85,7 +85,7 @@ class NewsService {
     }
     
     try {
-      console.log(`=== ENHANCED NEWS FETCH START ===`);
+      console.log(`=== NEWS FETCH START ===`);
       console.log(`Enabled sources: ${enabledSources.length}`);
       
       const allItems: RssItem[] = [];
@@ -102,11 +102,6 @@ class NewsService {
             allItems.push(...sourceItems);
             successfulSources++;
             console.log(`✅ ${source.name}: ${sourceItems.length} articles loaded`);
-            
-            // Show progress for large loads
-            if (sourceItems.length > 15) {
-              toast.info(`${sourceItems.length} Artikel von ${source.name} geladen`);
-            }
           } else {
             console.warn(`❌ ${source.name}: No articles found`);
           }
@@ -129,8 +124,7 @@ class NewsService {
       // Sort by date (newest first)
       allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
       
-      // Enhanced success message
-      toast.success(`${allItems.length} Artikel erfolgreich geladen für umfassende Wochenabdeckung`);
+      toast.success(`${allItems.length} Artikel erfolgreich geladen`);
       
       console.log(`=== RETURNING ${allItems.length} ARTICLES ===`);
       return allItems;
@@ -153,82 +147,6 @@ class NewsService {
       toast.error(`Fehler bei der Zusammenfassung des Artikels: ${(error as Error).message}`);
       return null;
     }
-  }
-  
-  // Significantly enhanced article prioritization for comprehensive coverage
-  public prioritizeNewsForNewsletter(items: RssItem[], limit: number = 50): RssItem[] {
-    console.log(`=== ENHANCED PRIORITIZATION ===`);
-    console.log(`Input: ${items.length} items, Target: ${limit} items`);
-    
-    // Filter valid items
-    const validItems = items.filter(item => item.title && (item.description || item.content));
-    console.log(`Valid items after filtering: ${validItems.length}`);
-    
-    const now = new Date();
-    
-    // Enhanced scoring algorithm
-    const scoredItems = validItems.map(item => {
-      let score = 0;
-      
-      // Recency score (0-25 points)
-      const pubDate = new Date(item.pubDate);
-      const daysDiff = (now.getTime() - pubDate.getTime()) / (1000 * 60 * 60 * 24);
-      const recencyScore = Math.max(0, 25 - daysDiff * 1.5);
-      score += recencyScore;
-      
-      // Content length score (0-15 points)
-      const contentLength = (item.content?.length || 0) + (item.description?.length || 0);
-      const contentScore = Math.min(15, contentLength / 400);
-      score += contentScore;
-      
-      // Image bonus (8 points)
-      const imageScore = item.imageUrl ? 8 : 0;
-      score += imageScore;
-      
-      // AI/Tech keyword scoring (0-20 points)
-      const aiKeywords = [
-        'künstliche intelligenz', 'ki ', 'ai ', 'machine learning', 'deep learning', 
-        'neural network', 'gpt', 'llm', 'openai', 'microsoft', 'google', 'anthropic', 
-        'claude', 'gemini', 'mistral', 'meta', 'chatgpt', 'sora', 'midjourney',
-        'roboter', 'automation', 'algorithmus', 'big data', 'nlp', 'computer vision',
-        'generative ai', 'sprachmodell', 'technologie', 'innovation', 'breakthrough',
-        'transformer', 'dataset', 'training', 'multimodal'
-      ];
-      
-      const combinedText = `${item.title} ${item.description} ${item.content || ''}`.toLowerCase();
-      
-      let keywordScore = 0;
-      aiKeywords.forEach(keyword => {
-        if (combinedText.includes(keyword)) {
-          keywordScore += 2.5; // Increased weight
-        }
-      });
-      score += Math.min(20, keywordScore);
-      
-      // Source quality bonus (0-8 points)
-      const premiumSources = ['heise.de', 'golem.de', 't3n.de', 'netzpolitik.org', 'thedecoder.de'];
-      const sourceScore = premiumSources.some(s => item.sourceUrl?.includes(s)) ? 5 : 0;
-      score += sourceScore;
-      
-      // The Decoder strong bonus (10 points)
-      const decoderBonus = item.sourceName === "The Decoder" ? 10 : 0;
-      score += decoderBonus;
-      
-      console.log(`"${item.title.substring(0, 60)}..." - Score: ${score.toFixed(1)} (recency: ${recencyScore.toFixed(1)}, content: ${contentScore.toFixed(1)}, keywords: ${keywordScore.toFixed(1)}, source: ${sourceScore}, decoder: ${decoderBonus})`);
-      
-      return { item, score };
-    });
-    
-    // Sort by score and take top items
-    scoredItems.sort((a, b) => b.score - a.score);
-    
-    const topItems = scoredItems.slice(0, limit).map(scored => scored.item);
-    
-    console.log(`=== PRIORITIZATION COMPLETE ===`);
-    console.log(`Selected ${topItems.length} out of ${items.length} items`);
-    console.log(`Top 5 scores: ${scoredItems.slice(0, 5).map(s => s.score.toFixed(1)).join(', ')}`);
-    
-    return topItems;
   }
   
   // Fetch metadata for a URL
@@ -316,12 +234,11 @@ class NewsService {
     return this.localNewsletterService.generateDemoData();
   }
   
-  // Enhanced newsletter generation method with more content focus
+  // Newsletter generation method without prioritization
   public async generateNewsletterSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
     try {
-      // If specific articles are selected, use those
-      // Otherwise, prioritize the most important articles with increased limit
-      const articlesToUse = selectedArticles || this.prioritizeNewsForNewsletter(digest.items, 50);
+      // Use selected articles or all available articles
+      const articlesToUse = selectedArticles || digest.items;
       const summary = await this.decoderService.generateSummary(digest, articlesToUse, linkedInPage);
       
       // Return the generated summary

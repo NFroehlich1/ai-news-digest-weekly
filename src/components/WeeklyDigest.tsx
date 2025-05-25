@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
 import NewsletterSubscribeModal from "./NewsletterSubscribeModal";
 import ArticleSelector from "./ArticleSelector";
-import { Calendar, FileEdit, Mail, Star, RefreshCw, TrendingUp, BarChart3 } from "lucide-react";
+import { Calendar, FileEdit, Mail, RefreshCw, TrendingUp } from "lucide-react";
 import NewsService from "@/services/NewsService";
 
 interface WeeklyDigestProps {
@@ -24,8 +24,6 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   const [activeTab, setActiveTab] = useState<string>("news");
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
   const [selectedArticles, setSelectedArticles] = useState<RssItem[] | null>(null);
-  const [isPrioritized, setIsPrioritized] = useState<boolean>(false);
-  const [prioritizedArticles, setPrioritizedArticles] = useState<RssItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
   const getArticleId = (article: RssItem): string => {
@@ -59,8 +57,6 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
       let articlesToUse = getUniqueArticles(digest.items);
       if (selectedArticles && selectedArticles.length > 0) {
         articlesToUse = getUniqueArticles(selectedArticles);
-      } else if (prioritizedArticles.length > 0) {
-        articlesToUse = getUniqueArticles(prioritizedArticles);
       }
       
       console.log(`Generating newsletter summary with ${articlesToUse.length} articles`);
@@ -86,22 +82,6 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     }
   };
   
-  const handlePrioritizeArticles = () => {
-    try {
-      const newsService = new NewsService(apiKey);
-      const uniqueArticles = getUniqueArticles(digest.items);
-      const topArticles = newsService.prioritizeNewsForNewsletter(uniqueArticles, 25);
-      
-      setPrioritizedArticles(topArticles);
-      setIsPrioritized(true);
-      toast.success("Die wichtigsten Artikel wurden priorisiert");
-      console.log("Prioritized articles:", topArticles);
-    } catch (error) {
-      console.error("Error prioritizing articles:", error);
-      toast.error("Fehler bei der Priorisierung der Artikel");
-    }
-  };
-  
   const startArticleSelection = () => {
     setIsSelecting(true);
   };
@@ -121,16 +101,12 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   };
   
   const getDisplayArticles = () => {
-    if (isPrioritized && prioritizedArticles.length > 0) {
-      return prioritizedArticles;
-    }
     if (selectedArticles && selectedArticles.length > 0) {
       return selectedArticles;
     }
     return getUniqueArticles(digest.items);
   };
   
-  const totalArticles = getUniqueArticles(digest.items).length;
   const displayArticles = getDisplayArticles();
   
   return (
@@ -149,11 +125,6 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                   </CardTitle>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600 mt-1">
                     <span className="font-medium">{digest.dateRange}</span>
-                    <span className="hidden sm:inline">•</span>
-                    <div className="flex items-center gap-1">
-                      <BarChart3 className="h-3 w-3" />
-                      <span className="font-semibold text-green-600">{totalArticles} Artikel</span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -162,22 +133,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
             <div className="flex flex-wrap gap-2">
               <NewsletterSubscribeModal newsletterContent={generatedContent || undefined} />
               
-              {!isSelecting && !isGenerating && (
-                <Button 
-                  variant="outline" 
-                  onClick={handlePrioritizeArticles}
-                  className="gap-2 bg-white hover:bg-amber-50 border-amber-200 text-amber-700 hover:text-amber-800"
-                  disabled={isPrioritized && prioritizedArticles.length > 0}
-                >
-                  <Star className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    {isPrioritized ? `Priorisiert (${prioritizedArticles.length})` : "Priorisieren"}
-                  </span>
-                  <span className="sm:hidden">Top</span>
-                </Button>
-              )}
-              
-              {!isGenerating && selectedArticles && selectedArticles.length > 0 && (
+              {selectedArticles && selectedArticles.length > 0 && (
                 <Button 
                   variant="outline" 
                   onClick={startArticleSelection} 
@@ -191,7 +147,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
               
               {!isSelecting ? (
                 <>
-                  {!selectedArticles && !isPrioritized && (
+                  {!selectedArticles && (
                     <Button 
                       variant="outline"
                       onClick={startArticleSelection} 
@@ -243,9 +199,6 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                   <TrendingUp className="h-4 w-4" />
                   <span className="hidden sm:inline">Nachrichten</span>
                   <span className="sm:hidden">News</span>
-                  <span className="ml-1 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full font-semibold">
-                    {isPrioritized ? prioritizedArticles.length : selectedArticles ? selectedArticles.length : totalArticles}
-                  </span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="summary" 
@@ -264,31 +217,14 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                   </div>
                 ) : displayArticles.length > 0 ? (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between pb-4 border-b">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        {isPrioritized && (
-                          <>
-                            <Star className="h-4 w-4 text-amber-500" />
-                            <span className="hidden sm:inline">Priorisierte Artikel ({prioritizedArticles.length})</span>
-                            <span className="sm:hidden">Priorisiert ({prioritizedArticles.length})</span>
-                          </>
-                        )}
-                        {selectedArticles && (
-                          <>
-                            <FileEdit className="h-4 w-4 text-blue-500" />
-                            <span className="hidden sm:inline">{selectedArticles.length} ausgewählte Artikel</span>
-                            <span className="sm:hidden">{selectedArticles.length} ausgewählt</span>
-                          </>
-                        )}
-                        {!isPrioritized && !selectedArticles && (
-                          <>
-                            <BarChart3 className="h-4 w-4 text-green-500" />
-                            <span className="hidden sm:inline font-semibold">Alle verfügbaren Artikel ({totalArticles})</span>
-                            <span className="sm:hidden">Alle ({totalArticles})</span>
-                          </>
-                        )}
+                    {selectedArticles && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600 pb-4 border-b">
+                        <FileEdit className="h-4 w-4 text-blue-500" />
+                        <span className="hidden sm:inline">{selectedArticles.length} ausgewählte Artikel</span>
+                        <span className="sm:hidden">{selectedArticles.length} ausgewählt</span>
                       </div>
-                    </div>
+                    )}
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6">
                       {displayArticles.map((item, index) => (
                         <NewsCard 
@@ -301,7 +237,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600">Keine Artikel gefunden</p>
                     <p className="text-sm text-gray-500 mt-2">Versuchen Sie, die Nachrichten neu zu laden</p>
                   </div>
