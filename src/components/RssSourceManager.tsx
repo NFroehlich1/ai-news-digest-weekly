@@ -71,92 +71,120 @@ const RssSourceManager = ({
   };
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Rss className="h-5 w-5" />
-          RSS-Quellen
+    <Card className="w-full">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+          <Rss className="h-5 w-5 flex-shrink-0" />
+          <span className="truncate">RSS-Quellen</span>
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-sm sm:text-base">
           RSS-Quellen verwalten und neue hinzufügen
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {sources.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">
+      <CardContent className="space-y-3 sm:space-y-4">
+        {sources.length === 0 ? (
+          <div className="text-center py-6 sm:py-8">
+            <Rss className="h-8 w-8 sm:h-10 sm:w-10 mx-auto text-muted-foreground mb-3" />
+            <p className="text-muted-foreground text-sm sm:text-base">
               Keine RSS-Quellen vorhanden. Fügen Sie eine hinzu.
             </p>
-          ) : (
-            sources.map((source, index) => (
-              <div key={index} className="flex items-center justify-between border-b pb-2">
-                <div className="space-y-1">
-                  <p className="font-medium">{source.name}</p>
-                  <p className="text-sm text-muted-foreground truncate max-w-[300px]">
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sources.map((source, index) => (
+              <div key={index} className="border rounded-lg p-3 sm:p-4 space-y-3">
+                {/* Source Info - Stacked on mobile */}
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm sm:text-base line-clamp-2">
+                    {source.name}
+                  </h4>
+                  <p className="text-xs sm:text-sm text-muted-foreground break-all">
                     {source.url}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center space-x-2">
+                
+                {/* Controls - Responsive layout */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center gap-3">
                     <Switch
                       id={`source-${index}`}
                       checked={source.enabled}
                       onCheckedChange={(checked) => handleToggleSource(source.url, checked)}
                     />
-                    <Label htmlFor={`source-${index}`} className="text-sm">
+                    <Label 
+                      htmlFor={`source-${index}`} 
+                      className="text-sm font-medium cursor-pointer"
+                    >
                       {source.enabled ? "Aktiv" : "Inaktiv"}
                     </Label>
                   </div>
+                  
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleRemoveSource(source.url)}
+                    className="gap-2 w-full sm:w-auto"
                   >
                     <Trash2 className="h-4 w-4" />
+                    <span className="sm:hidden">Entfernen</span>
                   </Button>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
       <CardFooter>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="w-full flex items-center gap-2">
+            <Button className="w-full gap-2" size="sm">
               <Plus className="h-4 w-4" />
               RSS-Quelle hinzufügen
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="w-[95vw] max-w-md mx-auto">
             <DialogHeader>
-              <DialogTitle>RSS-Quelle hinzufügen</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-lg sm:text-xl">RSS-Quelle hinzufügen</DialogTitle>
+              <DialogDescription className="text-sm sm:text-base">
                 Fügen Sie eine neue RSS-Quelle hinzu, um Nachrichten zu importieren.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="url">RSS-Feed URL</Label>
+                <Label htmlFor="url" className="text-sm font-medium">RSS-Feed URL</Label>
                 <Input
                   id="url"
                   placeholder="https://beispiel.de/feed"
                   value={newSourceUrl}
                   onChange={(e) => setNewSourceUrl(e.target.value)}
+                  className="text-sm"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name">Name (optional)</Label>
+                <Label htmlFor="name" className="text-sm font-medium">Name (optional)</Label>
                 <Input
                   id="name"
                   placeholder="Quellen-Name"
                   value={newSourceName}
                   onChange={(e) => setNewSourceName(e.target.value)}
+                  className="text-sm"
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button onClick={handleAddSource}>Hinzufügen</Button>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setOpen(false)}
+                className="w-full sm:w-auto order-2 sm:order-1"
+              >
+                Abbrechen
+              </Button>
+              <Button 
+                onClick={handleAddSource}
+                className="w-full sm:w-auto order-1 sm:order-2"
+              >
+                Hinzufügen
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

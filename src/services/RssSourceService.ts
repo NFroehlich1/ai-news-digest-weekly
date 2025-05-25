@@ -1,10 +1,9 @@
 
 import { RssSource } from '../types/newsTypes';
 import { toast } from "sonner";
-import { DEFAULT_RSS_SOURCES } from '../data/mockNews';
 
 /**
- * Service for managing RSS sources
+ * Service for managing RSS sources - fokussiert auf The Decoder
  */
 class RssSourceService {
   private rssSources: RssSource[] = [];
@@ -18,39 +17,47 @@ class RssSourceService {
     try {
       const savedSources = localStorage.getItem('rss_sources');
       
-      // If no sources saved, initialize with defaults plus additional AI news sources
+      // Wenn keine Quellen gespeichert sind, nur The Decoder als Standard
       if (!savedSources) {
-        const additionalSources: RssSource[] = [
+        this.rssSources = [
           {
-            name: "Heise KI-News",
-            url: "https://www.heise.de/thema/kuenstliche_intelligenz/feed/",
-            enabled: true
-          },
-          {
-            name: "t3n KI-News",
-            url: "https://t3n.de/tag/kuenstliche-intelligenz/feed/",
-            enabled: true
-          },
-          {
-            name: "Golem KI-News",
-            url: "https://rss.golem.de/rss.php?feed=RSS2.0",
-            enabled: true
-          },
-          {
-            name: "Netzpolitik KI",
-            url: "https://netzpolitik.org/category/ki/feed/",
+            name: "The Decoder - KI News",
+            url: "https://the-decoder.de/",
             enabled: true
           }
         ];
-        
-        this.rssSources = [...DEFAULT_RSS_SOURCES, ...additionalSources];
         this.saveRssSources();
       } else {
-        this.rssSources = JSON.parse(savedSources);
+        const parsedSources = JSON.parse(savedSources);
+        
+        // Falls alte Quellen vorhanden sind, nur The Decoder behalten
+        const decoderSources = parsedSources.filter((source: RssSource) => 
+          source.url.includes('the-decoder.de')
+        );
+        
+        if (decoderSources.length === 0) {
+          this.rssSources = [
+            {
+              name: "The Decoder - KI News",
+              url: "https://the-decoder.de/",
+              enabled: true
+            }
+          ];
+        } else {
+          this.rssSources = decoderSources;
+        }
+        
+        this.saveRssSources();
       }
     } catch (error) {
       console.error("Error loading RSS sources:", error);
-      this.rssSources = [...DEFAULT_RSS_SOURCES];
+      this.rssSources = [
+        {
+          name: "The Decoder - KI News",
+          url: "https://the-decoder.de/",
+          enabled: true
+        }
+      ];
       this.saveRssSources();
     }
   }
@@ -75,13 +82,19 @@ class RssSourceService {
     return this.rssSources.filter(source => source.enabled);
   }
   
-  // Add a new RSS source
+  // Add a new RSS source - only allow The Decoder URLs
   public addRssSource(url: string, name: string): boolean {
     // Basic URL validation
     try {
       new URL(url);
     } catch (error) {
       toast.error("Ungültige URL");
+      return false;
+    }
+    
+    // Nur The Decoder URLs erlauben
+    if (!url.includes('the-decoder.de')) {
+      toast.error("Nur The Decoder URLs sind aktuell unterstützt");
       return false;
     }
     
@@ -93,12 +106,12 @@ class RssSourceService {
     
     this.rssSources.push({
       url,
-      name: name || new URL(url).hostname,
+      name: name || "The Decoder",
       enabled: true
     });
     
     this.saveRssSources();
-    toast.success(`Neue RSS-Quelle "${name || new URL(url).hostname}" hinzugefügt`);
+    toast.success(`Neue RSS-Quelle "${name || "The Decoder"}" hinzugefügt`);
     return true;
   }
   
