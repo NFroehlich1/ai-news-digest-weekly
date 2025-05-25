@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      newsletter_archive: {
+        Row: {
+          article_count: number | null
+          content: string
+          created_at: string
+          date_range: string
+          html_content: string | null
+          id: string
+          title: string
+          updated_at: string
+          week_number: number
+          year: number
+        }
+        Insert: {
+          article_count?: number | null
+          content: string
+          created_at?: string
+          date_range: string
+          html_content?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          week_number: number
+          year: number
+        }
+        Update: {
+          article_count?: number | null
+          content?: string
+          created_at?: string
+          date_range?: string
+          html_content?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          week_number?: number
+          year?: number
+        }
+        Relationships: []
+      }
       newsletter_subscribers: {
         Row: {
           confirmation_token: string | null

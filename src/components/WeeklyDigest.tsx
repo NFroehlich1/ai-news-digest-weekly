@@ -10,8 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
 import NewsletterSubscribeModal from "./NewsletterSubscribeModal";
 import ArticleSelector from "./ArticleSelector";
-import { Calendar, FileEdit, Mail, RefreshCw, TrendingUp } from "lucide-react";
+import { Calendar, FileEdit, Mail, RefreshCw, TrendingUp, Archive } from "lucide-react";
 import NewsService from "@/services/NewsService";
+import NewsletterArchiveService from "@/services/NewsletterArchiveService";
 
 interface WeeklyDigestProps {
   digest: WeeklyDigestType;
@@ -25,6 +26,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
   const [selectedArticles, setSelectedArticles] = useState<RssItem[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   
   const getArticleId = (article: RssItem): string => {
     return article.guid || article.link;
@@ -59,7 +61,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
         articlesToUse = getUniqueArticles(selectedArticles);
       }
       
-      console.log(`Generating newsletter summary with ${articlesToUse.length} articles`);
+      console.log(`Generating enhanced newsletter summary with ${articlesToUse.length} articles`);
       
       const summary = await newsService.generateNewsletterSummary(
         digest, 
@@ -70,7 +72,11 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
       if (summary) {
         setGeneratedContent(summary);
         setActiveTab("summary");
-        toast.success("Newsletter-Zusammenfassung erfolgreich generiert!");
+        
+        // Automatically save to archive
+        await saveToArchive(summary);
+        
+        toast.success("Ausführliche Newsletter-Zusammenfassung erfolgreich generiert und gespeichert!");
       } else {
         toast.error("Fehler bei der Generierung der Zusammenfassung.");
       }
@@ -79,6 +85,23 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
       toast.error(`Fehler: ${(error as Error).message}`);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const saveToArchive = async (content: string) => {
+    setIsSaving(true);
+    try {
+      const archiveService = new NewsletterArchiveService();
+      const saved = await archiveService.saveNewsletter(digest, content);
+      
+      if (saved) {
+        console.log("Newsletter saved to archive:", saved);
+      }
+    } catch (error) {
+      console.error("Error saving to archive:", error);
+      toast.error("Fehler beim Speichern im Archiv");
+    } finally {
+      setIsSaving(false);
     }
   };
   
@@ -125,6 +148,12 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                   </CardTitle>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600 mt-1">
                     <span className="font-medium">{digest.dateRange}</span>
+                    {isSaving && (
+                      <div className="flex items-center gap-1 text-blue-600">
+                        <Archive className="h-3 w-3 animate-pulse" />
+                        <span className="text-xs">Speichere im Archiv...</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -161,7 +190,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                   
                   <Button 
                     onClick={handleGenerateSummary} 
-                    disabled={isGenerating}
+                    disabled={isGenerating || isSaving}
                     className="gap-2 bg-primary hover:bg-primary/90 shadow-lg"
                   >
                     {isGenerating ? (

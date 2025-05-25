@@ -3,6 +3,7 @@ import DecoderService from "./DecoderService";
 import RssSourceService from "./RssSourceService";
 import RssFeedService from "./RssFeedService";
 import DigestService from "./DigestService";
+import NewsletterArchiveService from "./NewsletterArchiveService";
 import type { RssItem, RssSource, WeeklyDigest } from "../types/newsTypes";
 import { MOCK_NEWS_ITEMS } from "../data/mockNews";
 import { formatDate, getCurrentWeek, getCurrentYear, getWeekDateRange } from "../utils/dateUtils";
@@ -21,6 +22,7 @@ class NewsService {
   private rssFeedService: RssFeedService;
   private digestService: DigestService;
   private localNewsletterService: LocalNewsletterService;
+  private newsletterArchiveService: NewsletterArchiveService;
   private useMockData: boolean = false;
   
   constructor(apiKey?: string) {
@@ -28,6 +30,7 @@ class NewsService {
     this.rssFeedService = new RssFeedService();
     this.digestService = new DigestService();
     this.localNewsletterService = new LocalNewsletterService();
+    this.newsletterArchiveService = new NewsletterArchiveService();
     this.decoderService = new DecoderService(apiKey);
     this.apiKey = apiKey || this.decoderService.getRss2JsonApiKey();
   }
@@ -234,20 +237,39 @@ class NewsService {
     return this.localNewsletterService.generateDemoData();
   }
   
-  // Newsletter generation method without prioritization
+  // Enhanced newsletter generation method - creates detailed summaries without "KI-News von The Decoder"
   public async generateNewsletterSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
     try {
       // Use selected articles or all available articles
       const articlesToUse = selectedArticles || digest.items;
+      
+      console.log("Generating enhanced newsletter summary...");
       const summary = await this.decoderService.generateSummary(digest, articlesToUse, linkedInPage);
       
-      // Return the generated summary
+      // Return the enhanced summary
       return summary;
     } catch (error) {
-      console.error('Error generating newsletter:', error);
-      toast.error(`Fehler bei der Generierung des Newsletters: ${(error as Error).message}`);
+      console.error('Error generating enhanced newsletter:', error);
+      toast.error(`Fehler bei der Generierung des ausführlichen Newsletters: ${(error as Error).message}`);
       return "";
     }
+  }
+
+  // Newsletter archive methods
+  public async saveNewsletterToArchive(digest: WeeklyDigest, content: string, htmlContent?: string) {
+    return this.newsletterArchiveService.saveNewsletter(digest, content, htmlContent);
+  }
+
+  public async getNewsletterArchive() {
+    return this.newsletterArchiveService.getNewsletters();
+  }
+
+  public async getNewsletterByWeek(weekNumber: number, year: number) {
+    return this.newsletterArchiveService.getNewsletterByWeek(weekNumber, year);
+  }
+
+  public async deleteArchivedNewsletter(id: string) {
+    return this.newsletterArchiveService.deleteNewsletter(id);
   }
 }
 
