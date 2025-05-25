@@ -63,7 +63,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
         articlesToUse = getUniqueArticles(prioritizedArticles);
       }
       
-      console.log(`Generating comprehensive summary with ${articlesToUse.length} unique articles`);
+      console.log(`Generating newsletter summary with ${articlesToUse.length} articles`);
       
       const summary = await newsService.generateNewsletterSummary(
         digest, 
@@ -74,7 +74,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
       if (summary) {
         setGeneratedContent(summary);
         setActiveTab("summary");
-        toast.success("Umfangreiche Newsletter-Zusammenfassung erfolgreich generiert!");
+        toast.success("Newsletter-Zusammenfassung erfolgreich generiert!");
       } else {
         toast.error("Fehler bei der Generierung der Zusammenfassung.");
       }
@@ -90,12 +90,12 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     try {
       const newsService = new NewsService(apiKey);
       const uniqueArticles = getUniqueArticles(digest.items);
-      const topArticles = newsService.prioritizeNewsForNewsletter(uniqueArticles, 40); // Increased from 25 to 40
+      const topArticles = newsService.prioritizeNewsForNewsletter(uniqueArticles, 25);
       
       setPrioritizedArticles(topArticles);
       setIsPrioritized(true);
-      toast.success(`Die ${topArticles.length} wichtigsten Artikel wurden priorisiert für umfassende Abdeckung`);
-      console.log("Prioritized articles for comprehensive coverage:", topArticles);
+      toast.success("Die wichtigsten Artikel wurden priorisiert");
+      console.log("Prioritized articles:", topArticles);
     } catch (error) {
       console.error("Error prioritizing articles:", error);
       toast.error("Fehler bei der Priorisierung der Artikel");
@@ -112,7 +112,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     setIsSelecting(false);
     
     if (uniqueSelectedArticles.length > 0) {
-      toast.success(`${uniqueSelectedArticles.length} Artikel für die umfassende Zusammenfassung ausgewählt`);
+      toast.success(`${uniqueSelectedArticles.length} Artikel für die Zusammenfassung ausgewählt`);
     }
   };
   
@@ -152,7 +152,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                     <span className="hidden sm:inline">•</span>
                     <div className="flex items-center gap-1">
                       <BarChart3 className="h-3 w-3" />
-                      <span className="font-semibold text-green-600">{totalArticles} Artikel (Umfassende Wochenabdeckung)</span>
+                      <span className="font-semibold text-green-600">{totalArticles} Artikel</span>
                     </div>
                   </div>
                 </div>
@@ -171,7 +171,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                 >
                   <Star className="h-4 w-4" />
                   <span className="hidden sm:inline">
-                    {isPrioritized ? `Top ${prioritizedArticles.length}` : "Top 40 Artikel"}
+                    {isPrioritized ? `Priorisiert (${prioritizedArticles.length})` : "Priorisieren"}
                   </span>
                   <span className="sm:hidden">Top</span>
                 </Button>
@@ -269,22 +269,22 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                         {isPrioritized && (
                           <>
                             <Star className="h-4 w-4 text-amber-500" />
-                            <span className="hidden sm:inline">Top {prioritizedArticles.length} priorisierte Artikel für umfassende Abdeckung</span>
-                            <span className="sm:hidden">Top {prioritizedArticles.length}</span>
+                            <span className="hidden sm:inline">Priorisierte Artikel ({prioritizedArticles.length})</span>
+                            <span className="sm:hidden">Priorisiert ({prioritizedArticles.length})</span>
                           </>
                         )}
                         {selectedArticles && (
                           <>
                             <FileEdit className="h-4 w-4 text-blue-500" />
-                            <span className="hidden sm:inline">{selectedArticles.length} manuell ausgewählte Artikel</span>
+                            <span className="hidden sm:inline">{selectedArticles.length} ausgewählte Artikel</span>
                             <span className="sm:hidden">{selectedArticles.length} ausgewählt</span>
                           </>
                         )}
                         {!isPrioritized && !selectedArticles && (
                           <>
                             <BarChart3 className="h-4 w-4 text-green-500" />
-                            <span className="hidden sm:inline font-semibold">Alle {totalArticles} verfügbaren Artikel (Komplette Wochenabdeckung)</span>
-                            <span className="sm:hidden">Alle {totalArticles}</span>
+                            <span className="hidden sm:inline font-semibold">Alle verfügbaren Artikel ({totalArticles})</span>
+                            <span className="sm:hidden">Alle ({totalArticles})</span>
                           </>
                         )}
                       </div>
@@ -310,28 +310,53 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
               
               <TabsContent value="summary" className="mt-0">
                 {generatedContent ? (
-                  <div className="newsletter-content bg-white rounded-lg p-4 sm:p-8 shadow-sm border overflow-hidden">
-                    <div className="prose prose-sm sm:prose-lg max-w-none prose-headings:text-primary prose-a:text-blue-600 prose-p:break-words prose-li:break-words">
-                      <ReactMarkdown>
-                        {generatedContent}
-                      </ReactMarkdown>
+                  <div className="newsletter-content bg-white rounded-lg border shadow-sm">
+                    <div className="p-6 sm:p-8">
+                      <div className="prose prose-sm sm:prose-lg max-w-none prose-headings:text-primary prose-a:text-blue-600 prose-p:leading-relaxed prose-li:leading-relaxed">
+                        <ReactMarkdown
+                          components={{
+                            h1: ({ children }) => <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-6 border-b border-gray-200 pb-3">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mt-8 mb-4">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mt-6 mb-3">{children}</h3>,
+                            p: ({ children }) => <p className="text-gray-700 mb-4 leading-relaxed">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc list-inside space-y-2 mb-4 text-gray-700">{children}</ul>,
+                            li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                            a: ({ href, children }) => (
+                              <a 
+                                href={href} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-blue-600 hover:text-blue-800 underline decoration-2 underline-offset-2 font-medium break-words"
+                              >
+                                {children}
+                              </a>
+                            ),
+                            strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
+                            em: ({ children }) => <em className="italic text-gray-800">{children}</em>
+                          }}
+                        >
+                          {generatedContent}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                     
                     {!generatedContent.includes("linkedin.com/company/linkit-karlsruhe") && (
-                      <div className="mt-8 pt-6 border-t border-gray-200">
-                        <p className="font-semibold text-gray-900 mb-2">Weitere Informationen und Updates:</p>
-                        <p className="text-gray-700 break-words">
-                          Besuchen Sie unsere{" "}
-                          <a 
-                            href="https://www.linkedin.com/company/linkit-karlsruhe/posts/?feedView=all" 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-primary hover:text-primary/80 font-medium underline decoration-2 underline-offset-2 break-all"
-                          >
-                            LinkedIn-Seite
-                          </a>{" "}
-                          für aktuelle Beiträge und Neuigkeiten.
-                        </p>
+                      <div className="px-6 sm:px-8 pb-6 border-t border-gray-200 bg-gray-50">
+                        <div className="pt-6">
+                          <p className="font-semibold text-gray-900 mb-2">Weitere Informationen und Updates:</p>
+                          <p className="text-gray-700 leading-relaxed">
+                            Besuchen Sie unsere{" "}
+                            <a 
+                              href="https://www.linkedin.com/company/linkit-karlsruhe/posts/?feedView=all" 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="text-primary hover:text-primary/80 font-medium underline decoration-2 underline-offset-2 break-all"
+                            >
+                              LinkedIn-Seite
+                            </a>{" "}
+                            für aktuelle Beiträge und Neuigkeiten.
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
