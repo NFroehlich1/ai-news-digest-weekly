@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
@@ -15,7 +14,6 @@ import { getWeekDateRange, getCurrentWeek, getCurrentYear } from "@/utils/dateUt
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [apiKey, setApiKey] = useState<string>("AIzaSyAOG3IewUIIsB8oRYG2Lu-_2bM7ZrMBMFk");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [rssSources, setRssSources] = useState<any[]>([]);
   const [newsItems, setNewsItems] = useState<RssItem[]>([]);
@@ -35,11 +33,11 @@ const Index = () => {
   
   const [weeklyDigest, setWeeklyDigest] = useState<WeeklyDigestType>(emptyDigest);
   
-  // Initialize NewsService using useMemo - ensure it gets recreated when apiKey changes
+  // Initialize NewsService using useMemo - no API key needed anymore
   const newsService = useMemo(() => {
-    console.log("Creating NewsService with API key:", apiKey.substring(0, 10) + "...");
-    return new NewsService(apiKey);
-  }, [apiKey]);
+    console.log("Creating NewsService with Supabase integration");
+    return new NewsService();
+  }, []);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -55,80 +53,55 @@ const Index = () => {
       setIsAuthenticated(!!session);
     });
 
-    // Initialize by loading saved API key from localStorage, but keep default if not found
-    const savedApiKey = localStorage.getItem('api_key');
-    if (savedApiKey) {
-      console.log("Loading saved API key from localStorage");
-      setApiKey(savedApiKey);
-    } else {
-      console.log("Using default API key");
-      // Save the default API key to localStorage
-      localStorage.setItem('api_key', apiKey);
-    }
-
     // Load RSS sources
-    if (newsService) {
-      const sources = newsService.getRssSources();
-      setRssSources(sources);
-    }
+    const sources = newsService.getRssSources();
+    setRssSources(sources);
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [newsService]);
 
-  // Effect to update NewsService when API key changes
+  // Effect to load initial news when NewsService is ready
   useEffect(() => {
-    console.log("API key changed, updating NewsService:", apiKey.substring(0, 10) + "...");
-    newsService.setApiKey(apiKey);
-  }, [apiKey, newsService]);
-
-  // Effect to load news when API key is available
-  useEffect(() => {
-    if (apiKey && newsService) {
-      const loadInitialNews = async () => {
-        setIsLoading(true);
-        try {
-          console.log("Loading initial news with API key:", apiKey.substring(0, 10) + "...");
-          const items = await newsService.fetchNews();
-          setNewsItems(items);
-          
-          const currentWeekItems = newsService.filterCurrentWeekNews(items);
-          const updatedDigest = {
-            ...emptyDigest,
-            items: currentWeekItems,
-          };
-          setWeeklyDigest(updatedDigest);
-          console.log("Initial news loading completed, articles:", items.length);
-        } catch (error) {
-          console.error("Error fetching news automatically:", error);
-          toast.error("Fehler beim automatischen Laden der Nachrichten.");
-        } finally {
-          setIsLoading(false);
-        }
-      };
+    const loadInitialNews = async () => {
+      setIsLoading(true);
+      try {
+        console.log("Loading initial news with Supabase integration");
+        const items = await newsService.fetchNews();
+        setNewsItems(items);
+        
+        const currentWeekItems = newsService.filterCurrentWeekNews(items);
+        const updatedDigest = {
+          ...emptyDigest,
+          items: currentWeekItems,
+        };
+        setWeeklyDigest(updatedDigest);
+        console.log("Initial news loading completed, articles:", items.length);
+      } catch (error) {
+        console.error("Error fetching news automatically:", error);
+        toast.error("Fehler beim automatischen Laden der Nachrichten.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (newsService) {
       loadInitialNews();
     }
-  }, [apiKey, newsService, emptyDigest]);
+  }, [newsService, emptyDigest]);
 
-  // Handle API key setting
+  // Handle API key setting (now just a compatibility function)
   const handleApiKeySet = (key: string) => {
-    console.log("Setting new API key:", key.substring(0, 10) + "...");
-    setApiKey(key);
-    localStorage.setItem('api_key', key);
-    toast.success("API-Schlüssel gespeichert!");
+    console.log("API key setting triggered - using Supabase integration");
+    toast.success("Verwendet Supabase für sichere API-Schlüssel-Verwaltung!");
   };
 
   // Handle refresh action
   const handleRefresh = async () => {
-    if (!apiKey) {
-      toast.error("Bitte geben Sie zuerst einen API-Schlüssel ein.");
-      return;
-    }
-    
     setIsLoading(true);
     try {
-      console.log("Refreshing news with API key:", apiKey.substring(0, 10) + "...");
+      console.log("Refreshing news with Supabase integration");
       const items = await newsService.fetchNews();
       setNewsItems(items);
       
@@ -147,6 +120,16 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Handle article selection
+  const handleArticleSubmit = (articles: RssItem[]) => {
+    setSelectedArticles(articles);
+    toast.success(`${articles.length} Artikel für die Zusammenfassung ausgewählt`);
+  };
+
+  const handleArticleSelectionCancel = () => {
+    // Simply do nothing or reset selection if needed
   };
 
   // Handle RSS source management
@@ -177,16 +160,6 @@ const Index = () => {
     return result;
   };
 
-  // Handle article selection
-  const handleArticleSubmit = (articles: RssItem[]) => {
-    setSelectedArticles(articles);
-    toast.success(`${articles.length} Artikel für die Zusammenfassung ausgewählt`);
-  };
-
-  const handleArticleSelectionCancel = () => {
-    // Simply do nothing or reset selection if needed
-  };
-
   // Wenn der Authentifizierungsstatus noch nicht festgestellt wurde
   if (isAuthenticated === null) {
     return (
@@ -195,7 +168,6 @@ const Index = () => {
           onApiKeySet={handleApiKeySet} 
           onRefresh={handleRefresh} 
           loading={isLoading}
-          defaultApiKey={apiKey}
         />
         <main className="container max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
           <div className="flex justify-center items-center h-[200px]">
@@ -213,7 +185,6 @@ const Index = () => {
           onApiKeySet={handleApiKeySet} 
           onRefresh={handleRefresh} 
           loading={isLoading}
-          defaultApiKey={apiKey}
         />
         <main className="container max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
           <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -238,7 +209,6 @@ const Index = () => {
         onApiKeySet={handleApiKeySet} 
         onRefresh={handleRefresh} 
         loading={isLoading}
-        defaultApiKey={apiKey}
       />
       <main className="container max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
         <Tabs defaultValue="digest">
@@ -258,7 +228,7 @@ const Index = () => {
             />
             <WeeklyDigest 
               digest={weeklyDigest}
-              apiKey={apiKey}
+              apiKey="configured-in-supabase"
               newsService={newsService}
             />
           </TabsContent>

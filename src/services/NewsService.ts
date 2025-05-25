@@ -16,7 +16,6 @@ export { formatDate, getCurrentWeek, getCurrentYear, getWeekDateRange };
 
 // Main service class for fetching news from RSS feeds
 class NewsService {
-  private geminiApiKey: string;
   private decoderService: DecoderService;
   private rssSourceService: RssSourceService;
   private rssFeedService: RssFeedService;
@@ -25,9 +24,9 @@ class NewsService {
   private newsletterArchiveService: NewsletterArchiveService;
   private useMockData: boolean = false;
   
-  constructor(geminiApiKey?: string) {
+  constructor() {
     console.log("=== NEWS SERVICE CONSTRUCTOR ===");
-    console.log("Gemini API Key provided:", !!geminiApiKey);
+    console.log("Using Supabase Edge Function for Gemini API");
     
     this.rssSourceService = new RssSourceService();
     this.rssFeedService = new RssFeedService();
@@ -35,34 +34,26 @@ class NewsService {
     this.localNewsletterService = new LocalNewsletterService();
     this.newsletterArchiveService = new NewsletterArchiveService();
     
-    // Store the Gemini API key separately from RSS2JSON key
-    this.geminiApiKey = geminiApiKey || "";
+    // Create DecoderService without API key (uses Supabase)
+    this.decoderService = new DecoderService();
     
-    // Create DecoderService with the Gemini API key
-    this.decoderService = new DecoderService(this.geminiApiKey);
-    
-    console.log("DecoderService created with Gemini key:", !!this.geminiApiKey);
+    console.log("DecoderService created using Supabase Edge Function");
   }
   
-  // Set the API key
-  public setApiKey(geminiApiKey: string): void {
-    console.log("=== SETTING GEMINI API KEY ===");
-    console.log("New Gemini API Key provided:", !!geminiApiKey);
-    
-    this.geminiApiKey = geminiApiKey;
-    this.decoderService.setApiKey(geminiApiKey);
-    
-    console.log("API key updated in DecoderService");
+  // Set the API key (now ignored, kept for compatibility)
+  public setApiKey(apiKey: string): void {
+    console.log("=== API KEY SETTING IGNORED ===");
+    console.log("Using Supabase Edge Function instead of direct API key");
   }
   
-  // Get the default API key (returns RSS2JSON key for RSS feeds, but Gemini key is used internally)
+  // Get the default API key (returns RSS2JSON key for RSS feeds)
   public getDefaultApiKey(): string {
     return this.decoderService.getRss2JsonApiKey();
   }
   
-  // Get the Gemini API key
+  // Get the Gemini API key (now returns info message)
   public getGeminiApiKey(): string {
-    return this.geminiApiKey;
+    return "Stored securely in Supabase";
   }
   
   // Enable or disable mock data
@@ -255,30 +246,22 @@ class NewsService {
   public async generateDemoNewsletters(): Promise<void> {
     return this.localNewsletterService.generateDemoData();
   }
-  
-  // Enhanced newsletter generation method - creates detailed summaries without "KI-News von The Decoder"
+
+  // Enhanced newsletter generation method - uses Supabase Edge Function
   public async generateNewsletterSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
-    console.log("=== NEWS SERVICE: GENERATE NEWSLETTER SUMMARY ===");
-    console.log("Gemini API Key available:", !!this.geminiApiKey);
-    
-    if (!this.geminiApiKey) {
-      const error = "Gemini API-Schlüssel ist erforderlich für die Newsletter-Generierung";
-      console.error(error);
-      toast.error(error);
-      throw new Error(error);
-    }
+    console.log("=== NEWS SERVICE: GENERATE NEWSLETTER SUMMARY VIA SUPABASE ===");
     
     try {
       // Use selected articles or all available articles
       const articlesToUse = selectedArticles || digest.items;
       
-      console.log("Generating enhanced newsletter summary...");
+      console.log("Generating enhanced newsletter summary via Supabase...");
       const summary = await this.decoderService.generateSummary(digest, articlesToUse, linkedInPage);
       
       // Return the enhanced summary
       return summary;
     } catch (error) {
-      console.error('Error generating enhanced newsletter:', error);
+      console.error('Error generating enhanced newsletter via Supabase:', error);
       toast.error(`Fehler bei der Generierung des ausführlichen Newsletters: ${(error as Error).message}`);
       return "";
     }

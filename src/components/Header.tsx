@@ -14,65 +14,72 @@ interface HeaderProps {
   defaultApiKey?: string;
 }
 
-const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey = "AIzaSyAOG3IewUIIsB8oRYG2Lu-_2bM7ZrMBMFk" }: HeaderProps) => {
-  const [apiKey, setApiKey] = useState<string>(defaultApiKey);
+const Header = ({ onApiKeySet, onRefresh, loading }: HeaderProps) => {
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState<boolean>(false);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
+  const [keyStatus, setKeyStatus] = useState<'unknown' | 'valid' | 'invalid'>('unknown');
   
-  // Initialize with default API key and immediately set it
+  // Check API key status on mount
   useEffect(() => {
-    console.log("Header: Setting default API key:", defaultApiKey.substring(0, 10) + "...");
-    setApiKey(defaultApiKey);
-    onApiKeySet(defaultApiKey);
-  }, [defaultApiKey, onApiKeySet]);
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!apiKey.trim()) {
-      toast.error("Bitte gib einen API-Schlüssel ein.");
-      return;
-    }
+    const checkApiKey = async () => {
+      const decoderService = new DecoderService();
+      try {
+        const result = await decoderService.verifyApiKey();
+        setKeyStatus(result.isValid ? 'valid' : 'invalid');
+        if (result.isValid) {
+          onApiKeySet('configured-in-supabase');
+        }
+      } catch (error) {
+        setKeyStatus('invalid');
+        console.error("Error checking API key:", error);
+      }
+    };
     
+    checkApiKey();
+  }, [onApiKeySet]);
+  
+  const handleVerifyKey = async () => {
     setIsVerifying(true);
     
     try {
-      console.log("Verifying Gemini API key:", apiKey.substring(0, 10) + "...");
+      const decoderService = new DecoderService();
+      console.log("Verifying Gemini API key via Supabase...");
       
-      // Test the Gemini API key directly
-      const testResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: "Hello, this is a test message."
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 50,
-          }
-        })
-      });
-
-      if (testResponse.ok) {
-        onApiKeySet(apiKey.trim());
+      const result = await decoderService.verifyApiKey();
+      
+      if (result.isValid) {
+        setKeyStatus('valid');
+        onApiKeySet('configured-in-supabase');
         toast.success("Gemini API-Schlüssel erfolgreich verifiziert!");
         setApiKeyDialogOpen(false);
         console.log("✅ Gemini API key verification successful");
       } else {
-        const errorData = await testResponse.json().catch(() => null);
-        const errorMessage = errorData?.error?.message || `HTTP ${testResponse.status}`;
-        console.error("❌ Gemini API key verification failed:", errorMessage);
-        toast.error(`API-Schlüssel ungültig: ${errorMessage}`);
+        setKeyStatus('invalid');
+        console.error("❌ Gemini API key verification failed:", result.message);
+        toast.error(`API-Schlüssel Problem: ${result.message}`);
       }
     } catch (error) {
+      setKeyStatus('invalid');
       console.error("API key verification error:", error);
       toast.error(`Fehler bei der Überprüfung: ${(error as Error).message}`);
     } finally {
       setIsVerifying(false);
+    }
+  };
+  
+  const getKeyStatusColor = () => {
+    switch (keyStatus) {
+      case 'valid': return 'text-green-600';
+      case 'invalid': return 'text-red-600';
+      default: return 'text-gray-600';
+    }
+  };
+  
+  const getKeyStatusText = () => {
+    switch (keyStatus) {
+      case 'valid': return 'API-Schlüssel aktiv';
+      case 'invalid': return 'API-Schlüssel fehlt';
+      default: return 'Überprüfe API-Schlüssel...';
     }
   };
   
@@ -92,15 +99,15 @@ const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey = "AIzaSyAOG3Ie
                 className="flex items-center gap-2"
               >
                 <Key className="h-4 w-4" />
-                API-Schlüssel
+                <span className={getKeyStatusColor()}>{getKeyStatusText()}</span>
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Gemini API-Schlüssel Einstellungen</DialogTitle>
+                <DialogTitle>Gemini API-Schlüssel Status</DialogTitle>
                 <DialogDescription>
-                  Geben Sie einen gültigen API-Schlüssel für die Google Gemini API ein. 
-                  Der Schlüssel wird lokal in Ihrem Browser gespeichert.
+                  Der Gemini API-Schlüssel wird sicher in Supabase verwaltet.
+                  Sie können den Status überprüfen und bei Bedarf einen neuen Schlüssel konfigurieren.
                   <a 
                     href="https://aistudio.google.com/app/apikey" 
                     target="_blank" 
@@ -111,33 +118,40 @@ const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey = "AIzaSyAOG3Ie
                   </a>
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Gemini API-Schlüssel eingeben"
-                    className="w-full"
-                  />
+              
+              <div className="space-y-4 pt-4">
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Key className="h-4 w-4" />
+                    <span className="font-medium">Aktueller Status:</span>
+                  </div>
+                  <p className={`text-sm ${getKeyStatusColor()}`}>
+                    {getKeyStatusText()}
+                  </p>
+                  {keyStatus === 'invalid' && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      Bitte kontaktieren Sie den Administrator, um den API-Schlüssel zu konfigurieren.
+                    </p>
+                  )}
                 </div>
+                
                 <DialogFooter>
                   <Button 
-                    type="submit" 
+                    onClick={handleVerifyKey} 
                     disabled={isVerifying}
                     className="flex items-center gap-2"
                   >
                     {isVerifying ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        Wird verifiziert...
+                        Wird überprüft...
                       </>
                     ) : (
-                      <>Speichern & Verifizieren</>
+                      <>Status überprüfen</>
                     )}
                   </Button>
                 </DialogFooter>
-              </form>
+              </div>
             </DialogContent>
           </Dialog>
           
