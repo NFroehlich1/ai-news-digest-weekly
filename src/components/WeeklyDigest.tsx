@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
 import NewsletterSubscribeModal from "./NewsletterSubscribeModal";
 import ArticleSelector from "./ArticleSelector";
-import { Calendar, FileEdit, Mail, RefreshCw, TrendingUp, Archive } from "lucide-react";
+import { Calendar, FileEdit, Mail, RefreshCw, TrendingUp, Archive, CheckCircle } from "lucide-react";
 import NewsService from "@/services/NewsService";
 import NewsletterArchiveService from "@/services/NewsletterArchiveService";
 
@@ -27,6 +26,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   const [selectedArticles, setSelectedArticles] = useState<RssItem[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [savedToArchive, setSavedToArchive] = useState<boolean>(false);
   
   const getArticleId = (article: RssItem): string => {
     return article.guid || article.link;
@@ -49,6 +49,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   const handleGenerateSummary = async () => {
     if (generatedContent) {
       setGeneratedContent(null);
+      setSavedToArchive(false);
     }
     setIsGenerating(true);
     
@@ -76,7 +77,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
         // Automatically save to archive
         await saveToArchive(summary);
         
-        toast.success("Ausführliche Newsletter-Zusammenfassung erfolgreich generiert und gespeichert!");
+        toast.success("Newsletter erfolgreich generiert und im Archiv gespeichert!");
       } else {
         toast.error("Fehler bei der Generierung der Zusammenfassung.");
       }
@@ -91,19 +92,30 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   const saveToArchive = async (content: string) => {
     setIsSaving(true);
     try {
+      console.log("Saving newsletter to archive...", {
+        weekNumber: digest.weekNumber,
+        year: digest.year,
+        articleCount: digest.items.length
+      });
+      
       const archiveService = new NewsletterArchiveService();
       const saved = await archiveService.saveNewsletter(digest, content);
       
       if (saved) {
-        console.log("Newsletter saved to archive:", saved);
+        console.log("Newsletter successfully saved to archive:", saved);
+        setSavedToArchive(true);
+        toast.success("Newsletter im Archiv gespeichert!");
+      } else {
+        throw new Error("Newsletter konnte nicht gespeichert werden");
       }
     } catch (error) {
       console.error("Error saving to archive:", error);
-      toast.error("Fehler beim Speichern im Archiv");
+      toast.error(`Fehler beim Speichern im Archiv: ${(error as Error).message}`);
     } finally {
       setIsSaving(false);
     }
   };
+
   
   const startArticleSelection = () => {
     setIsSelecting(true);
@@ -152,6 +164,12 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                       <div className="flex items-center gap-1 text-blue-600">
                         <Archive className="h-3 w-3 animate-pulse" />
                         <span className="text-xs">Speichere im Archiv...</span>
+                      </div>
+                    )}
+                    {savedToArchive && !isSaving && (
+                      <div className="flex items-center gap-1 text-green-600">
+                        <CheckCircle className="h-3 w-3" />
+                        <span className="text-xs">Im Archiv gespeichert</span>
                       </div>
                     )}
                   </div>
