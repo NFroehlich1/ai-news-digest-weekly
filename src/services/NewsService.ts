@@ -16,7 +16,7 @@ export { formatDate, getCurrentWeek, getCurrentYear, getWeekDateRange };
 
 // Main service class for fetching news from RSS feeds
 class NewsService {
-  private apiKey: string;
+  private openaiApiKey: string;
   private decoderService: DecoderService;
   private rssSourceService: RssSourceService;
   private rssFeedService: RssFeedService;
@@ -25,25 +25,44 @@ class NewsService {
   private newsletterArchiveService: NewsletterArchiveService;
   private useMockData: boolean = false;
   
-  constructor(apiKey?: string) {
+  constructor(openaiApiKey?: string) {
+    console.log("=== NEWS SERVICE CONSTRUCTOR ===");
+    console.log("OpenAI API Key provided:", !!openaiApiKey);
+    
     this.rssSourceService = new RssSourceService();
     this.rssFeedService = new RssFeedService();
     this.digestService = new DigestService();
     this.localNewsletterService = new LocalNewsletterService();
     this.newsletterArchiveService = new NewsletterArchiveService();
-    this.decoderService = new DecoderService(apiKey);
-    this.apiKey = apiKey || this.decoderService.getRss2JsonApiKey();
+    
+    // Store the OpenAI API key separately from RSS2JSON key
+    this.openaiApiKey = openaiApiKey || "";
+    
+    // Create DecoderService with the OpenAI API key
+    this.decoderService = new DecoderService(this.openaiApiKey);
+    
+    console.log("DecoderService created with OpenAI key:", !!this.openaiApiKey);
   }
   
   // Set the API key
-  public setApiKey(apiKey: string): void {
-    this.apiKey = apiKey;
-    this.decoderService.setApiKey(apiKey);
+  public setApiKey(openaiApiKey: string): void {
+    console.log("=== SETTING OPENAI API KEY ===");
+    console.log("New OpenAI API Key provided:", !!openaiApiKey);
+    
+    this.openaiApiKey = openaiApiKey;
+    this.decoderService.setApiKey(openaiApiKey);
+    
+    console.log("API key updated in DecoderService");
   }
   
-  // Get the default API key
+  // Get the default API key (returns RSS2JSON key for RSS feeds, but OpenAI key is used internally)
   public getDefaultApiKey(): string {
-    return this.apiKey;
+    return this.decoderService.getRss2JsonApiKey();
+  }
+  
+  // Get the OpenAI API key
+  public getOpenAIApiKey(): string {
+    return this.openaiApiKey;
   }
   
   // Enable or disable mock data
@@ -239,6 +258,16 @@ class NewsService {
   
   // Enhanced newsletter generation method - creates detailed summaries without "KI-News von The Decoder"
   public async generateNewsletterSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
+    console.log("=== NEWS SERVICE: GENERATE NEWSLETTER SUMMARY ===");
+    console.log("OpenAI API Key available:", !!this.openaiApiKey);
+    
+    if (!this.openaiApiKey) {
+      const error = "OpenAI API-Schlüssel ist erforderlich für die Newsletter-Generierung";
+      console.error(error);
+      toast.error(error);
+      throw new Error(error);
+    }
+    
     try {
       // Use selected articles or all available articles
       const articlesToUse = selectedArticles || digest.items;

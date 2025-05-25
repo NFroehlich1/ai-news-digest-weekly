@@ -1,3 +1,4 @@
+
 import { RssItem, WeeklyDigest } from "@/types/newsTypes";
 import { toast } from "sonner";
 
@@ -37,8 +38,21 @@ class DecoderService {
 
   // Enhanced newsletter generation with detailed analysis
   public async generateSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
+    console.log("=== DECODER SERVICE GENERATE SUMMARY ===");
+    console.log("API Key present:", !!this.apiKey);
+    console.log("API Key starts with:", this.apiKey?.substring(0, 10));
+    
     if (!this.apiKey) {
-      throw new Error("API-Schlüssel ist erforderlich für die Newsletter-Generierung");
+      const error = "API-Schlüssel ist erforderlich für die Newsletter-Generierung";
+      console.error(error);
+      throw new Error(error);
+    }
+
+    // Check if we're using the wrong API key (RSS2JSON instead of OpenAI)
+    if (this.apiKey === this.rss2JsonApiKey) {
+      const error = "Falscher API-Schlüssel: OpenAI API-Schlüssel erforderlich, nicht RSS2JSON";
+      console.error(error);
+      throw new Error(error);
     }
 
     const articlesToUse = selectedArticles || digest.items;
@@ -48,6 +62,7 @@ class DecoderService {
     }
 
     console.log(`Generating detailed summary for ${articlesToUse.length} articles`);
+    console.log("Using OpenAI API key:", this.apiKey.substring(0, 7) + "...");
 
     try {
       const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -103,12 +118,17 @@ Bitte erstelle eine umfassende, detaillierte Analyse mit mindestens 800-1200 Wö
         })
       });
 
+      console.log("OpenAI API response status:", response.status);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(`OpenAI API Fehler: ${response.status} - ${errorData?.error?.message || response.statusText}`);
+        const errorMessage = `OpenAI API Fehler: ${response.status} - ${errorData?.error?.message || response.statusText}`;
+        console.error("OpenAI API Error:", errorMessage);
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      console.log("OpenAI API response received successfully");
       
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
         throw new Error("Unerwartete Antwort von der OpenAI API");
@@ -121,7 +141,7 @@ Bitte erstelle eine umfassende, detaillierte Analyse mit mindestens 800-1200 Wö
         content += `\n\n---\n\n**Bleiben Sie verbunden:**\nFür weitere Updates und Diskussionen besuchen Sie unsere [LinkedIn-Seite](${linkedInPage}).`;
       }
 
-      console.log("✅ Detailed newsletter generated successfully");
+      console.log("✅ Detailed newsletter generated successfully, length:", content.length);
       return content;
 
     } catch (error) {
