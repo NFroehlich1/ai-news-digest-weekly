@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ interface HeaderProps {
   defaultApiKey?: string;
 }
 
-const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey = "AIzaSyDLVTnP6DxlDqnyXYSZ-i_tkeopxDgm_u0" }: HeaderProps) => {
+const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey = "AIzaSyAOG3IewUIIsB8oRYG2Lu-_2bM7ZrMBMFk" }: HeaderProps) => {
   const [apiKey, setApiKey] = useState<string>("");
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState<boolean>(false);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
