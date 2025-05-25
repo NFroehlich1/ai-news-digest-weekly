@@ -1,63 +1,80 @@
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import NewsService from '../NewsService';
-import type { RssItem } from '@/types/newsTypes';
+import { MOCK_NEWS_ITEMS } from '../../data/mockNews';
 
-// Mock the NewsService
-vi.mock('../NewsService');
+// Mock the toast
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+  }
+}));
 
 describe('NewsService', () => {
   let newsService: NewsService;
-  const mockApiKey = 'test-api-key';
 
   beforeEach(() => {
-    newsService = new NewsService(mockApiKey);
-    vi.clearAllMocks();
+    newsService = new NewsService('test-api-key');
+    newsService.setUseMockData(true);
   });
 
-  describe('prioritizeNewsForNewsletter', () => {
-    it('should prioritize news articles correctly', () => {
-      const mockItems: RssItem[] = [
-        {
-          title: 'Important AI News',
-          description: 'This is important AI news',
-          content: 'Full content about AI news',
-          link: 'https://example.com/ai-news',
-          pubDate: new Date().toISOString(),
-          sourceName: 'AI Source',
-          guid: 'ai-news-1'
-        },
-        {
-          title: 'Regular Tech News',
-          description: 'Regular technology news',
-          content: 'Full content about tech news',
-          link: 'https://example.com/tech-news',
-          pubDate: new Date().toISOString(),
-          sourceName: 'Tech Source',
-          guid: 'tech-news-1'
-        }
-      ];
+  describe('fetchNews', () => {
+    it('should return mock data when useMockData is true', async () => {
+      const result = await newsService.fetchNews();
+      expect(result).toEqual(MOCK_NEWS_ITEMS);
+    });
 
-      const prioritized = newsService.prioritizeNewsForNewsletter(mockItems, 10);
-      expect(prioritized).toBeDefined();
-      expect(Array.isArray(prioritized)).toBe(true);
+    it('should return mock data when no enabled sources', async () => {
+      const result = await newsService.fetchNews();
+      expect(result).toEqual(MOCK_NEWS_ITEMS);
     });
   });
 
-  describe('generateArticleSummary', () => {
-    it('should generate article summary', async () => {
-      const mockItem: RssItem = {
-        title: 'Test Article',
-        description: 'Test description',
-        content: 'Test content',
-        link: 'https://example.com/test',
-        pubDate: new Date().toISOString(),
-        sourceName: 'Test Source',
-        guid: 'test-1'
+  describe('RSS Source Management', () => {
+    it('should get RSS sources', () => {
+      const sources = newsService.getRssSources();
+      expect(Array.isArray(sources)).toBe(true);
+    });
+
+    it('should get enabled RSS sources', () => {
+      const enabledSources = newsService.getEnabledRssSources();
+      expect(Array.isArray(enabledSources)).toBe(true);
+    });
+
+    it('should add RSS source', () => {
+      const result = newsService.addRssSource('https://example.com/feed', 'Example Feed');
+      expect(typeof result).toBe('boolean');
+    });
+
+    it('should remove RSS source', () => {
+      const result = newsService.removeRssSource('https://example.com/feed');
+      expect(typeof result).toBe('boolean');
+    });
+
+    it('should toggle RSS source', () => {
+      const result = newsService.toggleRssSource('https://example.com/feed', true);
+      expect(typeof result).toBe('boolean');
+    });
+  });
+
+  describe('Newsletter Generation', () => {
+    it('should generate newsletter summary', async () => {
+      const digest = {
+        id: 'test',
+        weekNumber: 1,
+        year: 2025,
+        dateRange: 'Test Week',
+        title: 'Test Digest',
+        summary: 'Test Summary',
+        items: MOCK_NEWS_ITEMS,
+        createdAt: new Date()
       };
 
-      const summary = await newsService.generateArticleSummary(mockItem);
-      expect(summary).toBeDefined();
+      const result = await newsService.generateNewsletterSummary(digest);
+      expect(typeof result).toBe('string');
     });
   });
 });

@@ -176,30 +176,77 @@ class RssFeedService {
     return [];
   }
   
-  // Improved HTML parsing for The Decoder
+  // Improved HTML parsing for The Decoder with better title extraction
   private parseDecoderHTML(htmlContent: string, source: RssSource): RssItem[] {
     const items: RssItem[] = [];
     
-    // Look for article links with better patterns
+    // Enhanced patterns to capture better titles
     const linkPatterns = [
-      /<a[^>]*href="(https:\/\/the-decoder\.de\/[^"]*\d{4}[^"]*)"[^>]*>([^<]+)<\/a>/gi,
-      /<h[2-4][^>]*><a[^>]*href="(https:\/\/the-decoder\.de\/[^"]*)"[^>]*>([^<]+)<\/a><\/h[2-4]>/gi
+      // Article titles in h2/h3 tags with links
+      /<h[2-3][^>]*><a[^>]*href="(https:\/\/the-decoder\.de\/[^"]*)"[^>]*>([^<]+)<\/a><\/h[2-3]>/gi,
+      // Entry title pattern
+      /<(?:h2|h3)[^>]*class="[^"]*entry-title[^"]*"[^>]*><a[^>]*href="(https:\/\/the-decoder\.de\/[^"]*)"[^>]*>([^<]+)<\/a><\/(?:h2|h3)>/gi,
+      // Article card patterns
+      /<article[^>]*>[\s\S]*?<a[^>]*href="(https:\/\/the-decoder\.de\/[^"]*)"[^>]*>[\s\S]*?<h[2-4][^>]*>([^<]+)<\/h[2-4]>[\s\S]*?<\/article>/gi,
+      // General link patterns as fallback
+      /<a[^>]*href="(https:\/\/the-decoder\.de\/[^"]*)"[^>]*[^>]*title="([^"]+)"[^>]*>/gi
     ];
     
     for (const pattern of linkPatterns) {
       let match;
       while ((match = pattern.exec(htmlContent)) !== null && items.length < 50) {
         const link = match[1];
-        const title = this.cleanTitle(match[2]);
+        let title = this.cleanTitle(match[2]);
         
-        if (this.isValidNewsArticle(link, title)) {
+        // Skip if title looks like a URL or is too short
+        if (this.isValidTitle(title) && this.isValidNewsArticle(link, title)) {
           items.push(this.createRssItem({ title, link }, source));
+        }
+      }
+    }
+    
+    // If no good titles found, try to extract from meta tags or other sources
+    if (items.length === 0) {
+      const metaTitlePattern = /<meta[^>]*property="og:title"[^>]*content="([^"]+)"[^>]*>/gi;
+      let match;
+      while ((match = metaTitlePattern.exec(htmlContent)) !== null && items.length < 10) {
+        const title = this.cleanTitle(match[1]);
+        if (this.isValidTitle(title)) {
+          // Try to find corresponding URL
+          const urlPattern = new RegExp(`<meta[^>]*property="og:url"[^>]*content="(https://the-decoder\\.de/[^"]*)"[^>]*>`, 'gi');
+          const urlMatch = urlPattern.exec(htmlContent);
+          if (urlMatch && this.isValidNewsArticle(urlMatch[1], title)) {
+            items.push(this.createRssItem({ title, link: urlMatch[1] }, source));
+          }
         }
       }
     }
     
     console.log(`Parsed ${items.length} articles from page`);
     return items;
+  }
+  
+  // Validate if the title looks like a proper title (not a URL)
+  private isValidTitle(title: string): boolean {
+    if (!title) return false;
+    
+    // Check if title looks like a URL
+    if (title.startsWith('http') || title.includes('://') || title.includes('.com') || title.includes('.de')) {
+      return false;
+    }
+    
+    // Check length
+    if (title.length < 10 || title.length > 200) {
+      return false;
+    }
+    
+    // Check for meaningful content (not just numbers or symbols)
+    const meaningfulContent = /[a-zA-ZäöüÄÖÜß]/.test(title);
+    if (!meaningfulContent) {
+      return false;
+    }
+    
+    return true;
   }
   
   // Validate if this looks like a real news article
@@ -215,7 +262,7 @@ class RssFeedService {
     }
     
     // Basic content validation
-    if (title.length < 10 || title.length > 200) {
+    if (!this.isValidTitle(title)) {
       return false;
     }
     
@@ -256,9 +303,11 @@ class RssFeedService {
     });
   }
   
-  // Clean article titles
+  // Enhanced title cleaning
   private cleanTitle(title: string): string {
-    return title
+    if (!title) return "Artikel ohne Titel";
+    
+    let cleaned = title
       .replace(/&amp;/g, '&')
       .replace(/&quot;/g, '"')
       .replace(/&#8217;/g, "'")
@@ -270,6 +319,13 @@ class RssFeedService {
       .replace(/&nbsp;/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+    
+    // If cleaned title is still a URL or empty, provide fallback
+    if (!cleaned || cleaned.startsWith('http') || cleaned.includes('://')) {
+      cleaned = "Artikel ohne Titel";
+    }
+    
+    return cleaned;
   }
   
   public async fetchRssSource(source: RssSource): Promise<RssItem[]> {
