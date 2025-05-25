@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
 import NewsletterSubscribeModal from "./NewsletterSubscribeModal";
 import ArticleSelector from "./ArticleSelector";
-import { Calendar, FileEdit, Mail, RefreshCw, TrendingUp, Archive, CheckCircle, AlertTriangle } from "lucide-react";
+import { Calendar, FileEdit, Mail, RefreshCw, TrendingUp, Archive, CheckCircle, AlertTriangle, Save } from "lucide-react";
 import NewsService from "@/services/NewsService";
 import NewsletterArchiveService from "@/services/NewsletterArchiveService";
 
@@ -48,28 +48,11 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   };
   
   const saveToArchive = async (content: string): Promise<boolean> => {
-    console.log("=== DEBUGGING ARCHIVE SAVE START ===");
+    console.log("=== MANUAL ARCHIVE SAVE START ===");
     setIsSaving(true);
     setArchiveSaveError(null);
     
     try {
-      // Detailed validation logging
-      console.log("STEP 1: Validating inputs");
-      console.log("Digest object:", {
-        exists: !!digest,
-        weekNumber: digest?.weekNumber,
-        year: digest?.year,
-        dateRange: digest?.dateRange,
-        itemsLength: digest?.items?.length
-      });
-      
-      console.log("Content validation:", {
-        exists: !!content,
-        length: content?.length,
-        type: typeof content,
-        trimmedLength: content?.trim?.()?.length
-      });
-      
       if (!digest) {
         const error = "FEHLER: Digest-Objekt ist nicht verfügbar";
         console.error(error);
@@ -86,36 +69,12 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
         return false;
       }
       
-      if (!digest.weekNumber || !digest.year) {
-        const error = `FEHLER: Wochennummer (${digest.weekNumber}) oder Jahr (${digest.year}) fehlt`;
-        console.error(error);
-        setArchiveSaveError(error);
-        toast.error(error);
-        return false;
-      }
-      
-      console.log("STEP 2: Creating archive service");
+      console.log("Creating archive service and saving...");
       const archiveService = new NewsletterArchiveService();
-      console.log("Archive service created successfully");
-      
-      console.log("STEP 3: Calling saveNewsletter method");
-      console.log("Calling with parameters:", {
-        digest: {
-          weekNumber: digest.weekNumber,
-          year: digest.year,
-          dateRange: digest.dateRange,
-          itemsCount: digest.items?.length
-        },
-        contentLength: content.length
-      });
-      
       const result = await archiveService.saveNewsletter(digest, content);
       
-      console.log("STEP 4: Processing result");
-      console.log("Save result:", result);
-      
       if (result && result.id) {
-        console.log("✅ SUCCESS: Newsletter saved to archive with ID:", result.id);
+        console.log("✅ SUCCESS: Newsletter manually saved to archive with ID:", result.id);
         setSavedToArchive(true);
         setArchiveSaveError(null);
         toast.success(`Newsletter erfolgreich im Archiv gespeichert! (ID: ${result.id})`);
@@ -129,24 +88,19 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler beim Speichern";
-      const fullError = `FEHLER beim Archiv-Speichern: ${errorMessage}`;
-      console.error("=== ARCHIVE SAVE ERROR ===", error);
-      console.error("Error details:", {
-        name: error instanceof Error ? error.name : 'Unknown',
-        message: error instanceof Error ? error.message : error,
-        stack: error instanceof Error ? error.stack : 'No stack'
-      });
+      const fullError = `FEHLER beim manuellen Archiv-Speichern: ${errorMessage}`;
+      console.error("=== MANUAL ARCHIVE SAVE ERROR ===", error);
       setArchiveSaveError(fullError);
       toast.error(fullError);
       return false;
     } finally {
       setIsSaving(false);
-      console.log("=== DEBUGGING ARCHIVE SAVE END ===");
+      console.log("=== MANUAL ARCHIVE SAVE END ===");
     }
   };
   
   const handleGenerateSummary = async () => {
-    console.log("=== STARTING NEWSLETTER GENERATION ===");
+    console.log("=== STARTING DETAILED NEWSLETTER GENERATION ===");
     
     if (generatedContent) {
       setGeneratedContent(null);
@@ -165,7 +119,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
         articlesToUse = getUniqueArticles(selectedArticles);
       }
       
-      console.log(`Generating newsletter with ${articlesToUse.length} articles`);
+      console.log(`Generating detailed newsletter with ${articlesToUse.length} articles`);
       
       const summary = await newsService.generateNewsletterSummary(
         digest, 
@@ -174,33 +128,34 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
       );
       
       if (summary && summary.trim().length > 0) {
-        console.log("✅ Newsletter generated successfully, length:", summary.length);
+        console.log("✅ Detailed newsletter generated successfully, length:", summary.length);
         setGeneratedContent(summary);
         setActiveTab("summary");
-        
-        // Immediate save to archive with enhanced debugging
-        console.log("🔄 Starting immediate archive save process...");
-        console.log("Generated content preview:", summary.substring(0, 200) + "...");
-        
-        const saveSuccess = await saveToArchive(summary);
-        
-        if (saveSuccess) {
-          console.log("✅ Newsletter generation and archive save completed successfully");
-          toast.success("Newsletter generiert und im Archiv gespeichert!");
-        } else {
-          console.warn("⚠️ Newsletter generated but archive save failed");
-          toast.warning("Newsletter generiert, aber Archiv-Speicherung fehlgeschlagen");
-        }
+        toast.success("Detaillierter Newsletter erfolgreich generiert!");
       } else {
         throw new Error("Newsletter-Generierung hat leeren Inhalt zurückgegeben");
       }
     } catch (error) {
-      console.error("❌ Error in newsletter generation:", error);
+      console.error("❌ Error in detailed newsletter generation:", error);
       const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
       toast.error(`Generierungs-Fehler: ${errorMessage}`);
     } finally {
       setIsGenerating(false);
-      console.log("=== NEWSLETTER GENERATION PROCESS COMPLETED ===");
+      console.log("=== DETAILED NEWSLETTER GENERATION PROCESS COMPLETED ===");
+    }
+  };
+
+  const handleManualSave = async () => {
+    if (!generatedContent) {
+      toast.error("Kein Newsletter-Inhalt zum Speichern vorhanden");
+      return;
+    }
+    
+    console.log("=== MANUAL SAVE TRIGGERED ===");
+    const success = await saveToArchive(generatedContent);
+    
+    if (success) {
+      toast.success("Newsletter manuell im Archiv gespeichert!");
     }
   };
 
@@ -316,6 +271,29 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                       {isGenerating ? "..." : generatedContent ? "Neu" : "Erstellen"}
                     </span>
                   </Button>
+
+                  {generatedContent && (
+                    <Button 
+                      onClick={handleManualSave} 
+                      disabled={isSaving || savedToArchive}
+                      variant="outline"
+                      className="gap-2 bg-white hover:bg-green-50 border-green-200 text-green-700"
+                    >
+                      {isSaving ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : savedToArchive ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {isSaving ? "Speichert..." : savedToArchive ? "Gespeichert" : "Newsletter speichern"}
+                      </span>
+                      <span className="sm:hidden">
+                        {isSaving ? "..." : savedToArchive ? "✓" : "Speichern"}
+                      </span>
+                    </Button>
+                  )}
                 </>
               ) : null}
             </div>

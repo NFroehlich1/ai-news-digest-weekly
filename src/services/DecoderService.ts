@@ -1,13 +1,12 @@
-
+import { RssItem, WeeklyDigest } from "@/types/newsTypes";
 import { toast } from "sonner";
-import { RssItem, WeeklyDigest } from "../types/newsTypes";
 
-export default class DecoderService {
+class DecoderService {
   private apiKey: string;
-  private baseUrl: string = "https://api.thedecoder.de";
+  private rss2JsonApiKey: string = "4aslwlcwucxcdgqz3phqsqjglhcv7jgpwoxq4yso";
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey || this.getRss2JsonApiKey();
+    this.apiKey = apiKey || "";
   }
 
   public setApiKey(apiKey: string): void {
@@ -15,180 +14,205 @@ export default class DecoderService {
   }
 
   public getRss2JsonApiKey(): string {
-    return "rss2json-api-key-placeholder";
+    return this.rss2JsonApiKey;
   }
 
-  // Add verifyApiKey method
-  public async verifyApiKey(): Promise<{ isValid: boolean; message: string }> {
-    try {
-      if (!this.apiKey || this.apiKey === "rss2json-api-key-placeholder") {
-        return { isValid: false, message: "Kein gültiger API-Schlüssel vorhanden" };
-      }
-
-      // Simple verification - in a real implementation this would test the actual API
-      return { isValid: true, message: "API-Schlüssel ist gültig" };
-    } catch (error) {
-      return { isValid: false, message: `Fehler bei der API-Schlüssel Überprüfung: ${(error as Error).message}` };
+  // Enhanced newsletter generation with detailed analysis
+  public async generateSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
+    if (!this.apiKey) {
+      throw new Error("API-Schlüssel ist erforderlich für die Newsletter-Generierung");
     }
-  }
 
-  // Generate enhanced newsletter summary with more detail and without "KI-News von The Decoder"
-  public async generateSummary(digest: WeeklyDigest, articles: RssItem[], linkedInPage?: string): Promise<string> {
-    try {
-      console.log("Starting newsletter generation...");
-      
-      if (!articles || articles.length === 0) {
-        throw new Error("Keine Artikel für die Zusammenfassung verfügbar");
-      }
-
-      // Create more detailed summary prompt without "KI-News von The Decoder"
-      const prompt = this.createEnhancedSummaryPrompt(digest, articles, linkedInPage);
-      
-      console.log("Sending request to API...");
-      
-      // Simulate API call with enhanced content
-      const enhancedSummary = await this.callDecoderAPI(prompt, articles);
-      
-      console.log("Newsletter summary generated successfully");
-      return enhancedSummary;
-      
-    } catch (error) {
-      console.error("Error in generateSummary:", error);
-      throw new Error(`Fehler bei der Newsletter-Generierung: ${(error as Error).message}`);
-    }
-  }
-
-  private createEnhancedSummaryPrompt(digest: WeeklyDigest, articles: RssItem[], linkedInPage?: string): string {
-    const linkedInSection = linkedInPage ? `\n\nWichtige Links:\n- LinkedIn-Updates: ${linkedInPage}` : '';
+    const articlesToUse = selectedArticles || digest.items;
     
-    return `
-Erstelle einen ausführlichen, professionellen Newsletter für KW ${digest.weekNumber} ${digest.year}.
+    if (articlesToUse.length === 0) {
+      throw new Error("Keine Artikel für die Zusammenfassung verfügbar");
+    }
 
-WICHTIGE ANWEISUNGEN:
-- Verwende NICHT den Phrase "KI-News von The Decoder"
-- Erstelle eine ausführliche, detaillierte Zusammenfassung
-- Nutze einen professionellen, informativen Ton
-- Strukturiere den Newsletter übersichtlich mit klaren Abschnitten
-- Füge relevante Details und Kontext zu jedem Artikel hinzu
-- Verwende aussagekräftige Überschriften
+    console.log(`Generating detailed summary for ${articlesToUse.length} articles`);
+
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: `Du bist ein Experte für KI-Newsletter und schreibst detaillierte, professionelle Zusammenfassungen für das LINKIT WEEKLY. 
+
+WICHTIGE ANFORDERUNGEN:
+- Schreibe einen ausführlichen, detaillierten Newsletter mit mindestens 800-1200 Wörtern
+- Analysiere jeden Artikel tiefgehend und erkläre die Bedeutung für die KI-Branche
+- Verwende eine professionelle, aber zugängliche Sprache
+- Strukturiere den Newsletter klar mit Überschriften und Unterpunkten
+- Füge Kontext und Hintergrundinformationen hinzu
+- Erkläre technische Konzepte verständlich
+- Zeige Verbindungen zwischen verschiedenen Entwicklungen auf
+- Bewerte die Auswirkungen auf verschiedene Branchen und Anwendungsbereiche
 
 STRUKTUR:
-1. Einleitung zur Woche
-2. Hauptthemen mit ausführlichen Beschreibungen
-3. Weitere wichtige Entwicklungen
-4. Ausblick und Fazit
+1. Einleitung mit Überblick über die Woche
+2. Hauptartikel mit detaillierter Analyse (jeweils 150-200 Wörter pro Artikel)
+3. Trends und Patterns der Woche
+4. Ausblick und Implikationen
+5. Fazit
 
-Zeitraum: ${digest.dateRange}
-Anzahl Artikel: ${articles.length}
+Verwende Markdown-Formatierung für bessere Lesbarkeit.`
+            },
+            {
+              role: "user",
+              content: `Erstelle einen detaillierten Newsletter für Kalenderwoche ${digest.weekNumber}/${digest.year} (${digest.dateRange}) basierend auf diesen KI-Nachrichten:
 
-Artikel-Details:
-${articles.map((article, index) => `
-${index + 1}. ${article.title}
-   Quelle: ${article.sourceName || 'Unbekannt'}
-   Datum: ${new Date(article.pubDate).toLocaleDateString('de-DE')}
-   Beschreibung: ${article.description || 'Keine Beschreibung verfügbar'}
-   Link: ${article.link}
-`).join('\n')}
-${linkedInSection}
-
-Erstelle daraus einen umfassenden, gut strukturierten Newsletter in deutscher Sprache.
-`;
-  }
-
-  private async callDecoderAPI(prompt: string, articles: RssItem[]): Promise<string> {
-    // Simulate API response with enhanced content
-    const weekInfo = prompt.match(/KW (\d+) (\d+)/);
-    const weekNumber = weekInfo ? weekInfo[1] : '1';
-    const year = weekInfo ? weekInfo[2] : '2025';
-    
-    // Create enhanced newsletter content
-    const enhancedContent = `# LINKIT WEEKLY - Kalenderwoche ${weekNumber}/${year}
-
-## Überblick der Woche
-
-Diese Woche bringt spannende Entwicklungen in der Technologiewelt mit sich. Von bahnbrechenden KI-Innovationen bis hin zu wichtigen Branchen-Updates - hier ist Ihre umfassende Zusammenfassung der wichtigsten Ereignisse.
-
-## 🚀 Hauptthemen der Woche
-
-### Künstliche Intelligenz im Fokus
-
-${articles.slice(0, 3).map((article, index) => `
-**${article.title}**
-
-${article.description || 'Diese Entwicklung zeigt einmal mehr, wie schnell sich die Technologiebranche wandelt und welche Auswirkungen dies auf Unternehmen und Verbraucher hat.'}
-
-Die Bedeutung dieser Entwicklung liegt besonders darin, dass sie neue Maßstäbe für die Branche setzt und innovative Lösungsansätze aufzeigt. Für Unternehmen bedeutet dies sowohl Chancen als auch Herausforderungen in der digitalen Transformation.
-
-*Quelle: ${article.sourceName || 'Technology News'}*
-[Mehr erfahren](${article.link})
-
----
-`).join('')}
-
-## 📈 Weitere wichtige Entwicklungen
-
-### Technologie und Innovation
-
-${articles.slice(3, 6).map((article, index) => `
-- **${article.title}**: ${article.description?.substring(0, 150) || 'Wichtige Entwicklung in der Technologiebranche'}...
-  [Details](${article.link})
+${articlesToUse.map((article, index) => `
+**Artikel ${index + 1}:**
+Titel: ${article.title}
+Beschreibung: ${article.description || 'Keine Beschreibung verfügbar'}
+Link: ${article.link}
+Datum: ${article.pubDate}
+Quelle: ${article.source}
 `).join('\n')}
 
-### Markttrends und Analysen
+Bitte erstelle eine umfassende, detaillierte Analyse mit mindestens 800-1200 Wörtern. Erkläre die Bedeutung jeder Entwicklung, füge Kontext hinzu und zeige Verbindungen zwischen den verschiedenen Nachrichten auf.`
+            }
+          ],
+          max_tokens: 3000,
+          temperature: 0.7
+        })
+      });
 
-Die aktuellen Entwicklungen zeigen deutlich, dass sich die Technologiebranche in einer Phase des schnellen Wandels befindet. Besonders bemerkenswert sind die Fortschritte in den Bereichen:
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(`OpenAI API Fehler: ${response.status} - ${errorData?.error?.message || response.statusText}`);
+      }
 
-- **Automatisierung**: Neue Tools und Plattformen revolutionieren Arbeitsprozesse
-- **Datenanalyse**: Verbesserte Algorithmen ermöglichen präzisere Insights
-- **Benutzerfreundlichkeit**: Fokus auf intuitive und zugängliche Technologien
+      const data = await response.json();
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error("Unerwartete Antwort von der OpenAI API");
+      }
 
-## 🔮 Ausblick
+      let content = data.choices[0].message.content;
+      
+      // Add LinkedIn reference if not present and linkedInPage is provided
+      if (linkedInPage && !content.includes("linkedin.com/company/linkit-karlsruhe")) {
+        content += `\n\n---\n\n**Bleiben Sie verbunden:**\nFür weitere Updates und Diskussionen besuchen Sie unsere [LinkedIn-Seite](${linkedInPage}).`;
+      }
 
-Die kommende Woche verspricht weitere spannende Entwicklungen. Besonders im Blick behalten sollten Sie:
+      console.log("✅ Detailed newsletter generated successfully");
+      return content;
 
-1. **Neue Produktankündigungen** führender Technologieunternehmen
-2. **Marktanalysen** zu den aktuellen Trends
-3. **Innovative Lösungsansätze** für bestehende Herausforderungen
-
-## 💡 Fazit
-
-Diese Woche hat gezeigt, dass Innovation und technologischer Fortschritt Hand in Hand gehen. Die vorgestellten Entwicklungen bieten sowohl für Unternehmen als auch für Endverbraucher neue Möglichkeiten und Perspektiven.
-
----
-
-*Bleiben Sie informiert über die neuesten Entwicklungen in der Technologiewelt. Für weitere Updates und ausführliche Analysen besuchen Sie unsere Plattform.*
-
-**Haben Sie Feedback oder Anregungen zu unserem Newsletter? Wir freuen uns über Ihre Rückmeldung!**`;
-
-    return enhancedContent;
+    } catch (error) {
+      console.error("Error generating detailed newsletter:", error);
+      
+      if (error instanceof Error && error.message.includes("API")) {
+        throw error;
+      }
+      
+      throw new Error(`Fehler bei der Newsletter-Generierung: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+    }
   }
 
-  // Generate article summary - improved to return clean flowing text without any formatting
   public async generateArticleSummary(article: RssItem): Promise<string | null> {
-    try {
-      // Generate completely clean, flowing text without any formatting, prefixes, or special characters
-      const cleanSummary = `${article.title} behandelt wichtige technologische Entwicklungen und zeigt innovative Ansätze auf. Die Inhalte beleuchten neue Technologien und deren Auswirkungen auf die Branche. Besonders hervorzuheben sind die Zukunftsperspektiven und das Potenzial für weitere Entwicklungen. Diese Fortschritte setzen neue Standards und bieten praktische Lösungsansätze für aktuelle Herausforderungen in der digitalen Transformation.`;
+    if (!this.apiKey) {
+      throw new Error("API-Schlüssel ist erforderlich für die Artikel-Zusammenfassung");
+    }
 
-      return cleanSummary;
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: "Du bist ein KI-Experte und fasst Artikel über künstliche Intelligenz prägnant zusammen. Schreibe eine kurze, aber informative Zusammenfassung in 2-3 Sätzen auf Deutsch."
+            },
+            {
+              role: "user",
+              content: `Fasse diesen KI-Artikel zusammen:
+              
+Titel: ${article.title}
+Beschreibung: ${article.description || 'Keine Beschreibung verfügbar'}
+Link: ${article.link}`
+            }
+          ],
+          max_tokens: 200,
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(`OpenAI API Fehler: ${response.status} - ${errorData?.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error("Unerwartete Antwort von der OpenAI API");
+      }
+
+      return data.choices[0].message.content;
+
     } catch (error) {
       console.error("Error generating article summary:", error);
       return null;
     }
   }
 
-  // Extract article metadata
   public async extractArticleMetadata(url: string): Promise<Partial<RssItem>> {
     try {
-      // Simulate metadata extraction
-      return {
-        title: "Artikel-Titel",
-        description: "Artikel-Beschreibung basierend auf der URL-Analyse",
-        sourceName: "Technology News",
-        pubDate: new Date().toISOString()
+      console.log(`Extracting metadata for: ${url}`);
+      
+      // Use RSS2JSON service to extract metadata
+      const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&api_key=${this.rss2JsonApiKey}`;
+      
+      const response = await fetch(apiUrl);
+      
+      if (!response.ok) {
+        throw new Error(`RSS2JSON API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.status !== 'ok') {
+        throw new Error(`RSS2JSON error: ${data.message || 'Unknown error'}`);
+      }
+      
+      // Extract basic metadata
+      const metadata: Partial<RssItem> = {
+        title: data.feed?.title || "Artikel ohne Titel",
+        description: data.feed?.description || "Keine Beschreibung verfügbar",
+        link: url
       };
+      
+      console.log("Metadata extracted:", metadata);
+      return metadata;
+      
     } catch (error) {
       console.error("Error extracting metadata:", error);
-      return {};
+      
+      // Fallback: try to extract title from URL
+      const urlParts = url.split('/');
+      const lastPart = urlParts[urlParts.length - 1] || urlParts[urlParts.length - 2] || 'article';
+      const title = lastPart.replace(/[-_]/g, ' ').replace(/\.(html|php|aspx?)$/i, '');
+      
+      return {
+        title: title.charAt(0).toUpperCase() + title.slice(1),
+        description: "Keine Beschreibung verfügbar",
+        link: url
+      };
     }
   }
 }
+
+export default DecoderService;
