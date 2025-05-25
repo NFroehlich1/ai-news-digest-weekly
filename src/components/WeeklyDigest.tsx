@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
 import NewsletterSubscribeModal from "./NewsletterSubscribeModal";
 import ArticleSelector from "./ArticleSelector";
-import { Calendar, FileEdit, Mail, RefreshCw, TrendingUp, Archive, CheckCircle } from "lucide-react";
+import { Calendar, FileEdit, Mail, RefreshCw, TrendingUp, Archive, CheckCircle, AlertTriangle } from "lucide-react";
 import NewsService from "@/services/NewsService";
 import NewsletterArchiveService from "@/services/NewsletterArchiveService";
 
@@ -27,6 +27,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [savedToArchive, setSavedToArchive] = useState<boolean>(false);
+  const [archiveSaveError, setArchiveSaveError] = useState<string | null>(null);
   
   const getArticleId = (article: RssItem): string => {
     return article.guid || article.link;
@@ -47,56 +48,100 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   };
   
   const saveToArchive = async (content: string): Promise<boolean> => {
-    console.log("=== STARTING ARCHIVE SAVE PROCESS ===");
+    console.log("=== DEBUGGING ARCHIVE SAVE START ===");
     setIsSaving(true);
+    setArchiveSaveError(null);
     
     try {
-      console.log("Creating archive service instance...");
-      const archiveService = new NewsletterArchiveService();
-      
-      console.log("Digest validation:", {
-        hasDigest: !!digest,
+      // Detailed validation logging
+      console.log("STEP 1: Validating inputs");
+      console.log("Digest object:", {
+        exists: !!digest,
         weekNumber: digest?.weekNumber,
         year: digest?.year,
         dateRange: digest?.dateRange,
-        itemsCount: digest?.items?.length
+        itemsLength: digest?.items?.length
       });
       
       console.log("Content validation:", {
-        hasContent: !!content,
-        contentLength: content?.length,
-        contentPreview: content?.substring(0, 100)
+        exists: !!content,
+        length: content?.length,
+        type: typeof content,
+        trimmedLength: content?.trim?.()?.length
       });
       
       if (!digest) {
-        throw new Error("Digest ist nicht verfügbar");
+        const error = "FEHLER: Digest-Objekt ist nicht verfügbar";
+        console.error(error);
+        setArchiveSaveError(error);
+        toast.error(error);
+        return false;
       }
       
-      if (!content || content.trim().length === 0) {
-        throw new Error("Newsletter-Inhalt ist leer");
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        const error = "FEHLER: Newsletter-Inhalt ist leer oder ungültig";
+        console.error(error);
+        setArchiveSaveError(error);
+        toast.error(error);
+        return false;
       }
       
-      console.log("Calling saveNewsletter with validated data...");
+      if (!digest.weekNumber || !digest.year) {
+        const error = `FEHLER: Wochennummer (${digest.weekNumber}) oder Jahr (${digest.year}) fehlt`;
+        console.error(error);
+        setArchiveSaveError(error);
+        toast.error(error);
+        return false;
+      }
+      
+      console.log("STEP 2: Creating archive service");
+      const archiveService = new NewsletterArchiveService();
+      console.log("Archive service created successfully");
+      
+      console.log("STEP 3: Calling saveNewsletter method");
+      console.log("Calling with parameters:", {
+        digest: {
+          weekNumber: digest.weekNumber,
+          year: digest.year,
+          dateRange: digest.dateRange,
+          itemsCount: digest.items?.length
+        },
+        contentLength: content.length
+      });
+      
       const result = await archiveService.saveNewsletter(digest, content);
       
+      console.log("STEP 4: Processing result");
+      console.log("Save result:", result);
+      
       if (result && result.id) {
-        console.log("✅ Newsletter successfully saved to archive with ID:", result.id);
+        console.log("✅ SUCCESS: Newsletter saved to archive with ID:", result.id);
         setSavedToArchive(true);
-        toast.success("Newsletter erfolgreich im Archiv gespeichert!");
+        setArchiveSaveError(null);
+        toast.success(`Newsletter erfolgreich im Archiv gespeichert! (ID: ${result.id})`);
         return true;
       } else {
-        console.error("❌ Archive service returned no result or invalid result:", result);
-        toast.error("Fehler: Newsletter konnte nicht im Archiv gespeichert werden");
+        const error = "FEHLER: Archive Service gab kein gültiges Ergebnis zurück";
+        console.error(error, result);
+        setArchiveSaveError(error);
+        toast.error(error);
         return false;
       }
     } catch (error) {
-      console.error("❌ Error in saveToArchive:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
-      toast.error(`Archiv-Fehler: ${errorMessage}`);
+      const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler beim Speichern";
+      const fullError = `FEHLER beim Archiv-Speichern: ${errorMessage}`;
+      console.error("=== ARCHIVE SAVE ERROR ===", error);
+      console.error("Error details:", {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : 'No stack'
+      });
+      setArchiveSaveError(fullError);
+      toast.error(fullError);
       return false;
     } finally {
       setIsSaving(false);
-      console.log("=== ARCHIVE SAVE PROCESS COMPLETED ===");
+      console.log("=== DEBUGGING ARCHIVE SAVE END ===");
     }
   };
   
@@ -106,6 +151,7 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     if (generatedContent) {
       setGeneratedContent(null);
       setSavedToArchive(false);
+      setArchiveSaveError(null);
     }
     
     setIsGenerating(true);
@@ -132,14 +178,18 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
         setGeneratedContent(summary);
         setActiveTab("summary");
         
-        // Immediate save to archive with better error handling
-        console.log("🔄 Attempting immediate archive save...");
+        // Immediate save to archive with enhanced debugging
+        console.log("🔄 Starting immediate archive save process...");
+        console.log("Generated content preview:", summary.substring(0, 200) + "...");
+        
         const saveSuccess = await saveToArchive(summary);
         
         if (saveSuccess) {
           console.log("✅ Newsletter generation and archive save completed successfully");
+          toast.success("Newsletter generiert und im Archiv gespeichert!");
         } else {
           console.warn("⚠️ Newsletter generated but archive save failed");
+          toast.warning("Newsletter generiert, aber Archiv-Speicherung fehlgeschlagen");
         }
       } else {
         throw new Error("Newsletter-Generierung hat leeren Inhalt zurückgegeben");
@@ -209,6 +259,12 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
                         <span className="text-xs">Im Archiv gespeichert</span>
                       </div>
                     )}
+                    {archiveSaveError && !isSaving && (
+                      <div className="flex items-center gap-1 text-red-600">
+                        <AlertTriangle className="h-3 w-3" />
+                        <span className="text-xs">Archiv-Fehler</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -264,6 +320,18 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
               ) : null}
             </div>
           </div>
+          
+          {archiveSaveError && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-red-700">
+                  <p className="font-medium">Archiv-Speicher-Fehler:</p>
+                  <p className="mt-1">{archiveSaveError}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </CardHeader>
         
         <CardContent className="p-4 sm:p-6">

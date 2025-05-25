@@ -17,41 +17,53 @@ export interface NewsletterArchiveEntry {
 
 export default class NewsletterArchiveService {
   
-  // Save newsletter to archive with improved error handling
+  // Save newsletter to archive with comprehensive debugging
   public async saveNewsletter(
     digest: WeeklyDigest, 
     content: string, 
     htmlContent?: string
   ): Promise<NewsletterArchiveEntry | null> {
     try {
-      console.log("=== NEWSLETTER ARCHIVE SERVICE: COMPREHENSIVE SAVE ===");
+      console.log("=== NEWSLETTER ARCHIVE SERVICE: COMPREHENSIVE DEBUG START ===");
       
-      // Validate inputs with detailed logging
+      // Step-by-step validation with detailed logging
+      console.log("STEP 1: Input validation");
       if (!digest) {
-        console.error("❌ Digest is null or undefined");
+        console.error("❌ VALIDATION FAILED: Digest is null or undefined");
         throw new Error("Digest ist erforderlich");
       }
+      console.log("✅ Digest object exists");
       
-      if (!content || content.trim().length === 0) {
-        console.error("❌ Content is empty or invalid");
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        console.error("❌ VALIDATION FAILED: Content is invalid", {
+          hasContent: !!content,
+          type: typeof content,
+          length: content?.length,
+          trimmedLength: content?.trim?.()?.length
+        });
         throw new Error("Newsletter-Inhalt ist erforderlich und darf nicht leer sein");
       }
+      console.log("✅ Content validation passed", {
+        type: typeof content,
+        length: content.length,
+        trimmedLength: content.trim().length
+      });
       
       if (!digest.weekNumber || !digest.year) {
-        console.error("❌ Week number or year missing", { weekNumber: digest.weekNumber, year: digest.year });
+        console.error("❌ VALIDATION FAILED: Week number or year missing", {
+          weekNumber: digest.weekNumber,
+          weekNumberType: typeof digest.weekNumber,
+          year: digest.year,
+          yearType: typeof digest.year
+        });
         throw new Error("Wochennummer und Jahr sind erforderlich");
       }
-      
-      console.log("✅ Input validation passed:", {
-        hasDigest: true,
-        hasContent: true,
-        contentLength: content.length,
+      console.log("✅ Week/Year validation passed", {
         weekNumber: digest.weekNumber,
-        year: digest.year,
-        dateRange: digest.dateRange,
-        itemCount: digest.items?.length || 0
+        year: digest.year
       });
 
+      console.log("STEP 2: Preparing data for database");
       const title = `LINKIT WEEKLY - KW ${digest.weekNumber}/${digest.year}`;
       
       const insertData = {
@@ -64,66 +76,95 @@ export default class NewsletterArchiveService {
         article_count: digest.items?.length || 0
       };
       
-      console.log("📝 Attempting to insert newsletter with data:", {
-        ...insertData,
-        content: `${insertData.content.substring(0, 100)}...` // Log only first 100 chars
+      console.log("✅ Insert data prepared:", {
+        week_number: insertData.week_number,
+        year: insertData.year,
+        date_range: insertData.date_range,
+        title: insertData.title,
+        contentLength: insertData.content.length,
+        hasHtmlContent: !!insertData.html_content,
+        article_count: insertData.article_count
       });
       
-      // First try to insert
+      console.log("STEP 3: Attempting database insert");
+      console.log("Using Supabase client to insert into newsletter_archive table...");
+      
+      // Test database connection first
+      const { data: testData, error: testError } = await supabase
+        .from('newsletter_archive')
+        .select('count')
+        .limit(1);
+      
+      if (testError) {
+        console.error("❌ DATABASE CONNECTION TEST FAILED:", testError);
+        throw new Error(`Datenbankverbindung fehlgeschlagen: ${testError.message}`);
+      }
+      console.log("✅ Database connection test successful");
+      
+      // Try to insert
       const { data, error } = await supabase
         .from('newsletter_archive')
         .insert(insertData)
         .select()
         .single();
 
+      console.log("STEP 4: Processing database response");
       if (error) {
-        console.error("❌ Insert error details:", {
+        console.error("❌ DATABASE INSERT ERROR:", {
           code: error.code,
           message: error.message,
           details: error.details,
-          hint: error.hint
+          hint: error.hint,
+          insertData: {
+            ...insertData,
+            content: `${insertData.content.substring(0, 100)}...`
+          }
         });
         
-        // If entry already exists (unique constraint violation), update it
+        // If entry already exists (unique constraint violation), try update
         if (error.code === '23505') {
-          console.log("🔄 Entry exists, attempting update...");
+          console.log("🔄 Entry exists, attempting update instead...");
           return await this.updateNewsletter(digest, content, htmlContent);
         }
         
-        console.error("❌ Unhandled database error:", error);
-        throw new Error(`Datenbankfehler beim Einfügen: ${error.message}`);
+        throw new Error(`Datenbankfehler beim Einfügen: ${error.message} (Code: ${error.code})`);
       }
 
       if (!data) {
-        console.error("❌ Insert succeeded but no data returned");
+        console.error("❌ INSERT SUCCESS BUT NO DATA RETURNED");
         throw new Error("Einfügen war erfolgreich, aber keine Daten zurückgegeben");
       }
 
-      console.log("✅ Newsletter successfully inserted into archive:", {
+      console.log("✅ DATABASE INSERT SUCCESSFUL:", {
         id: data.id,
         week_number: data.week_number,
         year: data.year,
         title: data.title,
-        article_count: data.article_count
+        article_count: data.article_count,
+        created_at: data.created_at
       });
       
+      console.log("=== NEWSLETTER ARCHIVE SERVICE: SUCCESS ===");
       return data;
+      
     } catch (error) {
-      console.error("❌ Critical error in saveNewsletter:", error);
+      console.error("❌ CRITICAL ERROR in saveNewsletter:", error);
+      console.error("Error stack:", error instanceof Error ? error.stack : 'No stack available');
+      
       const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler beim Speichern";
       toast.error(`Archiv-Speicher-Fehler: ${errorMessage}`);
       throw error; // Re-throw to allow caller to handle
     }
   }
 
-  // Update existing newsletter in archive with improved error handling
+  // Update existing newsletter in archive
   private async updateNewsletter(
     digest: WeeklyDigest, 
     content: string, 
     htmlContent?: string
   ): Promise<NewsletterArchiveEntry | null> {
     try {
-      console.log("=== NEWSLETTER ARCHIVE SERVICE: COMPREHENSIVE UPDATE ===");
+      console.log("=== NEWSLETTER ARCHIVE SERVICE: UPDATE OPERATION ===");
       
       const title = `LINKIT WEEKLY - KW ${digest.weekNumber}/${digest.year}`;
       
@@ -138,8 +179,10 @@ export default class NewsletterArchiveService {
       console.log("📝 Attempting to update newsletter:", {
         week_number: digest.weekNumber,
         year: digest.year,
-        ...updateData,
-        content: `${updateData.content.substring(0, 100)}...` // Log only first 100 chars
+        updateData: {
+          ...updateData,
+          content: `${updateData.content.substring(0, 100)}...`
+        }
       });
       
       const { data, error } = await supabase
@@ -177,7 +220,7 @@ export default class NewsletterArchiveService {
       console.error("❌ Critical error in updateNewsletter:", error);
       const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler beim Aktualisieren";
       toast.error(`Archiv-Update-Fehler: ${errorMessage}`);
-      throw error; // Re-throw to allow caller to handle
+      throw error;
     }
   }
 
