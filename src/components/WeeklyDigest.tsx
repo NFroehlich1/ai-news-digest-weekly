@@ -16,9 +16,10 @@ import NewsletterArchiveService from "@/services/NewsletterArchiveService";
 interface WeeklyDigestProps {
   digest: WeeklyDigestType;
   apiKey: string;
+  newsService?: NewsService; // Add newsService as optional prop
 }
 
-const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
+const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedContent, setGeneratedContent] = useState<string | null>(digest.generatedContent || null);
   const [activeTab, setActiveTab] = useState<string>("news");
@@ -101,6 +102,8 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
   
   const handleGenerateSummary = async () => {
     console.log("=== STARTING DETAILED NEWSLETTER GENERATION ===");
+    console.log("API Key available:", !!apiKey);
+    console.log("NewsService available:", !!newsService);
     
     if (generatedContent) {
       setGeneratedContent(null);
@@ -111,7 +114,8 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     setIsGenerating(true);
     
     try {
-      const newsService = new NewsService(apiKey); 
+      // Use the passed newsService if available, otherwise create new one with the API key
+      const serviceToUse = newsService || new NewsService(apiKey); 
       const linkedInPage = "https://www.linkedin.com/company/linkit-karlsruhe/posts/?feedView=all";
       
       let articlesToUse = getUniqueArticles(digest.items);
@@ -120,8 +124,9 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
       }
       
       console.log(`Generating detailed newsletter with ${articlesToUse.length} articles`);
+      console.log("Using API key:", apiKey.substring(0, 7) + "...");
       
-      const summary = await newsService.generateNewsletterSummary(
+      const summary = await serviceToUse.generateNewsletterSummary(
         digest, 
         articlesToUse,
         linkedInPage

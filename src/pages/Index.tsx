@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
@@ -15,7 +14,7 @@ import { getWeekDateRange, getCurrentWeek, getCurrentYear } from "@/utils/dateUt
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [apiKey, setApiKey] = useState<string>("");
+  const [apiKey, setApiKey] = useState<string>("AIzaSyAOG3IewUIIsB8oRYG2Lu-_2bM7ZrMBMFk"); // Set default API key
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [rssSources, setRssSources] = useState<any[]>([]);
   const [newsItems, setNewsItems] = useState<RssItem[]>([]);
@@ -36,7 +35,7 @@ const Index = () => {
   const [weeklyDigest, setWeeklyDigest] = useState<WeeklyDigestType>(emptyDigest);
   
   // Initialize NewsService using useMemo for a stable instance
-  const newsService = useMemo(() => new NewsService(), []);
+  const newsService = useMemo(() => new NewsService(apiKey), [apiKey]); // Pass apiKey to constructor
 
   useEffect(() => {
     // Check if user is authenticated
@@ -52,12 +51,13 @@ const Index = () => {
       setIsAuthenticated(!!session);
     });
 
-    // Initialize by loading saved API key from localStorage
+    // Initialize by loading saved API key from localStorage, but keep default if not found
     const savedApiKey = localStorage.getItem('api_key');
     if (savedApiKey) {
       setApiKey(savedApiKey);
-      newsService.setApiKey(savedApiKey); // Set API key for the service
     }
+    // Set the API key for the service
+    newsService.setApiKey(apiKey);
 
     // Load RSS sources
     if (newsService) {
@@ -68,7 +68,7 @@ const Index = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [newsService]); // Add newsService to dependency array as it's used inside
+  }, [newsService, apiKey]); // Add apiKey to dependency array
 
   // Effect to load news when API key is available
   useEffect(() => {
@@ -95,7 +95,7 @@ const Index = () => {
       };
       loadInitialNews();
     }
-  }, [apiKey, newsService, emptyDigest]); // Add dependencies
+  }, [apiKey, newsService, emptyDigest]);
 
   // Handle API key setting
   const handleApiKeySet = (key: string) => {
@@ -227,7 +227,7 @@ const Index = () => {
         onApiKeySet={handleApiKeySet} 
         onRefresh={handleRefresh} 
         loading={isLoading}
-        defaultApiKey={apiKey}
+        defaultApiKey={apiKey} // Pass current apiKey as default
       />
       <main className="container max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
         <Tabs defaultValue="digest">
@@ -247,7 +247,8 @@ const Index = () => {
             />
             <WeeklyDigest 
               digest={weeklyDigest}
-              apiKey={apiKey}
+              apiKey={apiKey} // Pass the current apiKey
+              newsService={newsService} // Pass the newsService instance
             />
           </TabsContent>
 
