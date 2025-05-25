@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import NewsletterArchiveService from "@/services/NewsletterArchiveService";
 interface WeeklyDigestProps {
   digest: WeeklyDigestType;
   apiKey: string;
-  newsService?: NewsService; // Add newsService as optional prop
+  newsService?: NewsService;
 }
 
 const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
@@ -34,7 +35,6 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
     return article.guid || article.link;
   };
   
-  // Remove duplicate articles by ID
   const getUniqueArticles = (articles: RssItem[]): RssItem[] => {
     const uniqueMap = new Map<string, RssItem>();
     
@@ -49,61 +49,60 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
   };
   
   const saveToArchive = async (content: string): Promise<boolean> => {
-    console.log("=== MANUAL ARCHIVE SAVE START ===");
+    console.log("=== STARTING NEWSLETTER ARCHIVE SAVE ===");
     setIsSaving(true);
     setArchiveSaveError(null);
     
     try {
-      if (!digest) {
-        const error = "FEHLER: Digest-Objekt ist nicht verfügbar";
+      console.log("Validating content and digest...");
+      if (!content || content.trim().length === 0) {
+        const error = "Newsletter-Inhalt ist leer";
         console.error(error);
         setArchiveSaveError(error);
         toast.error(error);
         return false;
       }
       
-      if (!content || typeof content !== 'string' || content.trim().length === 0) {
-        const error = "FEHLER: Newsletter-Inhalt ist leer oder ungültig";
+      if (!digest || !digest.weekNumber || !digest.year) {
+        const error = "Digest-Informationen sind unvollständig";
         console.error(error);
         setArchiveSaveError(error);
         toast.error(error);
         return false;
       }
       
-      console.log("Creating archive service and saving...");
+      console.log(`Saving newsletter for week ${digest.weekNumber}/${digest.year}...`);
+      
       const archiveService = new NewsletterArchiveService();
       const result = await archiveService.saveNewsletter(digest, content);
       
       if (result && result.id) {
-        console.log("✅ SUCCESS: Newsletter manually saved to archive with ID:", result.id);
+        console.log("✅ Newsletter successfully saved to archive:", result.id);
         setSavedToArchive(true);
         setArchiveSaveError(null);
         toast.success(`Newsletter erfolgreich im Archiv gespeichert! (ID: ${result.id})`);
         return true;
       } else {
-        const error = "FEHLER: Archive Service gab kein gültiges Ergebnis zurück";
-        console.error(error, result);
+        const error = "Speichern fehlgeschlagen - kein Ergebnis erhalten";
+        console.error(error);
         setArchiveSaveError(error);
         toast.error(error);
         return false;
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler beim Speichern";
-      const fullError = `FEHLER beim manuellen Archiv-Speichern: ${errorMessage}`;
-      console.error("=== MANUAL ARCHIVE SAVE ERROR ===", error);
-      setArchiveSaveError(fullError);
-      toast.error(fullError);
+      console.error("❌ Error saving to archive:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
+      setArchiveSaveError(errorMessage);
+      toast.error(`Archiv-Fehler: ${errorMessage}`);
       return false;
     } finally {
       setIsSaving(false);
-      console.log("=== MANUAL ARCHIVE SAVE END ===");
+      console.log("=== NEWSLETTER ARCHIVE SAVE COMPLETED ===");
     }
   };
   
   const handleGenerateSummary = async () => {
-    console.log("=== STARTING DETAILED NEWSLETTER GENERATION ===");
-    console.log("API Key available:", !!apiKey);
-    console.log("NewsService available:", !!newsService);
+    console.log("=== STARTING NEWSLETTER GENERATION ===");
     
     if (generatedContent) {
       setGeneratedContent(null);
@@ -114,8 +113,7 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
     setIsGenerating(true);
     
     try {
-      // Use the passed newsService if available, otherwise create new one without arguments
-      const serviceToUse = newsService || new NewsService(); // Updated to use no arguments
+      const serviceToUse = newsService || new NewsService();
       const linkedInPage = "https://www.linkedin.com/company/linkit-karlsruhe/posts/?feedView=all";
       
       let articlesToUse = getUniqueArticles(digest.items);
@@ -123,7 +121,7 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
         articlesToUse = getUniqueArticles(selectedArticles);
       }
       
-      console.log(`Generating detailed newsletter with ${articlesToUse.length} articles`);
+      console.log(`Generating newsletter with ${articlesToUse.length} articles`);
       
       const summary = await serviceToUse.generateNewsletterSummary(
         digest, 
@@ -132,24 +130,23 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
       );
       
       if (summary && summary.trim().length > 0) {
-        console.log("✅ Detailed newsletter generated successfully, length:", summary.length);
+        console.log("✅ Newsletter generated successfully");
         setGeneratedContent(summary);
         setActiveTab("summary");
-        toast.success("Detaillierter Newsletter erfolgreich generiert!");
+        toast.success("Newsletter erfolgreich generiert!");
       } else {
         throw new Error("Newsletter-Generierung hat leeren Inhalt zurückgegeben");
       }
     } catch (error) {
-      console.error("❌ Error in detailed newsletter generation:", error);
+      console.error("❌ Error generating newsletter:", error);
       const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
       toast.error(`Generierungs-Fehler: ${errorMessage}`);
     } finally {
       setIsGenerating(false);
-      console.log("=== DETAILED NEWSLETTER GENERATION PROCESS COMPLETED ===");
     }
   };
 
-  const handleManualSave = async () => {
+  const handleSaveToArchive = async () => {
     if (!generatedContent) {
       toast.error("Kein Newsletter-Inhalt zum Speichern vorhanden");
       return;
@@ -159,7 +156,7 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
     const success = await saveToArchive(generatedContent);
     
     if (success) {
-      toast.success("Newsletter manuell im Archiv gespeichert!");
+      console.log("Newsletter successfully saved to archive");
     }
   };
 
@@ -278,7 +275,7 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
 
                   {generatedContent && (
                     <Button 
-                      onClick={handleManualSave} 
+                      onClick={handleSaveToArchive} 
                       disabled={isSaving || savedToArchive}
                       variant="outline"
                       className="gap-2 bg-white hover:bg-green-50 border-green-200 text-green-700"
@@ -291,7 +288,7 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
                         <Save className="h-4 w-4" />
                       )}
                       <span className="hidden sm:inline">
-                        {isSaving ? "Speichert..." : savedToArchive ? "Gespeichert" : "Newsletter speichern"}
+                        {isSaving ? "Speichert..." : savedToArchive ? "Gespeichert" : "Im Archiv speichern"}
                       </span>
                       <span className="sm:hidden">
                         {isSaving ? "..." : savedToArchive ? "✓" : "Speichern"}
