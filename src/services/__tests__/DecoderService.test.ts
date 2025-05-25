@@ -19,10 +19,9 @@ global.fetch = vi.fn();
 
 describe('DecoderService', () => {
   let decoderService: DecoderService;
-  const mockApiKey = 'test-api-key';
 
   beforeEach(() => {
-    decoderService = new DecoderService(mockApiKey);
+    decoderService = new DecoderService(); // Updated to use no arguments
     vi.clearAllMocks();
   });
 
@@ -38,7 +37,7 @@ describe('DecoderService', () => {
     });
 
     it('should return invalid for placeholder API key', async () => {
-      const serviceWithPlaceholder = new DecoderService('rss2json-api-key-placeholder');
+      const serviceWithPlaceholder = new DecoderService(); // Updated to use no arguments
       const result = await serviceWithPlaceholder.verifyApiKey();
       expect(result.isValid).toBe(false);
       expect(result.message).toBe('Kein gültiger API-Schlüssel vorhanden');

@@ -17,7 +17,7 @@ describe('NewsService', () => {
   let newsService: NewsService;
 
   beforeEach(() => {
-    newsService = new NewsService('test-api-key');
+    newsService = new NewsService(); // Updated to use no arguments
     newsService.setUseMockData(true);
   });
 

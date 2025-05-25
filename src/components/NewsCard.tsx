@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RssItem } from "@/types/newsTypes";
@@ -87,11 +86,11 @@ const NewsCard = ({ item, isLoading = false, onDelete, apiKey }: NewsCardProps) 
   
   // Generate AI summary on-demand
   const generateAiSummary = async () => {
-    if (isGeneratingAiSummary || !apiKey) return;
+    if (isGeneratingAiSummary) return;
     
     setIsGeneratingAiSummary(true);
     try {
-      const newsService = new NewsService(apiKey);
+      const newsService = new NewsService(); // Updated to use no arguments
       const summary = await newsService.generateArticleSummary(item);
       if (summary) {
         setLocalAiSummary(summary);
@@ -110,7 +109,7 @@ const NewsCard = ({ item, isLoading = false, onDelete, apiKey }: NewsCardProps) 
   // When expanding the article and no AI summary exists, generate one
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    if (open && !localAiSummary && apiKey) {
+    if (open && !localAiSummary) {
       generateAiSummary();
     }
   };
@@ -207,7 +206,7 @@ const NewsCard = ({ item, isLoading = false, onDelete, apiKey }: NewsCardProps) 
                   size="sm"
                   className="w-full"
                   onClick={generateAiSummary}
-                  disabled={isGeneratingAiSummary || !apiKey}
+                  disabled={isGeneratingAiSummary}
                 >
                   {isGeneratingAiSummary ? (
                     <>

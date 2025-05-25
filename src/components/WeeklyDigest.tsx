@@ -114,8 +114,8 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
     setIsGenerating(true);
     
     try {
-      // Use the passed newsService if available, otherwise create new one with the API key
-      const serviceToUse = newsService || new NewsService(apiKey); 
+      // Use the passed newsService if available, otherwise create new one without arguments
+      const serviceToUse = newsService || new NewsService(); // Updated to use no arguments
       const linkedInPage = "https://www.linkedin.com/company/linkit-karlsruhe/posts/?feedView=all";
       
       let articlesToUse = getUniqueArticles(digest.items);
@@ -124,7 +124,6 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
       }
       
       console.log(`Generating detailed newsletter with ${articlesToUse.length} articles`);
-      console.log("Using API key:", apiKey.substring(0, 7) + "...");
       
       const summary = await serviceToUse.generateNewsletterSummary(
         digest, 
