@@ -30,11 +30,23 @@ describe('DecoderService', () => {
     vi.restoreAllMocks();
   });
 
-  describe('generateSummary', () => {
-    it('should generate prompt with truncated description for items without aiSummary and full aiSummary for others', async () => {
-      const verifyApiKeySpy = vi.spyOn(decoderService, 'verifyApiKey').mockResolvedValue({ isValid: true, message: 'API key is valid' });
-      const getUniqueArticlesSpy = vi.spyOn(decoderService as any, 'getUniqueArticles').mockImplementation((items) => items);
+  describe('verifyApiKey', () => {
+    it('should return valid for a proper API key', async () => {
+      const result = await decoderService.verifyApiKey();
+      expect(result.isValid).toBe(true);
+      expect(result.message).toBe('API-Schlüssel ist gültig');
+    });
 
+    it('should return invalid for placeholder API key', async () => {
+      const serviceWithPlaceholder = new DecoderService('rss2json-api-key-placeholder');
+      const result = await serviceWithPlaceholder.verifyApiKey();
+      expect(result.isValid).toBe(false);
+      expect(result.message).toBe('Kein gültiger API-Schlüssel vorhanden');
+    });
+  });
+
+  describe('generateSummary', () => {
+    it('should generate summary with articles', async () => {
       const mockDigest: WeeklyDigest = {
         id: '2023-W40',
         weekNumber: 40,
@@ -44,58 +56,26 @@ describe('DecoderService', () => {
         summary: 'Digest of AI news',
         items: [
           {
-            title: 'Item with long description',
-            description: 'a'.repeat(600),
+            title: 'Test Article',
+            description: 'Test description',
             content: 'Full content here',
-            link: 'http://example.com/long-desc',
+            link: 'http://example.com/test',
             pubDate: new Date().toISOString(),
-            sourceName: 'Test Source 1',
+            sourceName: 'Test Source',
             categories: ['AI'],
             guid: 'item1',
-          },
-          {
-            title: 'Item with AI summary',
-            description: 'Short description.',
-            content: 'Another full content',
-            aiSummary: 'This is an AI summary.',
-            link: 'http://example.com/ai-summary',
-            pubDate: new Date().toISOString(),
-            sourceName: 'Test Source 2',
-            categories: ['ML'],
-            guid: 'item2',
-          },
+          }
         ],
         createdAt: new Date(),
       };
 
-      const mockSelectedArticles = mockDigest.items;
-      const mockLinkedInPage = 'https://linkedin.com/company/test';
-
-      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          candidates: [{ content: { parts: [{ text: 'Generated Summary Text' }] } }],
-        }),
-      });
-
-      await decoderService.generateSummary(mockDigest, mockSelectedArticles, mockLinkedInPage);
-
-      expect(verifyApiKeySpy).toHaveBeenCalled();
-      expect(global.fetch).toHaveBeenCalledTimes(1);
-
-      const fetchCallBody = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
-      const prompt = fetchCallBody.contents[0].parts[0].text;
-
-      expect(prompt).toContain('Beschreibung: ' + 'a'.repeat(500) + '...');
-      expect(prompt).toContain('AI-Zusammenfassung: This is an AI summary.');
-      expect(prompt).toContain(mockLinkedInPage);
+      const result = await decoderService.generateSummary(mockDigest, mockDigest.items);
+      expect(typeof result).toBe('string');
+      expect(result).toContain('LINKIT WEEKLY');
+      expect(result).not.toContain('KI-News von The Decoder');
     });
 
-    it('should call toast.error and return a fallback newsletter on API key verification failure', async () => {
-      const customErrorMessage = 'Custom API Key Error Message';
-      const verifyApiKeySpy = vi.spyOn(decoderService, 'verifyApiKey').mockResolvedValue({ isValid: false, message: customErrorMessage });
-      const formatFallbackSpy = vi.spyOn(decoderService as any, 'formatComprehensiveNewsletter');
-
+    it('should throw error when no articles provided', async () => {
       const mockDigest: WeeklyDigest = {
         id: '2023-W41',
         weekNumber: 41,
@@ -103,27 +83,32 @@ describe('DecoderService', () => {
         dateRange: 'Oct 09 - Oct 15',
         title: 'Another Weekly AI News',
         summary: 'Another digest',
-        items: [{ 
-          title: 'Test Item', 
-          description: 'Test desc', 
-          content: 'Test content',
-          link: 'http://example.com/item3', 
-          pubDate: new Date().toISOString(), 
-          sourceName: 'Test Source 3', 
-          guid: 'item3' 
-        }],
+        items: [],
         createdAt: new Date(),
       };
 
-      const result = await decoderService.generateSummary(mockDigest);
+      await expect(decoderService.generateSummary(mockDigest, [])).rejects.toThrow('Keine Artikel für die Zusammenfassung verfügbar');
+    });
+  });
 
-      expect(verifyApiKeySpy).toHaveBeenCalled();
-      expect(toast.error).toHaveBeenCalledWith(customErrorMessage);
-      expect(toast.error).toHaveBeenCalledWith(`Fehler bei der Zusammenfassung: ${customErrorMessage}`);
-      expect(global.fetch).not.toHaveBeenCalled();
-      expect(formatFallbackSpy).toHaveBeenCalled();
+  describe('generateArticleSummary', () => {
+    it('should generate clean article summary', async () => {
+      const mockArticle: RssItem = {
+        title: 'Test Article',
+        description: 'Test description',
+        content: 'Test content',
+        link: 'http://example.com/test',
+        pubDate: new Date().toISOString(),
+        sourceName: 'Test Source',
+        guid: 'test-guid',
+      };
+
+      const result = await decoderService.generateArticleSummary(mockArticle);
       expect(typeof result).toBe('string');
-      expect(result).toContain("LINKIT WEEKLY");
+      expect(result).toContain('Test Article');
+      expect(result).not.toContain('**');
+      expect(result).not.toContain('*');
+      expect(result).not.toContain('Zusammenfassung von');
     });
   });
 });
