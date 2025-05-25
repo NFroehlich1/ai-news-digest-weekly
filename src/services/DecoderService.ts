@@ -1,4 +1,3 @@
-
 import { RssItem, WeeklyDigest } from "@/types/newsTypes";
 import { toast } from "sonner";
 
@@ -8,9 +7,11 @@ class DecoderService {
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || "";
+    console.log("DecoderService created with API key:", !!this.apiKey);
   }
 
   public setApiKey(apiKey: string): void {
+    console.log("DecoderService: Setting new API key:", !!apiKey);
     this.apiKey = apiKey;
   }
 
@@ -18,29 +19,60 @@ class DecoderService {
     return this.rss2JsonApiKey;
   }
 
-  // Verify API key method
+  // Verify API key method with direct Gemini API test
   public async verifyApiKey(): Promise<{ isValid: boolean; message: string }> {
+    console.log("=== VERIFYING GEMINI API KEY ===");
+    console.log("API Key present:", !!this.apiKey);
+    
     if (!this.apiKey) {
       return { isValid: false, message: "Kein API-Schlüssel vorhanden" };
     }
 
     if (this.apiKey === "gemini-api-key-placeholder") {
-      return { isValid: false, message: "Kein gültiger API-Schlüssel vorhanden" };
+      return { isValid: false, message: "Platzhalter-API-Schlüssel erkannt" };
     }
 
-    // For now, just validate that it's not empty and not a placeholder
-    if (this.apiKey.length > 10) {
-      return { isValid: true, message: "API-Schlüssel ist gültig" };
-    }
+    try {
+      console.log("Testing Gemini API with key:", this.apiKey.substring(0, 10) + "...");
+      
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: "Test"
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 10,
+          }
+        })
+      });
 
-    return { isValid: false, message: "API-Schlüssel scheint ungültig zu sein" };
+      if (response.ok) {
+        console.log("✅ Gemini API key verification successful");
+        return { isValid: true, message: "Gemini API-Schlüssel ist gültig" };
+      } else {
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.error?.message || `HTTP ${response.status}`;
+        console.error("❌ Gemini API verification failed:", errorMessage);
+        return { isValid: false, message: `API-Schlüssel ungültig: ${errorMessage}` };
+      }
+    } catch (error) {
+      console.error("❌ Gemini API verification error:", error);
+      return { isValid: false, message: `Verbindungsfehler: ${(error as Error).message}` };
+    }
   }
 
   // Enhanced newsletter generation with detailed analysis using Gemini API
   public async generateSummary(digest: WeeklyDigest, selectedArticles?: RssItem[], linkedInPage?: string): Promise<string> {
     console.log("=== DECODER SERVICE GENERATE SUMMARY WITH GEMINI ===");
     console.log("API Key present:", !!this.apiKey);
-    console.log("API Key starts with:", this.apiKey?.substring(0, 10));
+    console.log("API Key value:", this.apiKey ? this.apiKey.substring(0, 10) + "..." : "NONE");
     
     if (!this.apiKey) {
       const error = "Gemini API-Schlüssel ist erforderlich für die Newsletter-Generierung";
@@ -99,6 +131,7 @@ Quelle: ${article.sourceName || 'Unbekannte Quelle'}
 
 Bitte erstelle eine umfassende, detaillierte Analyse mit mindestens 800-1200 Wörtern. Erkläre die Bedeutung jeder Entwicklung, füge Kontext hinzu und zeige Verbindungen zwischen den verschiedenen Nachrichten auf.`;
 
+      console.log("Making request to Gemini API...");
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.apiKey}`, {
         method: "POST",
         headers: {
@@ -132,10 +165,15 @@ Bitte erstelle eine umfassende, detaillierte Analyse mit mindestens 800-1200 Wö
       console.log("Gemini API response received successfully");
       
       if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]) {
+        console.error("Invalid Gemini API response structure:", data);
         throw new Error("Unerwartete Antwort von der Gemini API");
       }
 
       let content = data.candidates[0].content.parts[0].text;
+      
+      if (!content || content.trim().length === 0) {
+        throw new Error("Gemini API hat leeren Inhalt zurückgegeben");
+      }
       
       // Add LinkedIn reference if not present and linkedInPage is provided
       if (linkedInPage && !content.includes("linkedin.com/company/linkit-karlsruhe")) {

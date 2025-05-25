@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
@@ -14,7 +15,7 @@ import { getWeekDateRange, getCurrentWeek, getCurrentYear } from "@/utils/dateUt
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [apiKey, setApiKey] = useState<string>("AIzaSyAOG3IewUIIsB8oRYG2Lu-_2bM7ZrMBMFk"); // Set default API key
+  const [apiKey, setApiKey] = useState<string>("AIzaSyAOG3IewUIIsB8oRYG2Lu-_2bM7ZrMBMFk");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [rssSources, setRssSources] = useState<any[]>([]);
   const [newsItems, setNewsItems] = useState<RssItem[]>([]);
@@ -34,8 +35,11 @@ const Index = () => {
   
   const [weeklyDigest, setWeeklyDigest] = useState<WeeklyDigestType>(emptyDigest);
   
-  // Initialize NewsService using useMemo for a stable instance
-  const newsService = useMemo(() => new NewsService(apiKey), [apiKey]); // Pass apiKey to constructor
+  // Initialize NewsService using useMemo - ensure it gets recreated when apiKey changes
+  const newsService = useMemo(() => {
+    console.log("Creating NewsService with API key:", apiKey.substring(0, 10) + "...");
+    return new NewsService(apiKey);
+  }, [apiKey]);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -54,10 +58,13 @@ const Index = () => {
     // Initialize by loading saved API key from localStorage, but keep default if not found
     const savedApiKey = localStorage.getItem('api_key');
     if (savedApiKey) {
+      console.log("Loading saved API key from localStorage");
       setApiKey(savedApiKey);
+    } else {
+      console.log("Using default API key");
+      // Save the default API key to localStorage
+      localStorage.setItem('api_key', apiKey);
     }
-    // Set the API key for the service
-    newsService.setApiKey(apiKey);
 
     // Load RSS sources
     if (newsService) {
@@ -68,7 +75,13 @@ const Index = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [newsService, apiKey]); // Add apiKey to dependency array
+  }, []);
+
+  // Effect to update NewsService when API key changes
+  useEffect(() => {
+    console.log("API key changed, updating NewsService:", apiKey.substring(0, 10) + "...");
+    newsService.setApiKey(apiKey);
+  }, [apiKey, newsService]);
 
   // Effect to load news when API key is available
   useEffect(() => {
@@ -76,6 +89,7 @@ const Index = () => {
       const loadInitialNews = async () => {
         setIsLoading(true);
         try {
+          console.log("Loading initial news with API key:", apiKey.substring(0, 10) + "...");
           const items = await newsService.fetchNews();
           setNewsItems(items);
           
@@ -85,7 +99,7 @@ const Index = () => {
             items: currentWeekItems,
           };
           setWeeklyDigest(updatedDigest);
-          // toast.success("Nachrichten automatisch geladen!"); // Optional: consider if this is too noisy
+          console.log("Initial news loading completed, articles:", items.length);
         } catch (error) {
           console.error("Error fetching news automatically:", error);
           toast.error("Fehler beim automatischen Laden der Nachrichten.");
@@ -99,11 +113,9 @@ const Index = () => {
 
   // Handle API key setting
   const handleApiKeySet = (key: string) => {
+    console.log("Setting new API key:", key.substring(0, 10) + "...");
     setApiKey(key);
     localStorage.setItem('api_key', key);
-    if (newsService) {
-      newsService.setApiKey(key);
-    }
     toast.success("API-Schlüssel gespeichert!");
   };
 
@@ -116,6 +128,7 @@ const Index = () => {
     
     setIsLoading(true);
     try {
+      console.log("Refreshing news with API key:", apiKey.substring(0, 10) + "...");
       const items = await newsService.fetchNews();
       setNewsItems(items);
       
@@ -193,7 +206,6 @@ const Index = () => {
     );
   }
 
-  // Wenn der Benutzer nicht authentifiziert ist, zeigen wir eine Nachricht mit Link zur Newsletter-Seite
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">
@@ -220,14 +232,13 @@ const Index = () => {
     );
   }
 
-  // Wenn der Benutzer authentifiziert ist, zeigen wir die volle Funktionalität
   return (
     <div className="min-h-screen bg-background">
       <Header 
         onApiKeySet={handleApiKeySet} 
         onRefresh={handleRefresh} 
         loading={isLoading}
-        defaultApiKey={apiKey} // Pass current apiKey as default
+        defaultApiKey={apiKey}
       />
       <main className="container max-w-7xl mx-auto p-4 sm:p-6 md:p-8">
         <Tabs defaultValue="digest">
@@ -247,8 +258,8 @@ const Index = () => {
             />
             <WeeklyDigest 
               digest={weeklyDigest}
-              apiKey={apiKey} // Pass the current apiKey
-              newsService={newsService} // Pass the newsService instance
+              apiKey={apiKey}
+              newsService={newsService}
             />
           </TabsContent>
 

@@ -15,17 +15,15 @@ interface HeaderProps {
 }
 
 const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey = "AIzaSyAOG3IewUIIsB8oRYG2Lu-_2bM7ZrMBMFk" }: HeaderProps) => {
-  const [apiKey, setApiKey] = useState<string>("");
+  const [apiKey, setApiKey] = useState<string>(defaultApiKey);
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState<boolean>(false);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   
-  // Initialize with default API key if provided
+  // Initialize with default API key and immediately set it
   useEffect(() => {
-    if (defaultApiKey) {
-      setApiKey(defaultApiKey);
-      // Also set the API key immediately for use in the app
-      onApiKeySet(defaultApiKey);
-    }
+    console.log("Header: Setting default API key:", defaultApiKey.substring(0, 10) + "...");
+    setApiKey(defaultApiKey);
+    onApiKeySet(defaultApiKey);
   }, [defaultApiKey, onApiKeySet]);
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,16 +36,37 @@ const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey = "AIzaSyAOG3Ie
     setIsVerifying(true);
     
     try {
-      // Verify if the API key is working
-      const decoderService = new DecoderService(apiKey.trim());
-      const { isValid, message } = await decoderService.verifyApiKey();
+      console.log("Verifying Gemini API key:", apiKey.substring(0, 10) + "...");
       
-      if (isValid) {
+      // Test the Gemini API key directly
+      const testResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: "Hello, this is a test message."
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 50,
+          }
+        })
+      });
+
+      if (testResponse.ok) {
         onApiKeySet(apiKey.trim());
-        toast.success("API-Schlüssel verifiziert und gespeichert!");
+        toast.success("Gemini API-Schlüssel erfolgreich verifiziert!");
         setApiKeyDialogOpen(false);
+        console.log("✅ Gemini API key verification successful");
       } else {
-        toast.error(`API-Schlüssel Problem: ${message}`);
+        const errorData = await testResponse.json().catch(() => null);
+        const errorMessage = errorData?.error?.message || `HTTP ${testResponse.status}`;
+        console.error("❌ Gemini API key verification failed:", errorMessage);
+        toast.error(`API-Schlüssel ungültig: ${errorMessage}`);
       }
     } catch (error) {
       console.error("API key verification error:", error);
@@ -78,17 +97,17 @@ const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey = "AIzaSyAOG3Ie
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>API-Schlüssel Einstellungen</DialogTitle>
+                <DialogTitle>Gemini API-Schlüssel Einstellungen</DialogTitle>
                 <DialogDescription>
-                  Geben Sie einen gültigen API-Schlüssel für die Google/Gemini API ein. 
+                  Geben Sie einen gültigen API-Schlüssel für die Google Gemini API ein. 
                   Der Schlüssel wird lokal in Ihrem Browser gespeichert.
                   <a 
-                    href="https://makersuite.google.com/app/apikey" 
+                    href="https://aistudio.google.com/app/apikey" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-primary hover:underline block mt-2"
                   >
-                    Hier können Sie einen neuen API-Schlüssel erstellen
+                    Hier können Sie einen neuen Gemini API-Schlüssel erstellen
                   </a>
                 </DialogDescription>
               </DialogHeader>
@@ -98,7 +117,7 @@ const Header = ({ onApiKeySet, onRefresh, loading, defaultApiKey = "AIzaSyAOG3Ie
                     type="password"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="API-Schlüssel eingeben"
+                    placeholder="Gemini API-Schlüssel eingeben"
                     className="w-full"
                   />
                 </div>
