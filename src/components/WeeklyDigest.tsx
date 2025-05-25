@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +47,40 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
     return Array.from(uniqueMap.values());
   };
   
+  const saveToArchive = async (content: string): Promise<boolean> => {
+    setIsSaving(true);
+    try {
+      console.log("=== SAVING NEWSLETTER TO ARCHIVE ===");
+      console.log("Newsletter content length:", content.length);
+      console.log("Digest info:", {
+        weekNumber: digest.weekNumber,
+        year: digest.year,
+        dateRange: digest.dateRange,
+        itemCount: digest.items.length
+      });
+      
+      const archiveService = new NewsletterArchiveService();
+      const saved = await archiveService.saveNewsletter(digest, content);
+      
+      if (saved) {
+        console.log("✅ Newsletter successfully saved to archive:", saved.id);
+        setSavedToArchive(true);
+        toast.success("Newsletter erfolgreich im Archiv gespeichert!");
+        return true;
+      } else {
+        console.error("❌ Failed to save newsletter to archive");
+        toast.error("Fehler beim Speichern im Newsletter-Archiv");
+        return false;
+      }
+    } catch (error) {
+      console.error("❌ Error in saveToArchive:", error);
+      toast.error(`Fehler beim Speichern im Archiv: ${(error as Error).message}`);
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
   const handleGenerateSummary = async () => {
     if (generatedContent) {
       setGeneratedContent(null);
@@ -71,52 +106,32 @@ const WeeklyDigest = ({ digest, apiKey }: WeeklyDigestProps) => {
       );
       
       if (summary) {
+        console.log("✅ Newsletter summary generated, length:", summary.length);
         setGeneratedContent(summary);
         setActiveTab("summary");
         
-        // Automatically save to archive
-        await saveToArchive(summary);
+        // Save to archive after generation
+        console.log("🔄 Attempting to save to archive...");
+        const saveSuccess = await saveToArchive(summary);
         
-        toast.success("Newsletter erfolgreich generiert und im Archiv gespeichert!");
+        if (saveSuccess) {
+          toast.success("Newsletter erfolgreich generiert und im Archiv gespeichert!");
+        } else {
+          toast.success("Newsletter erfolgreich generiert!");
+          toast.warning("Newsletter konnte nicht im Archiv gespeichert werden");
+        }
       } else {
+        console.error("❌ Newsletter generation returned empty result");
         toast.error("Fehler bei der Generierung der Zusammenfassung.");
       }
     } catch (error) {
-      console.error("Error generating summary:", error);
+      console.error("❌ Error generating summary:", error);
       toast.error(`Fehler: ${(error as Error).message}`);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const saveToArchive = async (content: string) => {
-    setIsSaving(true);
-    try {
-      console.log("Saving newsletter to archive...", {
-        weekNumber: digest.weekNumber,
-        year: digest.year,
-        articleCount: digest.items.length
-      });
-      
-      const archiveService = new NewsletterArchiveService();
-      const saved = await archiveService.saveNewsletter(digest, content);
-      
-      if (saved) {
-        console.log("Newsletter successfully saved to archive:", saved);
-        setSavedToArchive(true);
-        toast.success("Newsletter im Archiv gespeichert!");
-      } else {
-        throw new Error("Newsletter konnte nicht gespeichert werden");
-      }
-    } catch (error) {
-      console.error("Error saving to archive:", error);
-      toast.error(`Fehler beim Speichern im Archiv: ${(error as Error).message}`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  
   const startArticleSelection = () => {
     setIsSelecting(true);
   };

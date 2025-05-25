@@ -25,15 +25,33 @@ export default class NewsletterArchiveService {
     htmlContent?: string
   ): Promise<NewsletterArchiveEntry | null> {
     try {
-      console.log("=== SAVING TO NEWSLETTER ARCHIVE ===");
-      console.log("Digest data:", {
-        weekNumber: digest.weekNumber,
-        year: digest.year,
-        dateRange: digest.dateRange,
-        itemCount: digest.items.length
+      console.log("=== NEWSLETTER ARCHIVE SERVICE: SAVING ===");
+      console.log("Input validation:", {
+        hasDigest: !!digest,
+        hasContent: !!content,
+        contentLength: content?.length || 0,
+        weekNumber: digest?.weekNumber,
+        year: digest?.year,
+        itemCount: digest?.items?.length || 0
       });
 
+      if (!digest || !content) {
+        throw new Error("Digest und Content sind erforderlich");
+      }
+
+      if (!digest.weekNumber || !digest.year) {
+        throw new Error("Wochennummer und Jahr sind erforderlich");
+      }
+
       const title = `LINKIT WEEKLY - KW ${digest.weekNumber}/${digest.year}`;
+      
+      console.log("Attempting to insert newsletter:", {
+        week_number: digest.weekNumber,
+        year: digest.year,
+        title,
+        content_length: content.length,
+        date_range: digest.dateRange
+      });
       
       // First try to insert
       const { data, error } = await supabase
@@ -51,21 +69,35 @@ export default class NewsletterArchiveService {
         .single();
 
       if (error) {
-        console.error("Insert error:", error);
+        console.error("Insert error details:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
         
         // If entry already exists (unique constraint violation), update it
         if (error.code === '23505') {
-          console.log("Entry exists, updating instead...");
+          console.log("Entry exists, attempting update...");
           return await this.updateNewsletter(digest, content, htmlContent);
         }
-        throw error;
+        
+        console.error("Unhandled database error:", error);
+        throw new Error(`Datenbankfehler: ${error.message}`);
       }
 
-      console.log("✅ Newsletter saved to archive successfully:", data);
+      console.log("✅ Newsletter successfully inserted:", {
+        id: data?.id,
+        week_number: data?.week_number,
+        year: data?.year,
+        title: data?.title
+      });
+      
       return data;
     } catch (error) {
-      console.error("❌ Error saving newsletter to archive:", error);
-      toast.error(`Fehler beim Speichern im Newsletter-Archiv: ${(error as Error).message}`);
+      console.error("❌ Error in saveNewsletter:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
+      toast.error(`Fehler beim Speichern im Newsletter-Archiv: ${errorMessage}`);
       return null;
     }
   }
@@ -77,9 +109,16 @@ export default class NewsletterArchiveService {
     htmlContent?: string
   ): Promise<NewsletterArchiveEntry | null> {
     try {
-      console.log("=== UPDATING NEWSLETTER ARCHIVE ===");
+      console.log("=== NEWSLETTER ARCHIVE SERVICE: UPDATING ===");
       
       const title = `LINKIT WEEKLY - KW ${digest.weekNumber}/${digest.year}`;
+      
+      console.log("Attempting to update newsletter:", {
+        week_number: digest.weekNumber,
+        year: digest.year,
+        title,
+        content_length: content.length
+      });
       
       const { data, error } = await supabase
         .from('newsletter_archive')
@@ -96,15 +135,26 @@ export default class NewsletterArchiveService {
         .single();
 
       if (error) {
-        console.error("Update error:", error);
-        throw error;
+        console.error("Update error details:", {
+          code: error.code,
+          message: error.message,
+          details: error.details
+        });
+        throw new Error(`Update-Fehler: ${error.message}`);
       }
 
-      console.log("✅ Newsletter updated in archive successfully:", data);
+      console.log("✅ Newsletter successfully updated:", {
+        id: data?.id,
+        week_number: data?.week_number,
+        year: data?.year,
+        updated_at: data?.updated_at
+      });
+      
       return data;
     } catch (error) {
-      console.error("❌ Error updating newsletter in archive:", error);
-      toast.error(`Fehler beim Aktualisieren im Newsletter-Archiv: ${(error as Error).message}`);
+      console.error("❌ Error in updateNewsletter:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
+      toast.error(`Fehler beim Aktualisieren im Newsletter-Archiv: ${errorMessage}`);
       return null;
     }
   }
