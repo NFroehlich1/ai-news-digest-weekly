@@ -9,6 +9,7 @@ import { MOCK_NEWS_ITEMS } from "../data/mockNews";
 import { formatDate, getCurrentWeek, getCurrentYear, getWeekDateRange } from "../utils/dateUtils";
 import { LocalNewsletter } from "../types/newsletterTypes";
 import LocalNewsletterService from "./LocalNewsletterService";
+import { supabase } from "@/integrations/supabase/client";
 
 // Re-export types
 export type { RssItem, RssSource, WeeklyDigest };
@@ -264,6 +265,34 @@ class NewsService {
       console.error('Error generating enhanced newsletter via Supabase:', error);
       toast.error(`Fehler bei der Generierung des ausführlichen Newsletters: ${(error as Error).message}`);
       return "";
+    }
+  }
+
+  // New method: Trigger automatic newsletter generation
+  public async triggerAutomaticGeneration(): Promise<{ success: boolean; message: string; data?: any }> {
+    console.log("=== TRIGGERING AUTOMATIC NEWSLETTER GENERATION ===");
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-generate-newsletter', {
+        body: { trigger: 'manual' }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data.success) {
+        toast.success(data.message);
+        return { success: true, message: data.message, data };
+      } else {
+        toast.error(data.error || "Unbekannter Fehler");
+        return { success: false, message: data.error || "Unbekannter Fehler" };
+      }
+    } catch (error) {
+      console.error('Error triggering automatic generation:', error);
+      const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
+      toast.error(`Fehler bei der automatischen Generierung: ${errorMessage}`);
+      return { success: false, message: errorMessage };
     }
   }
 

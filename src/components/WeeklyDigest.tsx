@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
 import NewsletterSubscribeModal from "./NewsletterSubscribeModal";
 import ArticleSelector from "./ArticleSelector";
-import { Calendar, FileEdit, Mail, RefreshCw, TrendingUp, Archive, CheckCircle, AlertTriangle, Save } from "lucide-react";
+import { Calendar, FileEdit, Mail, RefreshCw, TrendingUp, Archive, CheckCircle, AlertTriangle, Save, Zap } from "lucide-react";
 import NewsService from "@/services/NewsService";
 import NewsletterArchiveService from "@/services/NewsletterArchiveService";
 
@@ -30,6 +29,7 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [savedToArchive, setSavedToArchive] = useState<boolean>(false);
   const [archiveSaveError, setArchiveSaveError] = useState<string | null>(null);
+  const [isAutoGenerating, setIsAutoGenerating] = useState<boolean>(false);
   
   const getArticleId = (article: RssItem): string => {
     return article.guid || article.link;
@@ -160,6 +160,33 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
     }
   };
 
+  const handleAutomaticGeneration = async () => {
+    if (!newsService) {
+      toast.error("NewsService nicht verfügbar");
+      return;
+    }
+
+    setIsAutoGenerating(true);
+    
+    try {
+      console.log("=== TRIGGERING AUTOMATIC NEWSLETTER GENERATION ===");
+      const result = await newsService.triggerAutomaticGeneration();
+      
+      if (result.success) {
+        if (result.data?.existing) {
+          toast.info("Newsletter für diese Woche bereits vorhanden");
+        } else {
+          toast.success("Newsletter automatisch generiert und gespeichert!");
+        }
+      }
+    } catch (error) {
+      console.error("Error in automatic generation:", error);
+      toast.error("Fehler bei der automatischen Generierung");
+    } finally {
+      setIsAutoGenerating(false);
+    }
+  };
+
   const startArticleSelection = () => {
     setIsSelecting(true);
   };
@@ -254,6 +281,25 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
                       <span className="sm:hidden">Auswählen</span>
                     </Button>
                   )}
+                  
+                  <Button 
+                    onClick={handleAutomaticGeneration} 
+                    disabled={isAutoGenerating}
+                    variant="outline"
+                    className="gap-2 bg-white hover:bg-purple-50 border-purple-200 text-purple-700"
+                  >
+                    {isAutoGenerating ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Zap className="h-4 w-4" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {isAutoGenerating ? "Generiert automatisch..." : "Auto-Newsletter"}
+                    </span>
+                    <span className="sm:hidden">
+                      {isAutoGenerating ? "..." : "Auto"}
+                    </span>
+                  </Button>
                   
                   <Button 
                     onClick={handleGenerateSummary} 
