@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
 import RssSourceService from "./RssSourceService";
@@ -106,32 +105,12 @@ class NewsService {
       console.log(`=== NEWS FETCH START ===`);
       console.log(`Enabled sources: ${enabledSources.length}`);
       
-      const allItems: RssItem[] = [];
-      let successfulSources = 0;
-      
-      // Process sources sequentially for better reliability
-      for (const source of enabledSources) {
-        try {
-          console.log(`Fetching from ${source.name}...`);
-          const sourceItems = await this.rssFeedService.fetchRssSource(source);
-          
-          if (sourceItems.length > 0) {
-            source.lastFetched = new Date();
-            allItems.push(...sourceItems);
-            successfulSources++;
-            console.log(`✅ ${source.name}: ${sourceItems.length} articles loaded`);
-          } else {
-            console.warn(`❌ ${source.name}: No articles found`);
-          }
-        } catch (sourceError) {
-          console.error(`Error fetching ${source.name}:`, sourceError);
-          toast.error(`Fehler beim Laden von ${source.name}`);
-        }
-      }
+      // Use the enhanced RssFeedService to fetch all sources
+      const allItems = await this.rssFeedService.fetchAllSources(enabledSources, true);
       
       if (allItems.length === 0) {
         console.warn("No items found in any RSS feed, using fallback data");
-        toast.warning("Keine Artikel in den RSS-Feeds gefunden");
+        toast.warning("Keine Artikel in den RSS-Feeds gefunden - verwende Beispieldaten");
         return MOCK_NEWS_ITEMS;
       }
       
@@ -145,13 +124,10 @@ class NewsService {
       }
       
       console.log(`=== FETCH RESULTS ===`);
-      console.log(`Successful sources: ${successfulSources}/${enabledSources.length}`);
       console.log(`Total articles: ${allItems.length}`);
       
       // Sort by date (newest first)
       allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
-      
-      toast.success(`${allItems.length} Artikel erfolgreich geladen und gespeichert`);
       
       console.log(`=== RETURNING ${allItems.length} ARTICLES ===`);
       return allItems;
