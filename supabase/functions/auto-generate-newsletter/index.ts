@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -257,13 +258,20 @@ Link: ${article.link}
 
 **ZIELGRUPPE:** Studierende der Informatik, Data Science, Mathematik und verwandter Fächer, die sich für praktische KI-Anwendungen interessieren und ihre Karriere vorbereiten.
 
-**STIL & TON (wie bisherige Newsletter):**
-- Direkt und persönlich ("Hey zusammen", "ihr", "euch")  
-- Studentenfreundlich und auf Augenhöhe
+**STRENGE REGELN FÜR FAKTISCHE GENAUIGKEIT:**
+- Verwende AUSSCHLIESSLICH Informationen aus den bereitgestellten Artikeln
+- ERFINDE NIEMALS Bezüge zu spezifischen Universitätskursen oder Professoren
+- ERFINDE NIEMALS technische Details, die nicht in den Artikeln stehen
+- Wenn du Verbindungen zu Studieninhalten herstellst, bleibe allgemein ("in ML-Kursen", "bei Data Science Projekten")
+- Nutze KEINE spezifischen Kursnamen, außer sie werden explizit in den Artikeln erwähnt
+
+**STIL & TON (natürlich und studentenfreundlich):**
+- Beginne mit natürlichen Begrüßungen wie "Hi!", "Was geht ab!", "Servus zusammen!" oder einfach "Hey"
+- Vermeide steife Formulierungen wie "Willkommen zu unserem Newsletter"
+- Direkt und persönlich ("ihr", "euch"), aber authentisch
 - Praktischer Fokus auf Studium und Berufseinstieg
-- Verbindung zu Uni-Leben (Kurse, Projekte, Abschlussarbeiten)
 - Enthusiastisch aber wissenschaftlich fundiert
-- Tools und Technologien, die Studierende direkt nutzen können
+- Tools und Technologien nur erwähnen, wenn sie in den Artikeln vorkommen
 
 **STRUKTUR für KW ${weekNumber}/${year} (${dateRange}):**
 
@@ -272,35 +280,32 @@ Link: ${article.link}
 
 KW ${weekNumber} · ${dateRange}
 
-**Intro**: "Hey zusammen," - kurze, persönliche Begrüßung der LINKIT-Community
+**Intro**: Natürliche, lockere Begrüßung der LINKIT-Community
 
-**Hauptteil - Detaillierte Artikel-Analysen:**
+**Hauptteil - Detaillierte Artikel-Analysen (NUR basierend auf echten Inhalten):**
 [Für jeden Artikel:]
-- **Blaue Headline** mit Kern-Message
-- 2-3 Absätze ausführliche Analyse
+- **Aussagekräftige Headline** mit Kern-Message
+- 2-3 Absätze ausführliche Analyse der TATSÄCHLICHEN Inhalte
 - **Warum das für euch relevant ist:** Konkrete Bedeutung für Studierende
-- Bezug zu Vorlesungsinhalten (ML, Deep Learning, etc.)
+- Allgemeine Bezüge zu Studieninhalten (OHNE spezifische Kursnamen, außer erwähnt)
 - Praktische Anwendung in eigenen Projekten
-- Tools zum Ausprobieren
 - 👉 **Details hier** [Link]
 
 **Abschluss:**
 - Zusammenfassung der Key Takeaways
-- Was das für kommende Semester/Projekte bedeutet
-- Community-Aufruf zur Diskussion
+- Lockerer Abschluss mit Community-Aufruf
 
 **KRITISCHE ANFORDERUNGEN:**
 - Verwende die EXAKTEN Details aus den bereitgestellten Artikeln
 - Erkläre KI-Konzepte verständlich für Studierende
-- Stelle Verbindungen zu typischen Uni-Inhalten her
 - Mindestens 1500-2000 Wörter mit substantieller Analyse pro Artikel
-- Enthusiastischer aber professioneller studentischer Ton
+- Authentischer, lockerer studentischer Ton ohne Förmlichkeiten
 - Fokus auf praktische Umsetzbarkeit und Karriererelevanz
 
 ARTIKEL FÜR DIESE WOCHE:
 ${articleDetails}
 
-Erstelle einen Newsletter, der Studierende für KI begeistert und echten Mehrwert für ihr Studium und ihre Zukunft bietet!`;
+WICHTIG: Bleibe strikt bei den Inhalten der bereitgestellten Artikel. Erfinde keine Details, Kurse oder technischen Zusammenhänge, die nicht explizit erwähnt werden!`;
 
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/gemini-ai`, {
@@ -353,7 +358,7 @@ ${article.description}
 
 KW ${weekNumber} · ${dateRange}
 
-Hey zusammen,
+Hi zusammen!
 
 willkommen zu unserem ausführlichen Wochenrückblick! Diese Woche war wieder gepacked mit spannenden Entwicklungen, die direkt für euer Studium und eure Zukunft relevant sind. Von neuen Tools bis hin zu Karrierechancen - hier sind alle wichtigen Updates der Woche.
 

@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -132,13 +133,19 @@ Link: ${article.link}
 - Junge Menschen, die praktische Anwendungen und Karrierechancen suchen
 - Community von tech-begeisterten Studierenden
 
-**NEWSLETTER-STIL (genau wie bisherige Ausgaben):**
-- Persönlich und direkt ("Hey zusammen", "ihr", "euch")
-- Studentenfreundlich und auf Augenhöhe
-- Praktische Relevanz für Studium und Zukunft
-- Verbindung zu Uni-Leben (Vorlesungen, Projekte, Abschlussarbeiten)
-- Enthusiastisch aber wissenschaftlich fundiert
-- Fokus auf Tools, die Studierende nutzen können
+**STRENGE REGELN FÜR FAKTISCHE GENAUIGKEIT:**
+- Verwende AUSSCHLIESSLICH Informationen aus den bereitgestellten Artikeln
+- ERFINDE NIEMALS Bezüge zu spezifischen Universitätskursen oder Professoren
+- ERFINDE NIEMALS technische Details, die nicht in den Artikeln stehen
+- Wenn du Verbindungen zu Studieninhalten herstellst, bleibe allgemein ("in ML-Kursen", "bei Data Science Projekten")
+- Nutze KEINE spezifischen Kursnamen wie "CS229" oder "Deep Learning Vorlesung"
+
+**NEWSLETTER-STIL (natürlich und studentenfreundlich):**
+- Beginne mit natürlichen Begrüßungen wie "Hi!", "Was geht ab!", "Servus zusammen!" oder einfach "Hey"
+- Schreibe direkt und persönlich ("ihr", "euch"), aber authentisch
+- Vermeide steife Formulierungen wie "Willkommen zu unserem Newsletter"
+- Sei enthusiastisch aber nicht übertrieben
+- Fokus auf praktische Relevanz für das Studium
 
 **STRUKTUR für KW ${digest.weekNumber}/${digest.year} (${digest.dateRange}):**
 
@@ -147,39 +154,35 @@ Link: ${article.link}
 
 KW ${digest.weekNumber} · ${digest.dateRange}
 
-**Intro-Begrüßung:**
-- "Hey zusammen," oder "Hallo zusammen,"
-- Kurzer, persönlicher Einstieg
+**Intro mit natürlicher Begrüßung:**
+- Verwende eine lockere, authentische Begrüßung
+- Kurzer, persönlicher Einstieg ohne Floskeln
 - Was euch diese Woche erwartet
 
-**Hauptteil - Artikel-Analysen:**
+**Hauptteil - Artikel-Analysen (NUR basierend auf echten Inhalten):**
 Für jeden Artikel:
-- **Blaue Überschrift** mit dem Kern des Artikels
-- 2-3 Absätze detaillierte Analyse
+- **Aussagekräftige Überschrift** mit dem Kern des Artikels
+- 2-3 Absätze detaillierte Analyse der TATSÄCHLICHEN Inhalte
 - **Warum das für euch relevant ist:** Praktische Bedeutung für Studierende
-- Verbindung zu Vorlesungsinhalten
-- Anwendung in Projekten/Abschlussarbeiten
-- Tools und Frameworks, die ihr ausprobieren könnt
-- 👉 **Details hier** [Link zum Artikel]
+- Allgemeine Verbindungen zu Studieninhalten (OHNE spezifische Kursnamen)
+- Mögliche Anwendungen in eigenen Projekten
+- 👉 **Mehr dazu** [Link zum Artikel]
 
 **Schlussteil:**
 - Zusammenfassung der wichtigsten Erkenntnisse
-- Was das für kommende Projekte bedeutet
-- Aufruf zur Diskussion in der Community
+- Lockerer Abschluss mit Community-Aufruf
 
 **WICHTIGE STILELEMENTE:**
-- Verwende die EXAKTEN Inhalte aus den bereitgestellten Artikeln
-- Erkläre komplexe KI-Konzepte verständlich
-- Stelle Bezug zu typischen Uni-Kursen her (ML, Deep Learning, Data Mining, etc.)
-- Erwähne konkrete Tools: Python, PyTorch, TensorFlow, Jupyter, etc.
-- Betone praktische Anwendungen und Karrierechancen
+- Authentische, lockere Sprache ohne Förmlichkeiten
+- Erkläre KI-Konzepte verständlich, aber bleib bei den Fakten
+- Erwähne Tools und Technologien nur, wenn sie in den Artikeln vorkommen
 - Mindestens 1500-2000 Wörter für ausführliche Analysen
-- Enthusiastischer aber professioneller Ton
+- Enthusiastischer aber faktenbasierter Ton
 
 **NEWSLETTER-INHALT basierend auf diesen Artikeln:**
 ${articleDetails}
 
-Schreibe einen Newsletter, der die Begeisterung für KI und Data Science bei Studierenden weckt und praktischen Mehrwert für ihr Studium bietet!`;
+WICHTIG: Bleibe strikt bei den Inhalten der bereitgestellten Artikel. Erfinde keine Details, Kurse oder technischen Zusammenhänge, die nicht explizit erwähnt werden!`;
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
@@ -247,13 +250,15 @@ async function generateArticleSummary(apiKey: string, data: any) {
   
   const prompt = `Du hilfst Studierenden einer KI und Data Science Hochschulgruppe beim Verstehen von tech-Artikeln. 
 
+WICHTIG: Verwende nur Informationen aus dem bereitgestellten Artikel. Erfinde keine Details oder Verbindungen, die nicht explizit erwähnt werden.
+
 Fasse diesen Artikel in 2-3 prägnanten Sätzen zusammen und erkläre kurz, warum er für Studierende relevant ist:
               
 Titel: ${article.title}
 Beschreibung: ${article.description || 'Keine Beschreibung verfügbar'}
 Link: ${article.link}
 
-Stil: Wissenschaftlich aber zugänglich, direkt und studentenfreundlich ("Das ist relevant für euch, weil..."). Fokus auf praktische Anwendungen im Studium.`;
+Stil: Faktisch korrekt, wissenschaftlich aber zugänglich, direkt und studentenfreundlich. Fokus auf praktische Anwendungen im Studium, aber nur basierend auf den tatsächlichen Inhalten des Artikels.`;
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
