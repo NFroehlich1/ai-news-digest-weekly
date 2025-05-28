@@ -3,116 +3,117 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { RssItem } from "../types/newsTypes";
 
-export interface RawArticle {
-  id?: string;
-  title?: string;
-  link?: string;
-  guid?: string;
-  pubDate?: string;
-  source_url?: string;
-  source_name?: string;
-  description?: string;
-  content?: string;
-  categories?: string[];
-  creator?: string;
-  image_url?: string;
-  fetched_at?: string;
-  processed?: boolean;
-  created_at?: string;
-  updated_at?: string;
+// Database article type matching the actual Supabase table structure
+interface DatabaseArticle {
+  id: string;
+  title: string | null;
+  link: string | null;
+  guid: string | null;
+  pubdate: string | null; // Note: lowercase 'pubdate' to match database
+  description: string | null;
+  content: string | null;
+  categories: string[] | null;
+  creator: string | null;
+  image_url: string | null;
+  source_name: string | null;
+  source_url: string | null;
+  fetched_at: string | null;
+  processed: boolean | null;
+  created_at: string;
+  updated_at: string;
 }
 
 class RawArticleService {
   
-  // Save articles to the database
+  // Save articles to database
   public async saveArticles(articles: RssItem[]): Promise<void> {
     console.log(`=== SAVING ${articles.length} ARTICLES TO DATABASE ===`);
     
+    if (articles.length === 0) {
+      console.log("No articles to save");
+      return;
+    }
+
     try {
-      const rawArticles: Omit<RawArticle, 'id' | 'created_at' | 'updated_at'>[] = articles.map(article => ({
-        title: article.title,
-        link: article.link,
-        guid: article.guid || article.link, // Use link as fallback for guid
-        pubDate: article.pubDate,
-        source_url: article.link,
-        source_name: article.sourceName,
-        description: article.description,
-        content: article.content,
-        categories: Array.isArray(article.categories) ? article.categories : [],
-        creator: article.creator,
-        image_url: article.imageUrl,
-        fetched_at: new Date().toISOString(),
+      // Convert RssItem to database format
+      const dbArticles = articles.map(article => ({
+        title: article.title || null,
+        link: article.link || null,
+        guid: article.guid || article.link || null,
+        pubdate: article.pubDate || new Date().toISOString(), // Use lowercase 'pubdate'
+        description: article.description || null,
+        content: article.content || null,
+        categories: article.categories || null,
+        creator: article.creator || null,
+        image_url: article.imageUrl || null,
+        source_name: article.sourceName || null,
+        source_url: article.link || null,
         processed: false
       }));
 
-      // Insert articles with conflict handling (ignore duplicates)
+      // Use upsert to avoid duplicates based on guid
       const { data, error } = await supabase
         .from('daily_raw_articles')
-        .upsert(rawArticles, { 
+        .upsert(dbArticles, { 
           onConflict: 'guid',
           ignoreDuplicates: true 
-        });
+        })
+        .select();
 
       if (error) {
-        console.error('Error saving articles:', error);
+        console.error("Database error:", error);
         throw new Error(`Fehler beim Speichern der Artikel: ${error.message}`);
       }
 
-      console.log(`✅ Articles saved successfully to database`);
+      console.log(`✅ Successfully saved/updated ${data?.length || 0} articles`);
       
     } catch (error) {
-      console.error('Error in saveArticles:', error);
-      throw error;
-    }
-  }
-
-  // Get articles from database by date range
-  public async getArticlesByDateRange(startDate: string, endDate: string): Promise<RawArticle[]> {
-    console.log(`=== FETCHING ARTICLES FROM ${startDate} TO ${endDate} ===`);
-    
-    try {
-      const { data, error } = await supabase
-        .from('daily_raw_articles')
-        .select('*')
-        .gte('pubDate', startDate)
-        .lte('pubDate', endDate)
-        .order('pubDate', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching articles:', error);
-        throw new Error(`Fehler beim Laden der Artikel: ${error.message}`);
-      }
-
-      console.log(`✅ Found ${data?.length || 0} articles in date range`);
-      return data || [];
-      
-    } catch (error) {
-      console.error('Error in getArticlesByDateRange:', error);
+      console.error("Error in saveArticles:", error);
       throw error;
     }
   }
 
   // Get articles for current week
-  public async getCurrentWeekArticles(): Promise<RawArticle[]> {
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
-    startOfWeek.setHours(0, 0, 0, 0);
-    
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
-    endOfWeek.setHours(23, 59, 59, 999);
+  public async getCurrentWeekArticles(): Promise<DatabaseArticle[]> {
+    try {
+      const startOfWeek = this.getStartOfCurrentWeek();
+      
+      const { data, error } = await supabase
+        .from('daily_raw_articles')
+        .select('*')
+        .gte('pubdate', startOfWeek.toISOString()) // Use lowercase 'pubdate'
+        .order('pubdate', { ascending: false });
 
-    return this.getArticlesByDateRange(
-      startOfWeek.toISOString(),
-      endOfWeek.toISOString()
-    );
+      if (error) {
+        console.error("Error fetching current week articles:", error);
+        throw new Error(`Fehler beim Laden der Artikel: ${error.message}`);
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error("Error in getCurrentWeekArticles:", error);
+      throw error;
+    }
+  }
+
+  // Convert database article to RssItem
+  public convertToRssItem(dbArticle: DatabaseArticle): RssItem {
+    return {
+      title: dbArticle.title || "Untitled",
+      link: dbArticle.link || "",
+      guid: dbArticle.guid || dbArticle.link || "",
+      pubDate: dbArticle.pubdate || new Date().toISOString(), // Convert back to pubDate
+      description: dbArticle.description || null,
+      content: dbArticle.content || null,
+      categories: dbArticle.categories || [],
+      creator: dbArticle.creator || null,
+      imageUrl: dbArticle.image_url || null,
+      sourceName: dbArticle.source_name || "Unknown Source"
+    };
   }
 
   // Mark articles as processed
   public async markArticlesAsProcessed(articleIds: string[]): Promise<void> {
-    console.log(`=== MARKING ${articleIds.length} ARTICLES AS PROCESSED ===`);
-    
     try {
       const { error } = await supabase
         .from('daily_raw_articles')
@@ -120,100 +121,66 @@ class RawArticleService {
         .in('id', articleIds);
 
       if (error) {
-        console.error('Error marking articles as processed:', error);
+        console.error("Error marking articles as processed:", error);
         throw new Error(`Fehler beim Markieren der Artikel: ${error.message}`);
       }
 
-      console.log(`✅ Marked articles as processed`);
-      
+      console.log(`✅ Marked ${articleIds.length} articles as processed`);
     } catch (error) {
-      console.error('Error in markArticlesAsProcessed:', error);
+      console.error("Error in markArticlesAsProcessed:", error);
       throw error;
     }
   }
 
   // Get article statistics
-  public async getArticleStats(): Promise<{
-    total: number;
-    thisWeek: number;
-    processed: number;
-    unprocessed: number;
-  }> {
+  public async getArticleStats() {
     try {
+      const startOfWeek = this.getStartOfCurrentWeek();
+      
       // Get total count
-      const { count: total } = await supabase
+      const { count: total, error: totalError } = await supabase
         .from('daily_raw_articles')
         .select('*', { count: 'exact', head: true });
 
-      // Get this week's count
-      const now = new Date();
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay() + 1);
-      startOfWeek.setHours(0, 0, 0, 0);
+      if (totalError) throw totalError;
 
-      const { count: thisWeek } = await supabase
+      // Get this week count
+      const { count: thisWeek, error: weekError } = await supabase
         .from('daily_raw_articles')
         .select('*', { count: 'exact', head: true })
-        .gte('pubDate', startOfWeek.toISOString());
+        .gte('pubdate', startOfWeek.toISOString()); // Use lowercase 'pubdate'
+
+      if (weekError) throw weekError;
 
       // Get processed count
-      const { count: processed } = await supabase
+      const { count: processed, error: processedError } = await supabase
         .from('daily_raw_articles')
         .select('*', { count: 'exact', head: true })
         .eq('processed', true);
 
-      // Get unprocessed count
-      const { count: unprocessed } = await supabase
-        .from('daily_raw_articles')
-        .select('*', { count: 'exact', head: true })
-        .eq('processed', false);
+      if (processedError) throw processedError;
 
       return {
         total: total || 0,
         thisWeek: thisWeek || 0,
         processed: processed || 0,
-        unprocessed: unprocessed || 0
+        unprocessed: (total || 0) - (processed || 0)
       };
-      
     } catch (error) {
-      console.error('Error getting article stats:', error);
+      console.error("Error getting article stats:", error);
       return { total: 0, thisWeek: 0, processed: 0, unprocessed: 0 };
     }
   }
 
-  // Convert RawArticle to RssItem format
-  public convertToRssItem(rawArticle: RawArticle): RssItem {
-    return {
-      title: rawArticle.title || "Untitled",
-      link: rawArticle.link || "",
-      guid: rawArticle.guid || rawArticle.link || "",
-      pubDate: rawArticle.pubDate || new Date().toISOString(),
-      sourceName: rawArticle.source_name || "Unknown Source",
-      description: rawArticle.description,
-      content: rawArticle.content,
-      categories: rawArticle.categories || [],
-      creator: rawArticle.creator,
-      imageUrl: rawArticle.image_url
-    };
-  }
-
-  // Convert RssItem array to RawArticle array
-  public convertToRawArticles(rssItems: RssItem[]): RawArticle[] {
-    return rssItems.map(item => ({
-      title: item.title,
-      link: item.link,
-      guid: item.guid || item.link,
-      pubDate: item.pubDate,
-      source_url: item.link,
-      source_name: item.sourceName,
-      description: item.description,
-      content: item.content,
-      categories: Array.isArray(item.categories) ? item.categories : [],
-      creator: item.creator,
-      image_url: item.imageUrl,
-      fetched_at: new Date().toISOString(),
-      processed: false
-    }));
+  // Helper method to get start of current week (Monday)
+  private getStartOfCurrentWeek(): Date {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust for Sunday (0)
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() + diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+    return startOfWeek;
   }
 }
 
