@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Rss, RefreshCw, BarChart3, TrendingUp, AlertCircle, CheckCircle } from "lucide-react";
+import { Calendar, Rss, RefreshCw, BarChart3, TrendingUp, AlertCircle, CheckCircle, Database } from "lucide-react";
 import { toast } from "sonner";
 import WeeklyDigest from "@/components/WeeklyDigest";
 import RssSourceManager from "@/components/RssSourceManager";
@@ -19,13 +18,31 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
   const [allNews, setAllNews] = useState<Record<string, WeeklyDigestType>>({});
   const [loadingStatus, setLoadingStatus] = useState<string>("");
   const [totalArticlesLoaded, setTotalArticlesLoaded] = useState<number>(0);
+  const [articleStats, setArticleStats] = useState<{
+    total: number;
+    thisWeek: number;
+    processed: number;
+    unprocessed: number;
+  } | null>(null);
 
   // Automatically load news on component mount
   useEffect(() => {
     if (newsService) {
       loadNews();
+      loadArticleStats();
     }
   }, [newsService]);
+
+  const loadArticleStats = async () => {
+    if (!newsService) return;
+    
+    try {
+      const stats = await newsService.getArticleStats();
+      setArticleStats(stats);
+    } catch (error) {
+      console.error("Error loading article stats:", error);
+    }
+  };
 
   const loadNews = async () => {
     if (!newsService) return;
@@ -74,6 +91,9 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
         toast.warning("Keine Artikel gefunden.");
         setCurrentWeekDigest(null);
       }
+      
+      // Reload stats after fetching new articles
+      await loadArticleStats();
       
     } catch (error) {
       console.error("Error loading news:", error);
@@ -144,6 +164,38 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
               }}
             />
           )}
+
+          {/* Article Stats Card - Mobile */}
+          {articleStats && (
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Database className="h-4 w-4" />
+                  Artikel-Statistiken
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="text-center">
+                    <div className="font-semibold text-lg text-blue-600">{articleStats.total}</div>
+                    <div className="text-muted-foreground">Gesamt</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-lg text-green-600">{articleStats.thisWeek}</div>
+                    <div className="text-muted-foreground">Diese Woche</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-lg text-orange-600">{articleStats.processed}</div>
+                    <div className="text-muted-foreground">Verarbeitet</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-lg text-purple-600">{articleStats.unprocessed}</div>
+                    <div className="text-muted-foreground">Unverarbeitet</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           
           <Card>
             <CardHeader className="pb-4">
@@ -186,7 +238,8 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
               </div>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {
+                isLoading ? (
                 renderLoadingState()
               ) : currentWeekDigest ? (
                 <>
@@ -204,6 +257,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
                   <WeeklyDigest 
                     digest={currentWeekDigest} 
                     apiKey={newsService?.getDefaultApiKey() || ""}
+                    newsService={newsService || undefined}
                   />
                 </>
               ) : (
@@ -235,7 +289,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
 
       {/* Desktop: Side-by-side layout */}
       <div className="hidden lg:grid lg:grid-cols-3 lg:gap-6">
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-4">
           {newsService && (
             <RssSourceManager 
               sources={newsService.getRssSources()}
@@ -253,6 +307,38 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
                 handleRssSourceChange();
               }}
             />
+          )}
+
+          {/* Article Stats Card - Desktop */}
+          {articleStats && (
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Database className="h-4 w-4" />
+                  Artikel-Statistiken
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span>Gesamt:</span>
+                    <span className="font-semibold text-blue-600">{articleStats.total}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Diese Woche:</span>
+                    <span className="font-semibold text-green-600">{articleStats.thisWeek}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Verarbeitet:</span>
+                    <span className="font-semibold text-orange-600">{articleStats.processed}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Unverarbeitet:</span>
+                    <span className="font-semibold text-purple-600">{articleStats.unprocessed}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
         
@@ -293,7 +379,8 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
               </Button>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {
+                isLoading ? (
                 renderLoadingState()
               ) : currentWeekDigest ? (
                 <>
@@ -311,6 +398,7 @@ const NewsContentTab = ({ newsService }: NewsContentTabProps) => {
                   <WeeklyDigest 
                     digest={currentWeekDigest} 
                     apiKey={newsService?.getDefaultApiKey() || ""}
+                    newsService={newsService || undefined}
                   />
                 </>
               ) : (

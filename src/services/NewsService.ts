@@ -1,9 +1,11 @@
+
 import { toast } from "sonner";
 import DecoderService from "./DecoderService";
 import RssSourceService from "./RssSourceService";
 import RssFeedService from "./RssFeedService";
 import DigestService from "./DigestService";
 import NewsletterArchiveService from "./NewsletterArchiveService";
+import RawArticleService from "./RawArticleService";
 import type { RssItem, RssSource, WeeklyDigest } from "../types/newsTypes";
 import { MOCK_NEWS_ITEMS } from "../data/mockNews";
 import { formatDate, getCurrentWeek, getCurrentYear, getWeekDateRange } from "../utils/dateUtils";
@@ -23,6 +25,7 @@ class NewsService {
   private digestService: DigestService;
   private localNewsletterService: LocalNewsletterService;
   private newsletterArchiveService: NewsletterArchiveService;
+  private rawArticleService: RawArticleService;
   private useMockData: boolean = false;
   
   constructor() {
@@ -34,6 +37,7 @@ class NewsService {
     this.digestService = new DigestService();
     this.localNewsletterService = new LocalNewsletterService();
     this.newsletterArchiveService = new NewsletterArchiveService();
+    this.rawArticleService = new RawArticleService();
     
     // Create DecoderService without API key (uses Supabase)
     this.decoderService = new DecoderService();
@@ -83,7 +87,7 @@ class NewsService {
     return this.rssSourceService.toggleRssSource(url, enabled);
   }
   
-  // Enhanced fetch news with guaranteed high article count
+  // Enhanced fetch news with guaranteed high article count and database storage
   public async fetchNews(): Promise<RssItem[]> {
     if (this.useMockData) {
       console.log("Using mock data instead of fetching from API");
@@ -131,6 +135,15 @@ class NewsService {
         return MOCK_NEWS_ITEMS;
       }
       
+      // Save articles to database
+      try {
+        await this.rawArticleService.saveArticles(allItems);
+        console.log(`✅ ${allItems.length} articles saved to database`);
+      } catch (saveError) {
+        console.error("Error saving articles to database:", saveError);
+        toast.warning("Artikel geladen, aber nicht in Datenbank gespeichert");
+      }
+      
       console.log(`=== FETCH RESULTS ===`);
       console.log(`Successful sources: ${successfulSources}/${enabledSources.length}`);
       console.log(`Total articles: ${allItems.length}`);
@@ -138,7 +151,7 @@ class NewsService {
       // Sort by date (newest first)
       allItems.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
       
-      toast.success(`${allItems.length} Artikel erfolgreich geladen`);
+      toast.success(`${allItems.length} Artikel erfolgreich geladen und gespeichert`);
       
       console.log(`=== RETURNING ${allItems.length} ARTICLES ===`);
       return allItems;
@@ -149,6 +162,32 @@ class NewsService {
       
       console.log("Using fallback mock data due to error");
       return MOCK_NEWS_ITEMS;
+    }
+  }
+
+  // Get articles from database for current week
+  public async getStoredArticlesForCurrentWeek(): Promise<RssItem[]> {
+    try {
+      console.log("=== FETCHING STORED ARTICLES FOR CURRENT WEEK ===");
+      const rawArticles = await this.rawArticleService.getCurrentWeekArticles();
+      const rssItems = rawArticles.map(article => this.rawArticleService.convertToRssItem(article));
+      
+      console.log(`✅ Found ${rssItems.length} stored articles for current week`);
+      return rssItems;
+    } catch (error) {
+      console.error("Error fetching stored articles:", error);
+      toast.error("Fehler beim Laden der gespeicherten Artikel");
+      return [];
+    }
+  }
+
+  // Get article statistics
+  public async getArticleStats() {
+    try {
+      return await this.rawArticleService.getArticleStats();
+    } catch (error) {
+      console.error("Error getting article stats:", error);
+      return { total: 0, thisWeek: 0, processed: 0, unprocessed: 0 };
     }
   }
   
@@ -259,6 +298,29 @@ class NewsService {
       console.log("Generating enhanced newsletter summary via Supabase...");
       const summary = await this.decoderService.generateSummary(digest, articlesToUse, linkedInPage);
       
+      // Mark articles as processed if they were successfully used for newsletter generation
+      if (summary && articlesToUse.length > 0) {
+        try {
+          const articleGuids = articlesToUse.map(article => article.guid).filter(Boolean);
+          if (articleGuids.length > 0) {
+            // Get article IDs from database by their GUIDs
+            const { data: rawArticles } = await supabase
+              .from('daily_raw_articles')
+              .select('id')
+              .in('guid', articleGuids);
+            
+            if (rawArticles && rawArticles.length > 0) {
+              const articleIds = rawArticles.map(article => article.id);
+              await this.rawArticleService.markArticlesAsProcessed(articleIds);
+              console.log(`✅ Marked ${articleIds.length} articles as processed`);
+            }
+          }
+        } catch (markError) {
+          console.error("Error marking articles as processed:", markError);
+          // Don't throw error, just log it
+        }
+      }
+      
       // Return the enhanced summary
       return summary;
     } catch (error) {
@@ -311,6 +373,11 @@ class NewsService {
 
   public async deleteArchivedNewsletter(id: string) {
     return this.newsletterArchiveService.deleteNewsletter(id);
+  }
+
+  // Raw article service methods
+  public getRawArticleService(): RawArticleService {
+    return this.rawArticleService;
   }
 }
 

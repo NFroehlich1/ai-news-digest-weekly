@@ -9,6 +9,63 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      daily_raw_articles: {
+        Row: {
+          categories: string[] | null
+          content: string | null
+          created_at: string | null
+          creator: string | null
+          description: string | null
+          fetched_at: string | null
+          guid: string | null
+          id: string
+          image_url: string | null
+          link: string | null
+          processed: boolean | null
+          pubdate: string | null
+          source_name: string | null
+          source_url: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          categories?: string[] | null
+          content?: string | null
+          created_at?: string | null
+          creator?: string | null
+          description?: string | null
+          fetched_at?: string | null
+          guid?: string | null
+          id?: string
+          image_url?: string | null
+          link?: string | null
+          processed?: boolean | null
+          pubdate?: string | null
+          source_name?: string | null
+          source_url?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          categories?: string[] | null
+          content?: string | null
+          created_at?: string | null
+          creator?: string | null
+          description?: string | null
+          fetched_at?: string | null
+          guid?: string | null
+          id?: string
+          image_url?: string | null
+          link?: string | null
+          processed?: boolean | null
+          pubdate?: string | null
+          source_name?: string | null
+          source_url?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       newsletter_archive: {
         Row: {
           article_count: number | null
