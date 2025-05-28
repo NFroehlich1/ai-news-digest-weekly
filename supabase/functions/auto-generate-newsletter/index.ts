@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -57,17 +56,17 @@ serve(async (req) => {
       );
     }
 
-    // Generate realistic mock articles based on current AI trends
-    const mockArticles = await generateRealisticMockArticles(currentWeek, currentYear);
+    // Generate realistic mock articles for students
+    const mockArticles = await generateStudentFocusedMockArticles(currentWeek, currentYear);
     
     if (mockArticles.length === 0) {
       throw new Error("Keine Artikel gefunden");
     }
 
-    console.log(`Generated ${mockArticles.length} realistic articles for newsletter`);
+    console.log(`Generated ${mockArticles.length} student-focused articles for newsletter`);
 
-    // Generate newsletter content using Gemini AI with specific prompting
-    const newsletterContent = await generateNewsletterContent(
+    // Generate newsletter content using Gemini AI with student-focused prompting
+    const newsletterContent = await generateStudentNewsletterContent(
       currentWeek,
       currentYear,
       dateRange,
@@ -165,78 +164,86 @@ function getDateOfISOWeek(week: number, year: number): Date {
   return date;
 }
 
-// Generate realistic mock articles with specific, current AI developments
-async function generateRealisticMockArticles(weekNumber: number, year: number) {
-  // Erstelle realistische Artikel basierend auf aktuellen KI-Trends für Data Science & ML Studierende
-  const realisticArticles = [
+// Generate student-focused mock articles with current AI trends for university students
+async function generateStudentFocusedMockArticles(weekNumber: number, year: number) {
+  // Erstelle realistische, studentenrelevante Artikel basierend auf aktuellen KI-Trends
+  const studentFocusedArticles = [
     {
-      title: "PyTorch 2.2 mit verbesserter Distributed Training Performance veröffentlicht",
-      description: "Meta AI veröffentlicht PyTorch 2.2 mit 40% schnellerem distributed training für große Modelle. Neue Features umfassen optimierte Tensor Parallelism APIs und verbesserte Integration mit CUDA 12.1. Besonders relevant für Master-Arbeiten mit großen Sprachmodellen.",
-      link: "https://pytorch.org/blog/pytorch-2-2-release",
+      title: "PyTorch 2.3 bringt neue Features für studentische ML-Projekte",
+      description: "Die neueste PyTorch-Version führt vereinfachte APIs für Einsteiger ein und verbessert die Performance für typische Uni-Projekte. Besonders die neue DataLoader-Optimierung und erweiterte GPU-Unterstützung sind für Studierende interessant, die an Abschlussarbeiten arbeiten.",
+      link: "https://pytorch.org/blog/pytorch-2-3-release",
       pubDate: new Date().toISOString(),
-      guid: `article-pytorch22-${Date.now()}`,
+      guid: `article-pytorch23-${Date.now()}`,
       sourceName: "PyTorch Blog"
     },
     {
-      title: "Neue Studie: Transformer-Architekturen vs. State Space Models im Vergleich",
-      description: "Stanford-Forscher publizieren umfassende Analyse der Effizienz von Mamba vs. Transformer-Modellen. Die Studie zeigt, dass SSMs bei Sequenzen >8k Tokens deutlich speicherschonender sind. Wichtige Erkenntnisse für die Modellauswahl in wissenschaftlichen Projekten.",
-      link: "https://arxiv.org/abs/2024.transformer-vs-ssm",
+      title: "Neue Kaggle Learn-Kurse zu Large Language Models kostenlos verfügbar",
+      description: "Kaggle erweitert sein kostenloses Lernangebot um praktische LLM-Kurse. Die Kurse decken Fine-Tuning, Prompt Engineering und RAG-Systeme ab - perfekt für Studierende, die ihre Skills erweitern wollen. Inklusive Hands-on Notebooks und Zertifikaten.",
+      link: "https://kaggle.com/learn/large-language-models",
       pubDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      guid: `article-transformer-ssm-${Date.now()}`,
-      sourceName: "arXiv"
-    },
-    {
-      title: "Kaggle kündigt neue Competition zu multimodaler KI mit 1 Million Dollar Preisgeld an",
-      description: "Die neue 'Multimodal Understanding Challenge' fokussiert auf Vision-Language-Modelle für wissenschaftliche Dokumente. Teams sollen Algorithmen entwickeln, die Grafiken, Tabellen und Text gleichzeitig verstehen. Anmeldung bis Ende des Monats möglich.",
-      link: "https://kaggle.com/competitions/multimodal-understanding-2024",
-      pubDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      guid: `article-kaggle-multimodal-${Date.now()}`,
+      guid: `article-kaggle-llm-${Date.now()}`,
       sourceName: "Kaggle"
     },
     {
-      title: "OpenAI veröffentlicht GPT-4 Research Preview für akademische Nutzung",
-      description: "Universitäten und Forschungseinrichtungen erhalten kostenlosen Zugang zu GPT-4 APIs für nicht-kommerzielle Projekte. Das Programm umfasst auch Zugang zu Fine-Tuning-Funktionen und erhöhte Rate Limits. Bewerbungen über GitHub Student Pack möglich.",
-      link: "https://openai.com/research/academic-access-program",
+      title: "Stanford veröffentlicht neue CS229 Machine Learning Kursmaterialien",
+      description: "Die renommierte ML-Vorlesung von Stanford ist jetzt mit aktualisierten Inhalten zu Transformer-Architekturen und modernen Optimierungsverfahren verfügbar. Alle Lectures, Assignments und Lösungen sind frei zugänglich für Selbststudium.",
+      link: "https://cs229.stanford.edu/syllabus-spring2024.html",
+      pubDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      guid: `article-stanford-cs229-${Date.now()}`,
+      sourceName: "Stanford CS"
+    },
+    {
+      title: "GitHub Student Pack erweitert: Kostenloses GPT-4 für Studierende",
+      description: "Das GitHub Student Developer Pack bietet jetzt kostenlosen Zugang zu OpenAI GPT-4 für Bildungszwecke. Studierende erhalten monatlich Credits für API-Calls und Zugang zu neuen Modellen. Ideal für Prototyping und Forschungsprojekte an der Uni.",
+      link: "https://education.github.com/pack",
       pubDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      guid: `article-openai-academic-${Date.now()}`,
-      sourceName: "OpenAI Research"
+      guid: `article-github-student-gpt4-${Date.now()}`,
+      sourceName: "GitHub Education"
     },
     {
-      title: "MLflow 2.9 mit automatischem Hyperparameter-Tuning und Experiment-Versionierung",
-      description: "Das beliebte ML-Experiment-Tracking-Tool erhält native Integration für automatisches Hyperparameter-Tuning mit Optuna. Neue Features: Git-Integration für Reproduzierbarkeit und verbessertes UI für Experiment-Vergleiche. Perfekt für strukturierte Forschungsprojekte.",
-      link: "https://mlflow.org/releases/2.9.0",
+      title: "Hugging Face launcht kostenlose Spaces für studentische KI-Demos",
+      description: "Studierende können jetzt kostenlos ihre ML-Modelle auf Hugging Face Spaces deployen. Die Plattform bietet Gradio-Integration, GPU-Zugang für Inferenz und einfaches Sharing von Projekten. Perfekt für Portfolio-Aufbau und Präsentationen.",
+      link: "https://huggingface.co/spaces",
       pubDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-      guid: `article-mlflow29-${Date.now()}`,
-      sourceName: "MLflow"
+      guid: `article-hf-spaces-students-${Date.now()}`,
+      sourceName: "Hugging Face"
     },
     {
-      title: "Neue Studie zu Bias in Computer Vision Modellen bei medizinischen Anwendungen",
-      description: "MIT-Forscher entdecken systematische Verzerrungen in populären CV-Modellen bei der Analyse medizinischer Bilder verschiedener Ethnien. Die Studie zeigt konkrete Methoden zur Bias-Reduktion und ist besonders relevant für ethische KI-Entwicklung.",
-      link: "https://arxiv.org/abs/2024.medical-cv-bias",
+      title: "TUM startet neuen Master-Studiengang 'AI & Robotics' ab Wintersemester",
+      description: "Die TU München bietet ab dem kommenden Semester einen interdisziplinären Master an, der KI mit Robotik verbindet. Der Studiengang kombiniert theoretische Grundlagen mit praktischen Projekten bei Industriepartnern. Bewerbungen sind bis Ende Juli möglich.",
+      link: "https://tum.de/studium/studienangebot/ai-robotics",
       pubDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      guid: `article-medical-bias-${Date.now()}`,
-      sourceName: "MIT CSAIL"
+      guid: `article-tum-ai-robotics-${Date.now()}`,
+      sourceName: "TU München"
+    },
+    {
+      title: "Neue Studie: KI-Skills werden zum wichtigsten Faktor bei Tech-Bewerbungen",
+      description: "Eine Befragung von 500 deutschen Tech-Unternehmen zeigt: 89% bevorzugen Bewerber mit nachweisbarer KI-Erfahrung. Besonders gefragt sind praktische Projekte mit ML-Frameworks und Verständnis für ethische KI-Entwicklung. Ein Weckruf für alle Studierenden.",
+      link: "https://tech-recruiting-report-2024.de",
+      pubDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+      guid: `article-ai-skills-jobs-${Date.now()}`,
+      sourceName: "Tech Recruiting Report"
     }
   ];
 
   // Wähle 4-6 Artikel zufällig aus
   const selectedCount = 4 + Math.floor(Math.random() * 3);
-  const shuffled = realisticArticles.sort(() => 0.5 - Math.random());
+  const shuffled = studentFocusedArticles.sort(() => 0.5 - Math.random());
   return shuffled.slice(0, selectedCount);
 }
 
-// Generate newsletter content using Gemini AI with enhanced specificity for Data Science & ML students
-async function generateNewsletterContent(
+// Generate newsletter content with strong student focus using Gemini AI
+async function generateStudentNewsletterContent(
   weekNumber: number, 
   year: number, 
   dateRange: string, 
   articles: any[]
 ): Promise<string> {
-  console.log("Generating university-focused newsletter content with Gemini AI...");
+  console.log("Generating student-focused newsletter content with Gemini AI...");
   
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   
-  // Erstelle detaillierte Artikel-Informationen für den Prompt
+  // Erstelle detaillierte Artikel-Informationen für den studentenorientierten Prompt
   const articleDetails = articles.map((article, index) => `
 **ARTIKEL ${index + 1}:**
 Titel: "${article.title}"
@@ -246,60 +253,54 @@ Datum: ${article.pubDate}
 Link: ${article.link}
 `).join('\n');
 
-  const prompt = `Du schreibst den Newsletter für LINKIT - eine HOCHSCHULGRUPPE für Data Science und Machine Learning. 
+  const prompt = `Du schreibst als Student für Studenten den Newsletter "LINKIT WEEKLY" - für eine HOCHSCHULGRUPPE zu KI, Data Science und Machine Learning. 
 
-**ZIELGRUPPE:** Studierende der Informatik, Data Science, Mathematik und verwandter Studiengänge, die sich für praktische Anwendungen von ML und KI interessieren.
+**ZIELGRUPPE:** Studierende der Informatik, Data Science, Mathematik und verwandter Fächer, die sich für praktische KI-Anwendungen interessieren und ihre Karriere vorbereiten.
 
-**STIL & TON:**
-- Wissenschaftlich fundiert aber zugänglich
-- Fokus auf praktische Relevanz für Studierende und Forschung
-- Verbindung zu Studieninhalten und Karrieremöglichkeiten
-- Erwähnung von Tools, Frameworks und Methoden, die in der Lehre relevant sind
-- Hinweise auf Praktika, Jobs und Forschungsmöglichkeiten wo passend
+**STIL & TON (wie bisherige Newsletter):**
+- Direkt und persönlich ("Hey zusammen", "ihr", "euch")  
+- Studentenfreundlich und auf Augenhöhe
+- Praktischer Fokus auf Studium und Berufseinstieg
+- Verbindung zu Uni-Leben (Kurse, Projekte, Abschlussarbeiten)
+- Enthusiastisch aber wissenschaftlich fundiert
+- Tools und Technologien, die Studierende direkt nutzen können
 
-STRUKTUR für KW ${weekNumber}/${year} (${dateRange}):
+**STRUKTUR für KW ${weekNumber}/${year} (${dateRange}):**
 
-📚 **LINKIT WEEKLY KW ${weekNumber}** - Eure Data Science & ML News
+# 📬 LINKIT WEEKLY KW ${weekNumber}
+**Dein Update zu KI, Data Science und Industrie 4.0**
 
-**Intro**: Begrüßung der LINKIT-Community mit Bezug zu aktuellen Entwicklungen
+KW ${weekNumber} · ${dateRange}
 
-**🔬 Forschung & Entwicklung**
-[Für jeden wissenschaftlichen Artikel:]
-- Kurze Einordnung der Relevanz für Studierende
-- Technische Details verständlich erklärt
-- Verbindung zu Vorlesungsinhalten (z.B. "Erinnerung an die Deep Learning Vorlesung...")
-- Praktische Anwendungsmöglichkeiten
+**Intro**: "Hey zusammen," - kurze, persönliche Begrüßung der LINKIT-Community
 
-**🛠️ Tools & Frameworks**
-[Für Tool-Updates:]
-- Was bedeutet das für eure Projekte?
-- Installation/Setup-Tipps
-- Integration in bestehende Workflows
+**Hauptteil - Detaillierte Artikel-Analysen:**
+[Für jeden Artikel:]
+- **Blaue Headline** mit Kern-Message
+- 2-3 Absätze ausführliche Analyse
+- **Warum das für euch relevant ist:** Konkrete Bedeutung für Studierende
+- Bezug zu Vorlesungsinhalten (ML, Deep Learning, etc.)
+- Praktische Anwendung in eigenen Projekten
+- Tools zum Ausprobieren
+- 👉 **Details hier** [Link]
 
-**💼 Karriere & Chancen**
-[Wenn relevant:]
-- Neue Job-/Praktikumsmöglichkeiten
-- Relevante Wettbewerbe und Challenges
-- Networking-Opportunities
+**Abschluss:**
+- Zusammenfassung der Key Takeaways
+- Was das für kommende Semester/Projekte bedeutet
+- Community-Aufruf zur Diskussion
 
-**📝 Für euer Studium**
-- Konkrete Takeaways für Projekte und Abschlussarbeiten
-- Empfohlene Papers oder Tutorials
-- Techniken für die nächste Klausur/das nächste Semester
-
-**Abschluss**: Aufruf zur Community-Teilnahme und nächsten Events
-
-WICHTIGE ANFORDERUNGEN:
+**KRITISCHE ANFORDERUNGEN:**
 - Verwende die EXAKTEN Details aus den bereitgestellten Artikeln
-- Erkläre komplexe Konzepte student*innenfreundlich
-- Stelle Verbindungen zu typischen Uni-Inhalten her (ML-Kurse, Praktika, etc.)
-- Mindestens 1200-1500 Wörter mit substantieller, studentenrelevanter Analyse
-- Verwende einen enthusiastischen aber professionellen Ton
+- Erkläre KI-Konzepte verständlich für Studierende
+- Stelle Verbindungen zu typischen Uni-Inhalten her
+- Mindestens 1500-2000 Wörter mit substantieller Analyse pro Artikel
+- Enthusiastischer aber professioneller studentischer Ton
+- Fokus auf praktische Umsetzbarkeit und Karriererelevanz
 
 ARTIKEL FÜR DIESE WOCHE:
 ${articleDetails}
 
-Erstelle einen Newsletter, der eure Hochschulgruppe widerspiegelt und echten Mehrwert für Data Science & ML Studierende bietet!`;
+Erstelle einen Newsletter, der Studierende für KI begeistert und echten Mehrwert für ihr Studium und ihre Zukunft bietet!`;
 
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/gemini-ai`, {
@@ -322,51 +323,51 @@ Erstelle einen Newsletter, der eure Hochschulgruppe widerspiegelt und echten Meh
     }
 
     const data = await response.json();
-    return data.content || generateEnhancedFallbackContent(weekNumber, year, dateRange, articles);
+    return data.content || generateStudentFallbackContent(weekNumber, year, dateRange, articles);
   } catch (error) {
     console.error("Error calling Gemini AI:", error);
-    return generateEnhancedFallbackContent(weekNumber, year, dateRange, articles);
+    return generateStudentFallbackContent(weekNumber, year, dateRange, articles);
   }
 }
 
-// Enhanced fallback content generation with university group focus
-function generateEnhancedFallbackContent(
+// Student-focused fallback content generation
+function generateStudentFallbackContent(
   weekNumber: number, 
   year: number, 
   dateRange: string, 
   articles: any[]
 ): string {
-  const articleAnalyses = articles.map((article, index) => `### ${index + 1}. ${article.title}
+  const articleAnalyses = articles.map((article, index) => `### ${article.title}
 
 ${article.description}
 
-**Warum relevant für euch:** ${article.title.includes('PyTorch') ? 'Für alle, die gerade Deep Learning Projekte umsetzen - die Performance-Verbesserungen helfen besonders bei größeren Modellen für Masterarbeiten.' : article.title.includes('Kaggle') ? 'Eine perfekte Gelegenheit, eure ML-Skills in der Praxis zu testen und das Portfolio zu erweitern!' : article.title.includes('akademische') ? 'Kostenloses GPT-4 für Forschungsprojekte - meldet euch schnell an!' : 'Diese Entwicklung zeigt wichtige Trends in der KI-Forschung.'}
+**Warum das für euch relevant ist:** ${article.title.includes('PyTorch') ? 'Für alle, die gerade ihre ersten ML-Projekte umsetzen - die neuen Features machen den Einstieg noch einfacher!' : article.title.includes('Kaggle') ? 'Perfekte Gelegenheit, eure Skills zu erweitern und gleichzeitig Zertifikate für den Lebenslauf zu sammeln!' : article.title.includes('GitHub') ? 'Kostenloses GPT-4 für eure Uni-Projekte - meldet euch schnell an!' : article.title.includes('Master') ? 'Interessante Perspektive für alle, die über eine Spezialisierung in Richtung KI nachdenken.' : 'Diese Entwicklung zeigt wichtige Trends für eure zukünftige Karriere.'}
 
 **Quelle:** ${article.sourceName}  
-🔗 [Zum Artikel](${article.link})
-`).join('\n');
+👉 **Details hier** [${article.link}](${article.link})
+`).join('\n\n');
 
-  return `# 📚 LINKIT WEEKLY KW ${weekNumber}
+  return `# 📬 LINKIT WEEKLY KW ${weekNumber}
 
-**${dateRange}** | *Eure Data Science & ML News*
+**Dein Update zu KI, Data Science und Industrie 4.0**
 
-Hallo LINKIT-Community! 
+KW ${weekNumber} · ${dateRange}
 
-Willkommen zur KW ${weekNumber} - einer Woche voller spannender Entwicklungen in unserem Fachbereich. Von neuen Framework-Updates bis hin zu interessanten Forschungsergebnissen gibt es einiges zu entdecken.
+Hey zusammen,
 
-## 🔬 Diese Woche in Data Science & ML
+willkommen zu unserem ausführlichen Wochenrückblick! Diese Woche war wieder gepacked mit spannenden Entwicklungen, die direkt für euer Studium und eure Zukunft relevant sind. Von neuen Tools bis hin zu Karrierechancen - hier sind alle wichtigen Updates der Woche.
 
 ${articleAnalyses}
 
-## 📝 Takeaways für euer Studium
+## Was bedeutet das für euch?
 
-Diese Woche zeigt wieder, wie schnelllebig unser Fachbereich ist. Besonders die Tool-Updates sind direkt in euren Projekten anwendbar. Für alle, die gerade an Abschlussarbeiten schreiben: Die neuen Entwicklungen bieten spannende Ansätze für eure Forschung.
+Diese Woche zeigt wieder, wie dynamisch unser Fachbereich ist. Besonders die kostenlosen Angebote für Studierende sind eine riesige Chance - nutzt sie! Für alle, die gerade an Projekten oder Abschlussarbeiten arbeiten: Die neuen Tools und Ressourcen können euch direkt weiterhelfen.
 
-## 💡 Nächste Schritte
-
-- Checkt die neuen Tool-Features für eure aktuellen Projekte
-- Haltet Ausschau nach den erwähnten Wettbewerben und Chancen  
-- Diskutiert die Entwicklungen in unserer Community
+**Key Takeaways:**
+- Haltet euch über neue kostenlose Ressourcen auf dem Laufenden
+- Experimentiert mit den neuen Tools in euren Projekten  
+- Vernetzt euch mit der Community und tauscht Erfahrungen aus
+- Denkt schon jetzt an euren Berufseinstieg und relevante Skills
 
 Bis nächste Woche und happy coding! 🚀
 
