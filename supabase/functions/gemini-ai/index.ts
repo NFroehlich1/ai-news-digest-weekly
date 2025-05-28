@@ -115,7 +115,7 @@ async function generateSummary(apiKey: string, data: any) {
     );
   }
 
-  // Erstelle einen detaillierten, spezifischen Prompt basierend auf den tatsächlichen Artikeln
+  // Erstelle einen detaillierten, universitätsspezifischen Prompt basierend auf den tatsächlichen Artikeln
   const articleDetails = articlesToUse.map((article: any, index: number) => `
 **ARTIKEL ${index + 1}:**
 Titel: "${article.title}"
@@ -125,39 +125,67 @@ Datum: ${article.pubDate}
 Link: ${article.link}
 `).join('\n');
 
-  const prompt = `Du bist ein Experte für KI-Newsletter und schreibst SPEZIFISCHE, FAKTENBASIERTE Newsletter für das LINKIT WEEKLY.
+  const prompt = `Du schreibst den Newsletter für LINKIT - eine HOCHSCHULGRUPPE für Data Science und Machine Learning. 
 
-KRITISCHE ANFORDERUNGEN:
-- Analysiere JEDEN der bereitgestellten Artikel im Detail
-- Verwende die EXAKTEN Titel und Inhalte der Artikel
-- Erkläre die KONKRETEN Entwicklungen, nicht nur allgemeine KI-Trends
-- Zitiere SPEZIFISCHE Fakten, Zahlen und Unternehmen aus den Artikeln
-- Vermeide generische Phrasen wie "KI entwickelt sich weiter"
-- Jeder Artikel soll mindestens 200-250 Wörter detaillierte Analyse erhalten
-- Verbinde die verschiedenen Nachrichten miteinander und zeige Zusammenhänge auf
-- Erkläre die praktischen Auswirkungen für verschiedene Branchen
+**WICHTIGER KONTEXT:** LINKIT ist eine studentische Initiative an der Universität, die sich auf praktische Anwendungen von Data Science und Machine Learning fokussiert.
 
-STRUKTUR:
-1. **Einleitung**: Kurzer Überblick über die SPEZIFISCHEN Themen dieser Woche
-2. **Hauptanalyse**: Detaillierte Besprechung JEDES Artikels mit:
-   - Zusammenfassung der wichtigsten Fakten
-   - Technische Details und Hintergründe
-   - Bedeutung für die Branche
-   - Verbindungen zu anderen Entwicklungen
-3. **Wochentrends**: Analyse der übergreifenden Muster dieser KONKRETEN Woche
-4. **Ausblick**: Basierend auf den TATSÄCHLICHEN Entwicklungen dieser Woche
-5. **Fazit**: Spezifische Takeaways aus den besprochenen Artikeln
+**ZIELGRUPPE:** 
+- Studierende der Informatik, Data Science, Mathematik und verwandter Fächer
+- Interesse an KI, ML, und datengetriebenen Technologien  
+- Suchen nach praktischen Anwendungen und Karrieremöglichkeiten
+- Arbeiten an Projekten, Abschlussarbeiten und ersten beruflichen Schritten
 
-Erstelle einen Newsletter für KW ${digest.weekNumber}/${digest.year} (${digest.dateRange}) basierend auf diesen KONKRETEN Artikeln:
+**NEWSLETTER-STIL:**
+- Wissenschaftlich fundiert aber studentenfreundlich
+- Fokus auf praktische Relevanz für Studium und Forschung
+- Verbindung zu Vorlesungsinhalten und Projekten
+- Enthusiastisch aber professionell
+- Community-orientiert
 
+**STRUKTUR für KW ${digest.weekNumber}/${digest.year} (${digest.dateRange}):**
+
+📚 **LINKIT WEEKLY KW ${digest.weekNumber}** - Eure Data Science & ML News
+
+**Einleitung:** Herzliche Begrüßung der LINKIT-Community
+
+**🔬 Forschung & Entwicklung:**
+Für jeden wissenschaftlichen Artikel:
+- Relevanz für das Studium erklären
+- Verbindung zu Vorlesungsinhalten (z.B. "Das kennt ihr aus der ML-Vorlesung...")
+- Praktische Anwendungsmöglichkeiten für Projekte
+- Bedeutung für Abschlussarbeiten
+
+**🛠️ Tools & Technologien:**
+Für Tool-Updates und neue Frameworks:
+- Integration in bestehende Uni-Projekte
+- Setup-Tipps für Studierende
+- Relevanz für verschiedene Kurse
+
+**💼 Karriere & Chancen:**
+- Praktika und Job-Möglichkeiten
+- Wettbewerbe und Challenges (besonders Kaggle)
+- Networking-Gelegenheiten
+
+**📝 Studien-Takeaways:**
+- Konkrete Anwendungen für aktuelle Projekte
+- Empfohlene Papers und Tutorials
+- Vorbereitung auf kommende Klausuren/Semester
+
+**Community-Abschluss:** Ermutigung zur Diskussion und Teilnahme
+
+**KRITISCHE ANFORDERUNGEN:**
+- Verwende die EXAKTEN Inhalte und Details aus den bereitgestellten Artikeln
+- Erkläre technische Konzepte verständlich für Studierende
+- Stelle Verbindungen zu typischen Universitätsinhalten her
+- Jeder Artikel braucht 200-250 Wörter detaillierte, studentenrelevante Analyse
+- Erwähne konkrete Tools, Frameworks und Methoden
+- Zeige praktische Anwendungsmöglichkeiten auf
+- Mindestens 1400-1700 Wörter Gesamtlänge
+
+**NEWSLETTER-INHALT für diese Woche basierend auf:**
 ${articleDetails}
 
-WICHTIG: 
-- Verwende die exakten Titel und Details aus den Artikeln
-- Keine generischen KI-Beschreibungen
-- Fokussiere auf die spezifischen Inhalte der bereitgestellten Artikel
-- Mindestens 1200-1500 Wörter mit substantieller Analyse
-- Jeder Artikel muss individuell und detailliert behandelt werden`;
+Erstelle einen Newsletter, der den universitären Charakter von LINKIT widerspiegelt und echten Mehrwert für Data Science & ML Studierende bietet!`;
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
@@ -172,10 +200,10 @@ WICHTIG:
           }]
         }],
         generationConfig: {
-          temperature: 0.3, // Niedrigere Temperatur für faktischere Inhalte
+          temperature: 0.2, // Noch niedrigere Temperatur für konsistenten universitären Stil
           topK: 20,
           topP: 0.8,
-          maxOutputTokens: 4000, // Mehr Tokens für längere, detailliertere Inhalte
+          maxOutputTokens: 4500, // Mehr Tokens für längere, detailliertere universitäre Inhalte
         }
       })
     });
@@ -198,9 +226,9 @@ WICHTIG:
       throw new Error("Gemini API hat leeren Inhalt zurückgegeben");
     }
     
-    // Add LinkedIn reference if not present and linkedInPage is provided
+    // Add LinkedIn reference with university context if not present and linkedInPage is provided
     if (linkedInPage && !content.includes("linkedin.com/company/linkit-karlsruhe")) {
-      content += `\n\n---\n\n**Bleiben Sie verbunden:**\nFür weitere Updates und Diskussionen besuchen Sie unsere [LinkedIn-Seite](${linkedInPage}).`;
+      content += `\n\n---\n\n**Bleibt connected! 🤝**\nFür weitere Updates, Events und Community-Diskussionen folgt uns auf [LinkedIn](${linkedInPage}). Dort teilen wir auch Infos zu Workshops, Gastvorträgen und Networking-Events!`;
     }
 
     return new Response(
@@ -223,13 +251,15 @@ WICHTIG:
 async function generateArticleSummary(apiKey: string, data: any) {
   const { article } = data;
   
-  const prompt = `Du bist ein KI-Experte und fasst Artikel über künstliche Intelligenz prägnant zusammen. Schreibe eine kurze, aber informative Zusammenfassung in 2-3 Sätzen auf Deutsch.
+  const prompt = `Du hilfst Studierenden einer Data Science & ML Hochschulgruppe beim Verstehen von KI-Artikeln. 
 
-Fasse diesen KI-Artikel zusammen:
+Fasse diesen Artikel in 2-3 prägnanten Sätzen zusammen und erkläre kurz, warum er für Data Science/ML-Studierende relevant ist:
               
 Titel: ${article.title}
 Beschreibung: ${article.description || 'Keine Beschreibung verfügbar'}
-Link: ${article.link}`;
+Link: ${article.link}
+
+Stil: Wissenschaftlich aber zugänglich, mit Fokus auf praktische Relevanz für das Studium.`;
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
@@ -244,10 +274,10 @@ Link: ${article.link}`;
           }]
         }],
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.3,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 200,
+          maxOutputTokens: 250,
         }
       })
     });

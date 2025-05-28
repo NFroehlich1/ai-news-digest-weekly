@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -166,55 +167,55 @@ function getDateOfISOWeek(week: number, year: number): Date {
 
 // Generate realistic mock articles with specific, current AI developments
 async function generateRealisticMockArticles(weekNumber: number, year: number) {
-  // Erstelle realistische Artikel basierend auf aktuellen KI-Trends
+  // Erstelle realistische Artikel basierend auf aktuellen KI-Trends für Data Science & ML Studierende
   const realisticArticles = [
     {
-      title: "OpenAI kündigt GPT-5 mit verbesserter Reasoning-Fähigkeit für 2025 an",
-      description: "OpenAI CEO Sam Altman bestätigt in einem Interview, dass GPT-5 deutlich verbesserte logische Denkfähigkeiten haben wird. Das neue Modell soll komplexe mathematische Probleme lösen und mehrstufige Argumentationen führen können. Die Veröffentlichung ist für das erste Quartal 2025 geplant.",
-      link: "https://openai.com/blog/gpt-5-announcement",
+      title: "PyTorch 2.2 mit verbesserter Distributed Training Performance veröffentlicht",
+      description: "Meta AI veröffentlicht PyTorch 2.2 mit 40% schnellerem distributed training für große Modelle. Neue Features umfassen optimierte Tensor Parallelism APIs und verbesserte Integration mit CUDA 12.1. Besonders relevant für Master-Arbeiten mit großen Sprachmodellen.",
+      link: "https://pytorch.org/blog/pytorch-2-2-release",
       pubDate: new Date().toISOString(),
-      guid: `article-gpt5-${Date.now()}`,
-      sourceName: "OpenAI Blog"
+      guid: `article-pytorch22-${Date.now()}`,
+      sourceName: "PyTorch Blog"
     },
     {
-      title: "Google DeepMind stellt Gemini 2.0 mit multimodalen Capabilities vor",
-      description: "Google DeepMind präsentiert Gemini 2.0, das native Video-, Audio- und Bildverarbeitung in einem einheitlichen Modell kombiniert. Das System kann gleichzeitig Text, Bilder und Videos verstehen und produzieren. Erste Tests zeigen eine 40% bessere Performance bei multimodalen Aufgaben.",
-      link: "https://deepmind.google/blog/gemini-2-multimodal",
+      title: "Neue Studie: Transformer-Architekturen vs. State Space Models im Vergleich",
+      description: "Stanford-Forscher publizieren umfassende Analyse der Effizienz von Mamba vs. Transformer-Modellen. Die Studie zeigt, dass SSMs bei Sequenzen >8k Tokens deutlich speicherschonender sind. Wichtige Erkenntnisse für die Modellauswahl in wissenschaftlichen Projekten.",
+      link: "https://arxiv.org/abs/2024.transformer-vs-ssm",
       pubDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      guid: `article-gemini2-${Date.now()}`,
-      sourceName: "Google DeepMind"
+      guid: `article-transformer-ssm-${Date.now()}`,
+      sourceName: "arXiv"
     },
     {
-      title: "Meta integriert KI-Avatare in WhatsApp und Instagram - 500 Millionen Nutzer erreicht",
-      description: "Meta meldet, dass bereits 500 Millionen Nutzer die neuen KI-Avatar-Features in WhatsApp und Instagram verwenden. Die personalisierten KI-Assistenten können Termine planen, Fragen beantworten und kreative Inhalte erstellen. Die Funktion wird nun auf alle Märkte ausgeweitet.",
-      link: "https://about.meta.com/news/ai-avatars-expansion",
+      title: "Kaggle kündigt neue Competition zu multimodaler KI mit 1 Million Dollar Preisgeld an",
+      description: "Die neue 'Multimodal Understanding Challenge' fokussiert auf Vision-Language-Modelle für wissenschaftliche Dokumente. Teams sollen Algorithmen entwickeln, die Grafiken, Tabellen und Text gleichzeitig verstehen. Anmeldung bis Ende des Monats möglich.",
+      link: "https://kaggle.com/competitions/multimodal-understanding-2024",
       pubDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      guid: `article-meta-avatars-${Date.now()}`,
-      sourceName: "Meta Newsroom"
+      guid: `article-kaggle-multimodal-${Date.now()}`,
+      sourceName: "Kaggle"
     },
     {
-      title: "Anthropic Claude 3.5 übertrifft GPT-4 in neuem Benchmark für wissenschaftliches Reasoning",
-      description: "Der neue ScienceQA-Benchmark zeigt, dass Anthropics Claude 3.5 Sonnet in wissenschaftlichen Denkaufgaben eine Genauigkeit von 89.2% erreicht, verglichen mit 84.1% bei GPT-4. Besonders in Physik und Chemie zeigt das Modell überlegene Performance bei komplexen Problemlösungen.",
-      link: "https://anthropic.com/news/claude-science-benchmark",
+      title: "OpenAI veröffentlicht GPT-4 Research Preview für akademische Nutzung",
+      description: "Universitäten und Forschungseinrichtungen erhalten kostenlosen Zugang zu GPT-4 APIs für nicht-kommerzielle Projekte. Das Programm umfasst auch Zugang zu Fine-Tuning-Funktionen und erhöhte Rate Limits. Bewerbungen über GitHub Student Pack möglich.",
+      link: "https://openai.com/research/academic-access-program",
       pubDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-      guid: `article-claude-science-${Date.now()}`,
-      sourceName: "Anthropic"
+      guid: `article-openai-academic-${Date.now()}`,
+      sourceName: "OpenAI Research"
     },
     {
-      title: "EU verabschiedet finale KI-Regulierung: Neue Compliance-Anforderungen ab 2025",
-      description: "Das Europäische Parlament stimmt der finalen Version des AI Acts zu. Ab Februar 2025 müssen KI-Systeme mit hohem Risiko umfassende Dokumentation und Bias-Tests vorweisen. Unternehmen haben 12 Monate Zeit zur Compliance, Strafen können bis zu 7% des Jahresumsatzes betragen.",
-      link: "https://europa.eu/news/ai-act-final-vote",
+      title: "MLflow 2.9 mit automatischem Hyperparameter-Tuning und Experiment-Versionierung",
+      description: "Das beliebte ML-Experiment-Tracking-Tool erhält native Integration für automatisches Hyperparameter-Tuning mit Optuna. Neue Features: Git-Integration für Reproduzierbarkeit und verbessertes UI für Experiment-Vergleiche. Perfekt für strukturierte Forschungsprojekte.",
+      link: "https://mlflow.org/releases/2.9.0",
       pubDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-      guid: `article-eu-ai-act-${Date.now()}`,
-      sourceName: "Europäisches Parlament"
+      guid: `article-mlflow29-${Date.now()}`,
+      sourceName: "MLflow"
     },
     {
-      title: "NVIDIA präsentiert RTX 5090 mit dedizierter KI-Acceleration für lokale LLMs",
-      description: "NVIDIA stellt die neue RTX 5090 Grafikkarte vor, die speziell für lokale KI-Anwendungen optimiert ist. Mit 32GB VRAM und neuen Tensor-Cores der 5. Generation können Nutzer GPT-4-ähnliche Modelle lokal ausführen. Der Preis liegt bei 1.999 Dollar, Verfügbarkeit ab März 2025.",
-      link: "https://nvidia.com/blog/rtx-5090-ai-acceleration",
+      title: "Neue Studie zu Bias in Computer Vision Modellen bei medizinischen Anwendungen",
+      description: "MIT-Forscher entdecken systematische Verzerrungen in populären CV-Modellen bei der Analyse medizinischer Bilder verschiedener Ethnien. Die Studie zeigt konkrete Methoden zur Bias-Reduktion und ist besonders relevant für ethische KI-Entwicklung.",
+      link: "https://arxiv.org/abs/2024.medical-cv-bias",
       pubDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      guid: `article-nvidia-rtx5090-${Date.now()}`,
-      sourceName: "NVIDIA Blog"
+      guid: `article-medical-bias-${Date.now()}`,
+      sourceName: "MIT CSAIL"
     }
   ];
 
@@ -224,14 +225,14 @@ async function generateRealisticMockArticles(weekNumber: number, year: number) {
   return shuffled.slice(0, selectedCount);
 }
 
-// Generate newsletter content using Gemini AI with enhanced specificity
+// Generate newsletter content using Gemini AI with enhanced specificity for Data Science & ML students
 async function generateNewsletterContent(
   weekNumber: number, 
   year: number, 
   dateRange: string, 
   articles: any[]
 ): Promise<string> {
-  console.log("Generating specific newsletter content with Gemini AI...");
+  console.log("Generating university-focused newsletter content with Gemini AI...");
   
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   
@@ -245,37 +246,60 @@ Datum: ${article.pubDate}
 Link: ${article.link}
 `).join('\n');
 
-  const prompt = `Du bist ein Experte für KI-Newsletter und schreibst SPEZIFISCHE, faktenbasierte Newsletter für das LINKIT WEEKLY.
+  const prompt = `Du schreibst den Newsletter für LINKIT - eine HOCHSCHULGRUPPE für Data Science und Machine Learning. 
 
-WICHTIGE ANFORDERUNGEN für KW ${weekNumber}/${year} (${dateRange}):
-- Analysiere JEDEN der bereitgestellten Artikel im Detail
-- Verwende die EXAKTEN Titel und Inhalte der Artikel
-- Erkläre die KONKRETEN Entwicklungen, nicht nur allgemeine KI-Trends
-- Zitiere SPEZIFISCHE Fakten, Zahlen und Unternehmen aus den Artikeln
-- Vermeide generische Phrasen wie "KI entwickelt sich weiter"
-- Mindestens 200 Wörter pro Artikel mit substantieller Analyse
-- Verbinde die Nachrichten miteinander und zeige konkrete Zusammenhänge auf
+**ZIELGRUPPE:** Studierende der Informatik, Data Science, Mathematik und verwandter Studiengänge, die sich für praktische Anwendungen von ML und KI interessieren.
 
-STRUKTUR:
-📬 **LINKIT WEEKLY KW ${weekNumber}** - ${dateRange}
+**STIL & TON:**
+- Wissenschaftlich fundiert aber zugänglich
+- Fokus auf praktische Relevanz für Studierende und Forschung
+- Verbindung zu Studieninhalten und Karrieremöglichkeiten
+- Erwähnung von Tools, Frameworks und Methoden, die in der Lehre relevant sind
+- Hinweise auf Praktika, Jobs und Forschungsmöglichkeiten wo passend
 
-**Einleitung**: Überblick über die SPEZIFISCHEN Entwicklungen dieser Woche
+STRUKTUR für KW ${weekNumber}/${year} (${dateRange}):
 
-**Die wichtigsten Entwicklungen:**
-[Für jeden Artikel eine detaillierte Analyse mit:]
-- Zusammenfassung der Kernfakten
-- Technische Details und Hintergründe  
-- Bedeutung für verschiedene Branchen
-- Verbindungen zu anderen Entwicklungen
+📚 **LINKIT WEEKLY KW ${weekNumber}** - Eure Data Science & ML News
 
-**Wochentrends**: Analyse der übergreifenden Muster
-**Ausblick**: Basierend auf den konkreten Entwicklungen
-**Fazit**: Spezifische Takeaways
+**Intro**: Begrüßung der LINKIT-Community mit Bezug zu aktuellen Entwicklungen
+
+**🔬 Forschung & Entwicklung**
+[Für jeden wissenschaftlichen Artikel:]
+- Kurze Einordnung der Relevanz für Studierende
+- Technische Details verständlich erklärt
+- Verbindung zu Vorlesungsinhalten (z.B. "Erinnerung an die Deep Learning Vorlesung...")
+- Praktische Anwendungsmöglichkeiten
+
+**🛠️ Tools & Frameworks**
+[Für Tool-Updates:]
+- Was bedeutet das für eure Projekte?
+- Installation/Setup-Tipps
+- Integration in bestehende Workflows
+
+**💼 Karriere & Chancen**
+[Wenn relevant:]
+- Neue Job-/Praktikumsmöglichkeiten
+- Relevante Wettbewerbe und Challenges
+- Networking-Opportunities
+
+**📝 Für euer Studium**
+- Konkrete Takeaways für Projekte und Abschlussarbeiten
+- Empfohlene Papers oder Tutorials
+- Techniken für die nächste Klausur/das nächste Semester
+
+**Abschluss**: Aufruf zur Community-Teilnahme und nächsten Events
+
+WICHTIGE ANFORDERUNGEN:
+- Verwende die EXAKTEN Details aus den bereitgestellten Artikeln
+- Erkläre komplexe Konzepte student*innenfreundlich
+- Stelle Verbindungen zu typischen Uni-Inhalten her (ML-Kurse, Praktika, etc.)
+- Mindestens 1200-1500 Wörter mit substantieller, studentenrelevanter Analyse
+- Verwende einen enthusiastischen aber professionellen Ton
 
 ARTIKEL FÜR DIESE WOCHE:
 ${articleDetails}
 
-Erstelle einen faktischen, spezifischen Newsletter von 1200-1500 Wörtern. Verwende die exakten Details aus den Artikeln!`;
+Erstelle einen Newsletter, der eure Hochschulgruppe widerspiegelt und echten Mehrwert für Data Science & ML Studierende bietet!`;
 
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/gemini-ai`, {
@@ -305,7 +329,7 @@ Erstelle einen faktischen, spezifischen Newsletter von 1200-1500 Wörtern. Verwe
   }
 }
 
-// Enhanced fallback content generation with specific details
+// Enhanced fallback content generation with university group focus
 function generateEnhancedFallbackContent(
   weekNumber: number, 
   year: number, 
@@ -316,35 +340,40 @@ function generateEnhancedFallbackContent(
 
 ${article.description}
 
-**Quelle:** ${article.sourceName}  
-**Bedeutung:** Diese Entwicklung zeigt ${article.title.includes('OpenAI') ? 'OpenAIs kontinuierliche Innovation' : article.title.includes('Google') ? 'Googles Fortschritte in der multimodalen KI' : article.title.includes('Meta') ? 'Metas Fokus auf soziale KI-Integration' : 'wichtige Branchenentwicklungen'}.
+**Warum relevant für euch:** ${article.title.includes('PyTorch') ? 'Für alle, die gerade Deep Learning Projekte umsetzen - die Performance-Verbesserungen helfen besonders bei größeren Modellen für Masterarbeiten.' : article.title.includes('Kaggle') ? 'Eine perfekte Gelegenheit, eure ML-Skills in der Praxis zu testen und das Portfolio zu erweitern!' : article.title.includes('akademische') ? 'Kostenloses GPT-4 für Forschungsprojekte - meldet euch schnell an!' : 'Diese Entwicklung zeigt wichtige Trends in der KI-Forschung.'}
 
+**Quelle:** ${article.sourceName}  
 🔗 [Zum Artikel](${article.link})
 `).join('\n');
 
-  return `# 📬 LINKIT WEEKLY KW ${weekNumber}
+  return `# 📚 LINKIT WEEKLY KW ${weekNumber}
 
-**${dateRange}**
+**${dateRange}** | *Eure Data Science & ML News*
 
-## Diese Woche in der KI-Welt
+Hallo LINKIT-Community! 
 
-Die KW ${weekNumber} brachte bedeutende Entwicklungen in der KI-Branche. Von ${articles[0]?.title.split(' ')[0] || 'großen'} Ankündigungen bis hin zu ${articles[1]?.title.includes('regulierung') || articles[1]?.title.includes('EU') ? 'regulatorischen Fortschritten' : 'technischen Durchbrüchen'} - hier sind die wichtigsten Nachrichten der Woche.
+Willkommen zur KW ${weekNumber} - einer Woche voller spannender Entwicklungen in unserem Fachbereich. Von neuen Framework-Updates bis hin zu interessanten Forschungsergebnissen gibt es einiges zu entdecken.
 
-## Die Highlights der Woche
+## 🔬 Diese Woche in Data Science & ML
 
 ${articleAnalyses}
 
-## Wochentrends
+## 📝 Takeaways für euer Studium
 
-Diese Woche zeigt drei klare Trends: Die Konkurrenz zwischen den großen KI-Anbietern intensiviert sich, multimodale Fähigkeiten werden zum Standard, und regulatorische Klarheit nimmt zu.
+Diese Woche zeigt wieder, wie schnelllebig unser Fachbereich ist. Besonders die Tool-Updates sind direkt in euren Projekten anwendbar. Für alle, die gerade an Abschlussarbeiten schreiben: Die neuen Entwicklungen bieten spannende Ansätze für eure Forschung.
 
-## Ausblick
+## 💡 Nächste Schritte
 
-Die Entwicklungen dieser Woche deuten auf einen spannenden Jahresstart 2025 hin, mit mehreren Modell-Releases und wichtigen regulatorischen Entscheidungen.
+- Checkt die neuen Tool-Features für eure aktuellen Projekte
+- Haltet Ausschau nach den erwähnten Wettbewerben und Chancen  
+- Diskutiert die Entwicklungen in unserer Community
+
+Bis nächste Woche und happy coding! 🚀
 
 ---
 
-**LINKIT KI-Newsletter** | Ihre wöchentliche Dosis spezifischer KI-News
+**LINKIT - Data Science & Machine Learning** | Hochschulgruppe für KI-Enthusiasten
+Folgt uns für mehr Updates und Community-Events!
 `;
 }
 
