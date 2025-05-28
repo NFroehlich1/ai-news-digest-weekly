@@ -115,39 +115,49 @@ async function generateSummary(apiKey: string, data: any) {
     );
   }
 
-  const prompt = `Du bist ein Experte für KI-Newsletter und schreibst detaillierte, professionelle Zusammenfassungen für das LINKIT WEEKLY. 
+  // Erstelle einen detaillierten, spezifischen Prompt basierend auf den tatsächlichen Artikeln
+  const articleDetails = articlesToUse.map((article: any, index: number) => `
+**ARTIKEL ${index + 1}:**
+Titel: "${article.title}"
+Beschreibung: "${article.description || 'Keine Beschreibung verfügbar'}"
+Quelle: ${article.sourceName || 'Unbekannte Quelle'}
+Datum: ${article.pubDate}
+Link: ${article.link}
+`).join('\n');
 
-WICHTIGE ANFORDERUNGEN:
-- Schreibe einen ausführlichen, detaillierten Newsletter mit mindestens 800-1200 Wörtern
-- Analysiere jeden Artikel tiefgehend und erkläre die Bedeutung für die KI-Branche
-- Verwende eine professionelle, aber zugängliche Sprache
-- Strukturiere den Newsletter klar mit Überschriften und Unterpunkten
-- Füge Kontext und Hintergrundinformationen hinzu
-- Erkläre technische Konzepte verständlich
-- Zeige Verbindungen zwischen verschiedenen Entwicklungen auf
-- Bewerte die Auswirkungen auf verschiedene Branchen und Anwendungsbereiche
+  const prompt = `Du bist ein Experte für KI-Newsletter und schreibst SPEZIFISCHE, FAKTENBASIERTE Newsletter für das LINKIT WEEKLY.
+
+KRITISCHE ANFORDERUNGEN:
+- Analysiere JEDEN der bereitgestellten Artikel im Detail
+- Verwende die EXAKTEN Titel und Inhalte der Artikel
+- Erkläre die KONKRETEN Entwicklungen, nicht nur allgemeine KI-Trends
+- Zitiere SPEZIFISCHE Fakten, Zahlen und Unternehmen aus den Artikeln
+- Vermeide generische Phrasen wie "KI entwickelt sich weiter"
+- Jeder Artikel soll mindestens 200-250 Wörter detaillierte Analyse erhalten
+- Verbinde die verschiedenen Nachrichten miteinander und zeige Zusammenhänge auf
+- Erkläre die praktischen Auswirkungen für verschiedene Branchen
 
 STRUKTUR:
-1. Einleitung mit Überblick über die Woche
-2. Hauptartikel mit detaillierter Analyse (jeweils 150-200 Wörter pro Artikel)
-3. Trends und Patterns der Woche
-4. Ausblick und Implikationen
-5. Fazit
+1. **Einleitung**: Kurzer Überblick über die SPEZIFISCHEN Themen dieser Woche
+2. **Hauptanalyse**: Detaillierte Besprechung JEDES Artikels mit:
+   - Zusammenfassung der wichtigsten Fakten
+   - Technische Details und Hintergründe
+   - Bedeutung für die Branche
+   - Verbindungen zu anderen Entwicklungen
+3. **Wochentrends**: Analyse der übergreifenden Muster dieser KONKRETEN Woche
+4. **Ausblick**: Basierend auf den TATSÄCHLICHEN Entwicklungen dieser Woche
+5. **Fazit**: Spezifische Takeaways aus den besprochenen Artikeln
 
-Verwende Markdown-Formatierung für bessere Lesbarkeit.
+Erstelle einen Newsletter für KW ${digest.weekNumber}/${digest.year} (${digest.dateRange}) basierend auf diesen KONKRETEN Artikeln:
 
-Erstelle einen detaillierten Newsletter für Kalenderwoche ${digest.weekNumber}/${digest.year} (${digest.dateRange}) basierend auf diesen KI-Nachrichten:
+${articleDetails}
 
-${articlesToUse.map((article: any, index: number) => `
-**Artikel ${index + 1}:**
-Titel: ${article.title}
-Beschreibung: ${article.description || 'Keine Beschreibung verfügbar'}
-Link: ${article.link}
-Datum: ${article.pubDate}
-Quelle: ${article.sourceName || 'Unbekannte Quelle'}
-`).join('\n')}
-
-Bitte erstelle eine umfassende, detaillierte Analyse mit mindestens 800-1200 Wörtern. Erkläre die Bedeutung jeder Entwicklung, füge Kontext hinzu und zeige Verbindungen zwischen den verschiedenen Nachrichten auf.`;
+WICHTIG: 
+- Verwende die exakten Titel und Details aus den Artikeln
+- Keine generischen KI-Beschreibungen
+- Fokussiere auf die spezifischen Inhalte der bereitgestellten Artikel
+- Mindestens 1200-1500 Wörter mit substantieller Analyse
+- Jeder Artikel muss individuell und detailliert behandelt werden`;
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
@@ -162,10 +172,10 @@ Bitte erstelle eine umfassende, detaillierte Analyse mit mindestens 800-1200 Wö
           }]
         }],
         generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 3000,
+          temperature: 0.3, // Niedrigere Temperatur für faktischere Inhalte
+          topK: 20,
+          topP: 0.8,
+          maxOutputTokens: 4000, // Mehr Tokens für längere, detailliertere Inhalte
         }
       })
     });
