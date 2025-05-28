@@ -40,7 +40,7 @@ class RawArticleService {
         content: article.content,
         categories: Array.isArray(article.categories) ? article.categories : [],
         creator: article.creator,
-        image_url: article.image,
+        image_url: article.imageUrl,
         fetched_at: new Date().toISOString(),
         processed: false
       }));
@@ -193,7 +193,7 @@ class RawArticleService {
       content: rawArticle.content,
       categories: rawArticle.categories || [],
       creator: rawArticle.creator,
-      image: rawArticle.image_url
+      imageUrl: rawArticle.image_url
     };
   }
 
@@ -210,7 +210,7 @@ class RawArticleService {
       content: item.content,
       categories: Array.isArray(item.categories) ? item.categories : [],
       creator: item.creator,
-      image_url: item.image,
+      image_url: item.imageUrl,
       fetched_at: new Date().toISOString(),
       processed: false
     }));
