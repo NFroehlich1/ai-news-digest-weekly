@@ -20,6 +20,7 @@ interface WeeklyDigestProps {
 }
 
 const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
+  
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedContent, setGeneratedContent] = useState<string | null>(digest.generatedContent || null);
   const [activeTab, setActiveTab] = useState<string>("news");
@@ -406,8 +407,7 @@ const WeeklyDigest = ({ digest, apiKey, newsService }: WeeklyDigestProps) => {
                       {displayArticles.map((item, index) => (
                         <NewsCard 
                           key={`${getArticleId(item)}-${index}`}
-                          item={item} 
-                          apiKey={apiKey}
+                          item={item}
                         />
                       ))}
                     </div>
