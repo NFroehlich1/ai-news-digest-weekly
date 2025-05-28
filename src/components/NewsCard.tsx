@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RssItem } from "@/types/newsTypes";
@@ -8,16 +9,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import NewsService from "@/services/NewsService";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NewsCardProps {
   item: RssItem;
   isLoading?: boolean;
   onDelete?: (item: RssItem) => void;
-  apiKey?: string;
 }
 
-const NewsCard = ({ item, isLoading = false, onDelete, apiKey }: NewsCardProps) => {
+const NewsCard = ({ item, isLoading = false, onDelete }: NewsCardProps) => {
   const { title, link, pubDate, description, categories, sourceName, aiSummary, content } = item;
   const [isOpen, setIsOpen] = useState(false);
   const [localAiSummary, setLocalAiSummary] = useState<string | null>(aiSummary || null);
@@ -84,19 +84,38 @@ const NewsCard = ({ item, isLoading = false, onDelete, apiKey }: NewsCardProps) 
     return null;
   };
   
-  // Generate AI summary on-demand
+  // Generate AI summary using Supabase Edge Function
   const generateAiSummary = async () => {
     if (isGeneratingAiSummary) return;
     
     setIsGeneratingAiSummary(true);
     try {
-      const newsService = new NewsService(); // Updated to use no arguments
-      const summary = await newsService.generateArticleSummary(item);
-      if (summary) {
-        setLocalAiSummary(summary);
+      console.log("Generating AI summary for article:", title);
+      
+      const { data, error } = await supabase.functions.invoke('gemini-ai', {
+        body: { 
+          action: 'generate-article-summary',
+          data: { article: item }
+        }
+      });
+
+      if (error) {
+        console.error("Supabase function error:", error);
+        toast.error("Fehler bei der Generierung der Zusammenfassung");
+        return;
+      }
+
+      if (data.error) {
+        console.error("Gemini API Error:", data.error);
+        toast.error("Fehler bei der Generierung der Zusammenfassung");
+        return;
+      }
+
+      if (data.summary) {
+        setLocalAiSummary(data.summary);
         toast.success("KI-Zusammenfassung generiert");
       } else {
-        toast.error("Fehler bei der Generierung der Zusammenfassung");
+        toast.error("Keine Zusammenfassung erhalten");
       }
     } catch (error) {
       console.error("Error generating AI summary:", error);
