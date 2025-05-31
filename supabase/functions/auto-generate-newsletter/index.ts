@@ -266,11 +266,12 @@ Link: ${article.link}
 - Nutze KEINE spezifischen Kursnamen, außer sie werden explizit in den Artikeln erwähnt
 
 **STIL & TON (natürlich und studentenfreundlich):**
-- Beginne mit natürlichen Begrüßungen wie "Hi!", "Was geht ab!", "Servus zusammen!" oder einfach "Hey"
-- Vermeide steife Formulierungen wie "Willkommen zu unserem Newsletter"
-- Direkt und persönlich ("ihr", "euch"), aber authentisch
+- Beginne mit natürlichen, lockeren Begrüßungen wie "Hi!", "Was geht ab!", "Servus zusammen!", "Hey Leute!" oder einfach "Hey"
+- VERMEIDE KOMPLETT formelle Begrüßungen wie "Herzlichen Glückwunsch", "Willkommen zu unserem Newsletter" oder steife Formulierungen
+- Vermeide Business-Sprache oder übertriebene Förmlichkeit
+- Direkt und persönlich ("ihr", "euch"), aber authentisch und entspannt
 - Praktischer Fokus auf Studium und Berufseinstieg
-- Enthusiastisch aber wissenschaftlich fundiert
+- Enthusiastisch aber wissenschaftlich fundiert - wie ein Student, der anderen Studenten schreibt
 - Tools und Technologien nur erwähnen, wenn sie in den Artikeln vorkommen
 
 **STRUKTUR für KW ${weekNumber}/${year} (${dateRange}):**
@@ -280,7 +281,7 @@ Link: ${article.link}
 
 KW ${weekNumber} · ${dateRange}
 
-**Intro**: Natürliche, lockere Begrüßung der LINKIT-Community
+**Intro**: Natürliche, lockere Begrüßung der LINKIT-Community (KEINE formellen Glückwünsche oder steife Willkommensnachrichten!)
 
 **Hauptteil - Detaillierte Artikel-Analysen (NUR basierend auf echten Inhalten):**
 [Für jeden Artikel:]
@@ -299,13 +300,13 @@ KW ${weekNumber} · ${dateRange}
 - Verwende die EXAKTEN Details aus den bereitgestellten Artikeln
 - Erkläre KI-Konzepte verständlich für Studierende
 - Mindestens 1500-2000 Wörter mit substantieller Analyse pro Artikel
-- Authentischer, lockerer studentischer Ton ohne Förmlichkeiten
+- Authentischer, lockerer studentischer Ton ohne Förmlichkeiten oder formelle Begrüßungen
 - Fokus auf praktische Umsetzbarkeit und Karriererelevanz
 
 ARTIKEL FÜR DIESE WOCHE:
 ${articleDetails}
 
-WICHTIG: Bleibe strikt bei den Inhalten der bereitgestellten Artikel. Erfinde keine Details, Kurse oder technischen Zusammenhänge, die nicht explizit erwähnt werden!`;
+WICHTIG: Bleibe strikt bei den Inhalten der bereitgestellten Artikel. Erfinde keine Details, Kurse oder technischen Zusammenhänge, die nicht explizit erwähnt werden! Verwende eine natürliche, studentische Begrüßung OHNE jegliche formelle Glückwünsche oder steife Willkommensnachrichten!`;
 
   try {
     const response = await fetch(`${supabaseUrl}/functions/v1/gemini-ai`, {
@@ -358,9 +359,9 @@ ${article.description}
 
 KW ${weekNumber} · ${dateRange}
 
-Hi zusammen!
+Hey zusammen!
 
-willkommen zu unserem ausführlichen Wochenrückblick! Diese Woche war wieder gepacked mit spannenden Entwicklungen, die direkt für euer Studium und eure Zukunft relevant sind. Von neuen Tools bis hin zu Karrierechancen - hier sind alle wichtigen Updates der Woche.
+Diese Woche war wieder gepacked mit spannenden Entwicklungen, die direkt für euer Studium und eure Zukunft relevant sind. Von neuen Tools bis hin zu Karrierechancen - hier sind alle wichtigen Updates der Woche.
 
 ${articleAnalyses}
 

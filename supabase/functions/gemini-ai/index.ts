@@ -141,10 +141,11 @@ Link: ${article.link}
 - Nutze KEINE spezifischen Kursnamen wie "CS229" oder "Deep Learning Vorlesung"
 
 **NEWSLETTER-STIL (natürlich und studentenfreundlich):**
-- Beginne mit natürlichen Begrüßungen wie "Hi!", "Was geht ab!", "Servus zusammen!" oder einfach "Hey"
-- Schreibe direkt und persönlich ("ihr", "euch"), aber authentisch
-- Vermeide steife Formulierungen wie "Willkommen zu unserem Newsletter"
-- Sei enthusiastisch aber nicht übertrieben
+- Beginne mit natürlichen, lockeren Begrüßungen wie "Hi!", "Was geht ab!", "Servus zusammen!", "Hey Leute!" oder einfach "Hey"
+- VERMEIDE formelle Begrüßungen wie "Herzlichen Glückwunsch", "Willkommen zu unserem Newsletter" oder steife Formulierungen
+- Schreibe direkt und persönlich ("ihr", "euch"), aber authentisch und entspannt
+- Vermeide übertriebene Förmlichkeit oder Business-Sprache
+- Sei enthusiastisch aber natürlich - wie ein Student, der anderen Studenten schreibt
 - Fokus auf praktische Relevanz für das Studium
 
 **STRUKTUR für KW ${digest.weekNumber}/${digest.year} (${digest.dateRange}):**
@@ -154,8 +155,8 @@ Link: ${article.link}
 
 KW ${digest.weekNumber} · ${digest.dateRange}
 
-**Intro mit natürlicher Begrüßung:**
-- Verwende eine lockere, authentische Begrüßung
+**Intro mit natürlicher, lockerer Begrüßung:**
+- Verwende eine entspannte, authentische Begrüßung (KEINE formellen Glückwünsche!)
 - Kurzer, persönlicher Einstieg ohne Floskeln
 - Was euch diese Woche erwartet
 
@@ -173,16 +174,16 @@ Für jeden Artikel:
 - Lockerer Abschluss mit Community-Aufruf
 
 **WICHTIGE STILELEMENTE:**
-- Authentische, lockere Sprache ohne Förmlichkeiten
+- Authentische, lockere Sprache ohne Förmlichkeiten oder steife Begrüßungen
 - Erkläre KI-Konzepte verständlich, aber bleib bei den Fakten
 - Erwähne Tools und Technologien nur, wenn sie in den Artikeln vorkommen
 - Mindestens 1500-2000 Wörter für ausführliche Analysen
-- Enthusiastischer aber faktenbasierter Ton
+- Enthusiastischer aber faktenbasierter Ton wie unter Studierenden
 
 **NEWSLETTER-INHALT basierend auf diesen Artikeln:**
 ${articleDetails}
 
-WICHTIG: Bleibe strikt bei den Inhalten der bereitgestellten Artikel. Erfinde keine Details, Kurse oder technischen Zusammenhänge, die nicht explizit erwähnt werden!`;
+WICHTIG: Bleibe strikt bei den Inhalten der bereitgestellten Artikel. Erfinde keine Details, Kurse oder technischen Zusammenhänge, die nicht explizit erwähnt werden! Verwende eine natürliche, studentische Begrüßung OHNE formelle Glückwünsche!`;
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
